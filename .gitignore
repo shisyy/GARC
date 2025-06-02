@@ -1,0 +1,8 @@
+__pycache__/
+*.egg-info/
+datasets/
+logs
+model_ckpts
+outputs
+pg*.py
+scripts/

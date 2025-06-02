@@ -1,0 +1,12 @@
+{
+    "python.analysis.exclude": [
+        "**/__pycache__",
+        "**/.*", // covers .git and other dot directories
+        // custom exclusion paths
+        "datasets",
+        "logs",
+        "model_ckpts",
+        "outputs",
+        "scripts"
+    ]
+}
