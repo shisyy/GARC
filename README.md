@@ -2,7 +2,8 @@
 
 Articulation Estimation and Part-level Reconstruction with 3D Gaussian Splatting.
 
-[Video Abstract](https://drive.google.com/file/d/1bandCsF11xfTkXEzsQZ0dmfUMZBOCH9k/view?usp=sharing)
+[![Video Absract](assets/splart-teaser.jpg)]([https://youtu.be/vt5fpE0bzSY](https://drive.google.com/file/d/1bandCsF11xfTkXEzsQZ0dmfUMZBOCH9k/view?usp=sharing))
+
 
 ## Installation
 
