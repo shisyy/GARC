@@ -2,6 +2,8 @@
 
 Articulation Estimation and Part-level Reconstruction with 3D Gaussian Splatting.
 
+[![arXiv](https://img.shields.io/badge/arXiv-2506.03594-b31b1b.svg)](https://arxiv.org/abs/2506.03594)
+
 [![Video Abstract](assets/splart-teaser.jpg)](https://drive.google.com/file/d/1bandCsF11xfTkXEzsQZ0dmfUMZBOCH9k/view?usp=sharing)
 
 ## Installation
@@ -17,7 +19,7 @@ conda deactivate && conda env remove -n $CONDA_ENV -y
 conda create -n $CONDA_ENV -y python=3.11 && conda activate $CONDA_ENV  # sapien supports up to Python 3.11
 conda install -y colmap ffmpeg nvidia/label/cuda-12.4.1::cuda-toolkit
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-# TCNN_CUDA_ARCHITECTURES is needed only if support for multiple CUDA architectures is desired (set it accordingly)
+# If support for multiple CUDA architectures is desired, set TCNN_CUDA_ARCHITECTURES accordingly
 TCNN_CUDA_ARCHITECTURES='70,75,86,89' LIBRARY_PATH=$CONDA_PREFIX/lib/stubs${LIBRARY_PATH:+:$LIBRARY_PATH} pip install ninja git+https://github.com/NVlabs/tiny-cuda-nn/#subdirectory=bindings/torch
 pip install git+https://github.com/nerfstudio-project/nerfstudio.git@2adcc380c6c846fe032b1fe55ad2c960e170a215  # latest as of 06/01/2025
 pip install git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70  # latest as of 06/01/2025. Ignore error "nerfstudio 1.1.5 requires gsplat==1.4.0, but you have gsplat 1.5.2 which is incompatible."
@@ -122,3 +124,17 @@ It will save the rendering to `outputs/renders/$dataset/$obj/$timestamp`.
 ### Quantitative Evaluation
 
 `python eval.py --dataset $dataset --timestamp $timestamp`
+
+## Citation
+
+If you find this work useful, please consider citing our paper:
+
+    @misc{lin2025splart,
+        title={SplArt: Articulation Estimation and Part-Level Reconstruction with 3D Gaussian Splatting}, 
+        author={Shengjie Lin and Jiading Fang and Muhammad Zubair Irshad and Vitor Campagnolo Guizilini and Rares Andrei Ambrus and Greg Shakhnarovich and Matthew R. Walter},
+        year={2025},
+        eprint={2506.03594},
+        archivePrefix={arXiv},
+        primaryClass={cs.GR},
+        url={https://arxiv.org/abs/2506.03594}, 
+    }
