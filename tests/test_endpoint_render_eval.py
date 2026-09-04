@@ -7,6 +7,7 @@ import pytest
 
 import endpoint_render_eval
 from endpoint_render_eval import (
+    detached_numpy,
     deterministic_sample_indices,
     expected_asset_hash,
     load_postbuild_seal,
@@ -95,6 +96,27 @@ def test_physical_sampling_indices_are_exact_and_deterministic() -> None:
     assert deterministic_sample_indices(10, 4) == deterministic_sample_indices(10, 4)
     with pytest.raises(ValueError):
         deterministic_sample_indices(10, 0)
+
+
+def test_renderer_tensor_serialization_detaches_before_numpy() -> None:
+    class FakeTensor:
+        detached = False
+
+        def detach(self):
+            self.detached = True
+            return self
+
+        def cpu(self):
+            assert self.detached
+            return self
+
+        def numpy(self):
+            assert self.detached
+            return "detached-array"
+
+    tensor = FakeTensor()
+    assert detached_numpy(tensor) == "detached-array"
+    assert tensor.detached
 
 
 def test_authoritative_postbuild_binding_and_mutation_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

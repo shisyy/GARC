@@ -232,6 +232,12 @@ def deterministic_sample_indices(count: int, cap: int = PHYSICAL_SAMPLE_CAP) -> 
     return tuple((index * count) // cap for index in range(cap))
 
 
+def detached_numpy(tensor: Any) -> Any:
+    """Serialize renderer output without retaining or traversing autograd."""
+
+    return tensor.detach().cpu().numpy()
+
+
 def camera_from_view(episode: Mapping[str, Any], view: Mapping[str, Any], torch: Any, Cameras: Any) -> Any:
     camera = episode.get("camera")
     if not isinstance(camera, Mapping) or camera.get("pose_convention") != "nerfstudio_opengl_cam2raw":
@@ -484,14 +490,15 @@ def evaluate_candidate(
                 verify_hash(path, expected_asset_hash(view, modality, str(assets[modality])), f"GT {modality}")
 
             camera = camera_from_view(episode, view, torch, Cameras)
-            outputs = renderer.render_view(
-                camera,
-                articulation_state=predicted_scalars[query_id],
-                vis_articulation=False,
-                pose_type="cam2raw",
-                color_only=False,
-                gen_part_seg=True,
-            )
+            with torch.inference_mode():
+                outputs = renderer.render_view(
+                    camera,
+                    articulation_state=predicted_scalars[query_id],
+                    vis_articulation=False,
+                    pose_type="cam2raw",
+                    color_only=False,
+                    gen_part_seg=True,
+                )
             gt_color_np = imread(resolved["color"])
             gt_color = renderer.model.get_gt_img(torch.from_numpy(np.asarray(gt_color_np)).to(device))
             gt_color = renderer.model.composite_with_background(gt_color, outputs["background"])
@@ -527,9 +534,9 @@ def evaluate_candidate(
             color_path = query_dir / f"{index:04d}-color.png"
             depth_path = query_dir / f"{index:04d}-depth.npy"
             seg_path = query_dir / f"{index:04d}-part-seg.png"
-            imwrite(color_path, (pred_color.clamp(0, 1).cpu().numpy() * 255).round().astype(np.uint8))
-            np.save(depth_path, pred_depth.cpu().numpy(), allow_pickle=False)
-            seg_labels = torch.argmax(pred_seg, dim=-1).cpu().numpy().astype(np.uint8)
+            imwrite(color_path, (detached_numpy(pred_color.clamp(0, 1)) * 255).round().astype(np.uint8))
+            np.save(depth_path, detached_numpy(pred_depth), allow_pickle=False)
+            seg_labels = detached_numpy(torch.argmax(pred_seg, dim=-1)).astype(np.uint8)
             seg_labels[seg_labels == 2] = 255
             imwrite(seg_path, seg_labels)
             values["candidate_artifacts"] = {
