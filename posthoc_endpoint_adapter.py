@@ -51,7 +51,10 @@ def git_provenance(path: Path, expected_prefix: str) -> dict[str, str]:
     dirty = subprocess.run(
         ["git", "status", "--porcelain"], cwd=path, check=True, capture_output=True, text=True, timeout=30
     ).stdout.strip()
-    if not head.startswith(expected_prefix) or dirty:
+    contains_expected = head.startswith(expected_prefix) or subprocess.run(
+        ["git", "merge-base", "--is-ancestor", expected_prefix, head], cwd=path, timeout=30
+    ).returncode == 0
+    if not contains_expected or dirty:
         raise ValueError(f"source provenance mismatch or dirty tree: {path}")
     return {"path": str(path), "commit": head, "tree": tree}
 
