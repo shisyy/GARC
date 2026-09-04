@@ -19,6 +19,98 @@ from splart.endpoint_baselines import QUERY_IDS, write_json_atomic
 RENDER_METRICS = ("psnr", "ssim", "lpips", "depth_mae", "static_iou", "mobile_iou", "background_iou", "miou")
 
 
+def validate_complete_measurement(measurement: Mapping[str, Any], articulation_type: int | str) -> None:
+    """Reject partial candidate evidence before any authoritative score exists."""
+
+    endpoints = measurement.get("endpoint_metrics")
+    if not isinstance(endpoints, Mapping) or set(endpoints) != set(QUERY_IDS):
+        raise ValueError("complete measurement requires exactly both endpoint metric records")
+    for query_id in QUERY_IDS:
+        record = endpoints[query_id]
+        views = record.get("views") if isinstance(record, Mapping) else None
+        if not isinstance(views, list) or len(views) != 10:
+            raise ValueError(f"complete measurement requires exactly 10 views for {query_id}")
+        for view in views:
+            if not isinstance(view, Mapping):
+                raise ValueError("endpoint view metric must be an object")
+            canonical = _canonicalise_view(view)
+            missing = set(RENDER_METRICS).difference(canonical)
+            if missing:
+                raise ValueError(f"endpoint view is missing render metrics: {sorted(missing)}")
+            artifacts = view.get("candidate_artifacts")
+            if not isinstance(artifacts, Mapping) or len(artifacts) != 3:
+                raise ValueError("endpoint view lacks three hashed candidate render artifacts")
+            if any(
+                not isinstance(value, str)
+                or len(value) != 64
+                or any(character not in "0123456789abcdef" for character in value)
+                for value in artifacts.values()
+            ):
+                raise ValueError("candidate render artifact hash is malformed")
+
+    physics = measurement.get("physics")
+    queries = physics.get("queries") if isinstance(physics, Mapping) else None
+    if not isinstance(queries, Mapping) or set(queries) != set(QUERY_IDS):
+        raise ValueError("physical certificate must cover exactly both endpoint queries")
+    required_physics = {
+        "valid",
+        "terminal_contact_valid",
+        "contact_fraction",
+        "anchor_contact_fraction",
+        "contact_fraction_gain",
+        "penetration_fraction",
+        "penetration_q99_m",
+        "penetration_depth",
+        "static_count",
+        "mobile_count",
+        "static_sample_count",
+        "mobile_sample_count",
+        "sample_cap_per_part",
+        "sampling_rule",
+    }
+    for query_id, certificate in queries.items():
+        if not isinstance(certificate, Mapping) or not required_physics.issubset(certificate):
+            raise ValueError(f"physical certificate is incomplete for {query_id}")
+        if certificate.get("valid") is not True or not isinstance(certificate.get("terminal_contact_valid"), bool):
+            raise ValueError(f"physical certificate is invalid for {query_id}")
+        for key in required_physics.difference({"valid", "terminal_contact_valid"}):
+            if key != "sampling_rule":
+                _finite_float(certificate[key], f"physics.{query_id}.{key}")
+        if certificate["sampling_rule"] != "original-index-even-stride-v1":
+            raise ValueError(f"physical certificate sampling rule is invalid for {query_id}")
+        if certificate["sample_cap_per_part"] != 4096:
+            raise ValueError(f"physical certificate sample cap is invalid for {query_id}")
+        for part in ("static", "mobile"):
+            total = certificate[f"{part}_count"]
+            sampled = certificate[f"{part}_sample_count"]
+            if (
+                not isinstance(total, int)
+                or isinstance(total, bool)
+                or not isinstance(sampled, int)
+                or isinstance(sampled, bool)
+            ):
+                raise ValueError(f"physical certificate {part} counts must be integers for {query_id}")
+            if total <= 0 or sampled != min(total, 4096):
+                raise ValueError(f"physical certificate {part} sample coverage is invalid for {query_id}")
+
+    articulation = measurement.get("articulation")
+    if not isinstance(articulation, Mapping) or not {"valid", "type_correct", "axis"}.issubset(articulation):
+        raise ValueError("candidate articulation measurement is incomplete")
+    if not isinstance(articulation["valid"], bool) or not isinstance(articulation["type_correct"], bool):
+        raise ValueError("candidate articulation validity fields must be boolean")
+    type_name = str(articulation_type).lower()
+    if type_name in {"1", "revolute"}:
+        required_articulation = {"pivot", "r"}
+    elif type_name in {"2", "prismatic"}:
+        required_articulation = {"t"}
+    else:
+        raise ValueError(f"unsupported benchmark articulation type: {articulation_type}")
+    if not required_articulation.issubset(articulation):
+        raise ValueError("candidate articulation measurement lacks scene-specific errors")
+    for key in {"axis", *required_articulation}:
+        _finite_float(articulation[key], f"articulation.{key}")
+
+
 def _finite_float(value: Any, name: str) -> float:
     value = float(value)
     if not math.isfinite(value):
@@ -78,7 +170,7 @@ def _target(record: Mapping[str, Any]) -> tuple[dict[str, float], str]:
     return scalars, str(closed_query)
 
 
-def _prediction_map(prediction: Mapping[str, Any]) -> tuple[dict[str, float], str]:
+def _prediction_map(prediction: Mapping[str, Any]) -> tuple[dict[str, float], str | None]:
     rows = prediction.get("endpoint_predictions")
     if not isinstance(rows, list) or len(rows) != 2:
         raise ValueError("prediction must contain exactly two endpoint predictions")
@@ -90,8 +182,11 @@ def _prediction_map(prediction: Mapping[str, Any]) -> tuple[dict[str, float], st
         for query_id in QUERY_IDS
     }
     closed = [query_id for query_id in QUERY_IDS if by_id[query_id].get("predicted_closed") is True]
+    status = prediction.get("closed_prediction", {})
+    if len(closed) == 0 and isinstance(status, Mapping) and status.get("status") == "unknown":
+        return scalars, None
     if len(closed) != 1:
-        raise ValueError("prediction must declare exactly one predicted_closed query")
+        raise ValueError("prediction must declare exactly one closed query or explicit unknown abstention")
     return scalars, closed[0]
 
 
@@ -162,7 +257,8 @@ def evaluate_scene(
         "normalized_limit_error_lower": limit_errors[QUERY_IDS[0]],
         "normalized_limit_error_upper": limit_errors[QUERY_IDS[1]],
         "normalized_limit_error": fmean(limit_errors.values()),
-        "closed_endpoint_accuracy": float(predicted_closed == closed_query),
+        "closed_endpoint_accuracy": None if predicted_closed is None else float(predicted_closed == closed_query),
+        "closed_endpoint_coverage": float(predicted_closed is not None),
         **_endpoint_render_metrics(measurement),
     }
 

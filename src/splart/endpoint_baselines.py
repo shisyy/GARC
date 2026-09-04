@@ -53,7 +53,7 @@ _FORBIDDEN_PUBLIC_KEYS = {
     "dist",
 }
 
-_PUBLIC_ROOT_FILES = {"transforms.json", "endpoint_queries.json", "COMPLETE.json"}
+_PUBLIC_ROOT_FILES = {"transforms.json", "endpoint_queries.json", "PROXY_RECEIPT.json", "COMPLETE.json"}
 _PUBLIC_MODALITIES = {"color", "depth", "part-seg"}
 _PUBLIC_SPLITS = {"train", "val"}
 _PUBLIC_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
@@ -119,7 +119,9 @@ def sha256_file(path: Path) -> str:
 
 
 def content_sha256(payload: Any) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n"
+    # This is byte-for-byte the benchmark builder's canonical_sha256.  In
+    # particular, canonical JSON is *not* terminated by a newline.
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
@@ -151,9 +153,16 @@ def audit_public_tree(scene_dir: Path) -> dict[str, str]:
         else:
             raise ValueError(f"unexpected file in public scene: {relative.as_posix()}")
         files[relative.as_posix()] = sha256_file(path)
-    missing = {"transforms.json", "endpoint_queries.json"}.difference(files)
+    missing = _PUBLIC_ROOT_FILES.difference(files)
     if missing:
         raise ValueError(f"public scene is missing required files: {sorted(missing)}")
+    image_files = [name for name in files if Path(name).suffix.lower() in _PUBLIC_IMAGE_SUFFIXES]
+    if len(image_files) != 660:
+        raise ValueError(f"public scene must contain exactly 660 image payloads; found {len(image_files)}")
+    for modality in _PUBLIC_MODALITIES:
+        count = sum(name.startswith(modality + "/") for name in image_files)
+        if count != 220:
+            raise ValueError(f"public {modality} payload count must be 220; found {count}")
     return files
 
 
@@ -272,9 +281,10 @@ class BaselinePolicy:
                 "query_id": query_id,
                 "local_direction": direction,
                 "predicted_local_scalar": validate_query_scalar(scalar),
-                # No closed-side signal exists in any of these baselines.  A
-                # fixed convention is declared so accuracy remains measurable.
-                "predicted_closed": query_id == "outside_state_0",
+                # Original SplArt has no closed-side prediction head and must
+                # abstain. Scalar-only diagnostics retain a separately labelled
+                # blind fixed prior, never promoted as the learned baseline.
+                "predicted_closed": (None if self.name == "splart-middle" else query_id == "outside_state_0"),
             }
             for query_id, direction, scalar in zip(QUERY_IDS, directions, scalars)
         )  # type: ignore[return-value]
@@ -341,6 +351,10 @@ def make_prediction(
             "seed_or_checkpoint_selection": False,
         },
         "renderer": policy.renderer,
+        "closed_prediction": {
+            "status": "unknown" if policy.name == "splart-middle" else "blind-fixed-prior-diagnostic",
+            "query_id": None if policy.name == "splart-middle" else QUERY_IDS[0],
+        },
         "candidate": candidate,
         "public_input": {
             "root": public["scene_dir"],

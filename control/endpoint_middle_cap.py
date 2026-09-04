@@ -12,7 +12,7 @@ import sys
 from pathlib import Path, PurePosixPath
 from typing import Mapping, Sequence
 
-from splart.endpoint_baselines import assert_model_process_boundary
+from splart.endpoint_baselines import assert_model_process_boundary, validate_public_scene
 
 CAP_BYTES = 8 * 1024**3
 CAP_NUMERATOR_MIB = 8192
@@ -95,16 +95,52 @@ def validate_launch(argv: Sequence[str], env: Mapping[str, str]) -> dict[str, st
         raise RuntimeError("checkpoint/seed/view selection flag is forbidden")
     if any("endpoint-physics" in token.lower() or "contact-endpoint" in token.lower() for token in argv):
         raise RuntimeError("physics/endpoint module must be disabled in the baseline")
+    expected_argv = [
+        "splart",
+        "--output-dir",
+        str(RUN_ROOT / "model_ckpts"),
+        "--experiment-name",
+        EXPERIMENT_NAME,
+        "--vis",
+        "tensorboard",
+        "--data",
+        str(public_scene),
+        "--max-num-iterations",
+        "25000",
+        "--pipeline.model.num-random",
+        "999999",
+        "--pipeline.model.random-scale",
+        "1.3",
+    ]
+    if list(argv) != expected_argv:
+        raise RuntimeError("training argv differs from the frozen original-SplArt schedule")
     assert_model_process_boundary(argv, env)
 
     source_commit = env.get("SPLART_SOURCE_COMMIT", "")
     if len(source_commit) != 40 or any(ch not in "0123456789abcdef" for ch in source_commit):
         raise RuntimeError("source commit is malformed")
+    public_tree_sha256 = env.get("SPLART_PUBLIC_TREE_SHA256", "")
+    if len(public_tree_sha256) != 64 or any(ch not in "0123456789abcdef" for ch in public_tree_sha256):
+        raise RuntimeError("public tree hash is malformed")
+    try:
+        public_file_count = int(env.get("SPLART_PUBLIC_FILE_COUNT", ""))
+    except ValueError as error:
+        raise RuntimeError("public file count is malformed") from error
+    if public_file_count != 664:
+        raise RuntimeError("public file count must be exactly 664")
+    binding_id = env.get("SPLART_POSTBUILD_BINDING_ID", "")
+    protocol_receipt_sha256 = env.get("SPLART_PROTOCOL_RECEIPT_SHA256", "")
+    if not binding_id or len(protocol_receipt_sha256) != 64:
+        raise RuntimeError("postbuild/auditor binding is missing")
     return {
         "run_root": str(run_root),
         "source_dir": str(source_dir),
         "source_commit": source_commit,
         "public_scene_dir": str(public_scene),
+        "public_tree_sha256": public_tree_sha256,
+        "public_file_count": str(public_file_count),
+        "postbuild_binding_id": binding_id,
+        "protocol_receipt_sha256": protocol_receipt_sha256,
     }
 
 
@@ -120,6 +156,11 @@ def main() -> int:
     ).stdout.strip()
     if actual_commit != bindings["source_commit"] or dirty:
         raise RuntimeError("reviewed source commit/cleanliness check failed")
+    public = validate_public_scene(Path(bindings["public_scene_dir"]))
+    if public["public_tree_sha256"] != bindings["public_tree_sha256"] or len(public["public_tree"]) != int(
+        bindings["public_file_count"]
+    ):
+        raise RuntimeError("live public tree changed after launch review")
 
     import torch
 
@@ -146,6 +187,9 @@ def main() -> int:
         "pytorch_cuda_alloc_conf": ALLOC_CONF,
         "source_commit": actual_commit,
         "public_scene_dir": bindings["public_scene_dir"],
+        "public_tree_sha256": bindings["public_tree_sha256"],
+        "postbuild_binding_id": bindings["postbuild_binding_id"],
+        "protocol_receipt_sha256": bindings["protocol_receipt_sha256"],
         "argv_sha256": hashlib.sha256(canonical_bytes({"argv": forwarded})).hexdigest(),
         "pid": os.getpid(),
     }

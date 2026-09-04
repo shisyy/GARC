@@ -15,7 +15,10 @@ and directions (`-1`, `+1`) but no magnitude, true endpoint, or closed side.
 The following stay in an evaluator-only process: original physical fractions,
 true local endpoint scalars, the closed-query label, URDF limits, held-out
 endpoint images, B_test membership, and Full22 membership.  The public-input
-validator fails closed if those fields appear in the training tree.
+validator fails closed if those fields appear in the training tree. Its exact
+allowlist is 660 PNG payloads plus `transforms.json`, `endpoint_queries.json`,
+`PROXY_RECEIPT.json`, and `COMPLETE.json`; every file is hashed again inside
+the capped worker immediately before training.
 
 ## Fixed baselines
 
@@ -25,9 +28,10 @@ validator fails closed if those fields appear in the training tree.
 | Symmetric-linear | `-0.5`, `1.5` | none (fixed diagnostic) |
 | SplArt-middle | `0.0`, `1.0` | original SplArt trained from scratch |
 
-All three use the same fixed, label-free closed-side guess
-`outside_state_0`.  It is a declared convention rather than a learned signal.
-This makes closed-end accuracy measurable without leaking the answer.
+Original SplArt-middle has no closed-side prediction head and therefore emits
+an explicit abstention: closed coverage is zero and selective accuracy is N/A.
+The two scalar-only diagnostics retain a visibly labelled blind fixed prior
+(`outside_state_0`), which is never reported as learned closed-side accuracy.
 
 SplArt-middle accepts finite render query scalars outside `[0, 1]` and does not
 clamp them.  Its baseline endpoint scalars remain `0` and `1`; later methods may
@@ -73,12 +77,20 @@ python endpoint_baseline.py predict \
   --output prediction.json
 ```
 
-Only the evaluator process may aggregate against the sealed record:
+Only the evaluator process may open the certified v4 postbuild seal. It first
+checks the fixed plan and builder hashes, recomputes the binding ID and all
+public/source asset hashes, then loads the candidate checkpoint and renders the
+20 held-out endpoint cameras at that candidate's predicted scalars. Partial
+view, physics, or articulation coverage is rejected rather than averaged:
 
 ```bash
-python endpoint_eval.py \
+python endpoint_render_eval.py \
   --prediction prediction.json \
-  --sealed-evaluator-record SEALED_RECORD.json \
-  --measurement-record POST_RENDER_METRICS.json \
-  --output metrics.json
+  --postbuild-seal /home/yptang/arbor-sealed/splart-endpoint-extrapolation/dev3-v4/postbuild/100247-Box.json \
+  --builder-file /home/yptang/arbor-runs/splart-endpoint-extrapolation/builder-v4/benchmark/endpoint_proxy.py \
+  --sealed-plan-file /home/yptang/arbor-sealed/splart-endpoint-extrapolation/dev3-v4/manifest.json \
+  --public-scene PUBLIC_SCENE \
+  --artifact-root FRESH_RENDER_ROOT \
+  --measurement-output measurement.json \
+  --score-output metrics.json
 ```

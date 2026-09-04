@@ -9,14 +9,20 @@ the official image/depth/segmentation and articulation metrics.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import subprocess
 from pathlib import Path
 from typing import Any, Mapping
 
-from endpoint_eval import aggregate_scenes, evaluate_scene
+from endpoint_eval import aggregate_scenes, evaluate_scene, validate_complete_measurement
 from splart.endpoint_baselines import QUERY_IDS, content_sha256, sha256_file, validate_public_scene, write_json_atomic
+
+V4_PLAN_FILE_SHA256 = "d69bf22ff900088259ddc93b0bd91662eb51aa913643a89365c69c7015b0db24"
+V4_BUILDER_SHA256 = "174129808794a0a245d60675ddb6434efc4c9ba2b33dfec2102a06aaa63626f5"
+PHYSICAL_SAMPLE_CAP = 4096
+PHYSICAL_SAMPLE_RULE = "original-index-even-stride-v1"
 
 
 def load_json(path: Path) -> Any:
@@ -29,6 +35,115 @@ def scene_record(payload: Mapping[str, Any], scene_id: str) -> Mapping[str, Any]
     if not isinstance(episodes, Mapping) or scene_id not in episodes or not isinstance(episodes[scene_id], Mapping):
         raise ValueError(f"sealed manifest lacks episode {scene_id}")
     return episodes[scene_id]
+
+
+def _sha_map(value: Any, label: str) -> dict[str, str]:
+    if not isinstance(value, Mapping) or not value:
+        raise ValueError(f"postbuild seal lacks {label}")
+    result = {str(key): str(item) for key, item in value.items()}
+    if any(len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest) for digest in result.values()):
+        raise ValueError(f"postbuild {label} contains malformed sha256")
+    return result
+
+
+def _verify_sha_map(entries: Mapping[str, str], base: Path, label: str) -> None:
+    for relative, expected in entries.items():
+        path = Path(relative)
+        if not path.is_absolute():
+            path = base / path
+        verify_hash(path.resolve(), expected, f"{label}:{relative}")
+
+
+def load_postbuild_seal(
+    seal_path: Path, public_scene: Path, builder_file: Path, sealed_plan_file: Path
+) -> tuple[dict[str, Any], Path]:
+    """Verify the authoritative postbuild binding; reject all prebuild plans."""
+
+    seal = load_json(seal_path)
+    if not isinstance(seal, dict) or seal.get("schema") != "splart-endpoint-extrapolation-postbuild-seal-v1":
+        raise ValueError("only the authoritative postbuild seal schema is accepted")
+    scene_id = seal.get("scene_id")
+    if scene_id != Path(public_scene).name or seal.get("pass") is not True:
+        raise ValueError("postbuild seal scene/pass gate failed")
+    binding_id = seal.get("binding_id")
+    if not isinstance(binding_id, str) or not binding_id:
+        raise ValueError("postbuild seal binding_id is missing")
+    if seal.get("builder_sha256") != V4_BUILDER_SHA256:
+        raise ValueError("only the certified v4 builder is accepted")
+    if seal.get("sealed_plan_file_sha256") != V4_PLAN_FILE_SHA256:
+        raise ValueError("only the certified v4 sealed plan is accepted")
+    verify_hash(Path(builder_file), V4_BUILDER_SHA256, "sealed builder")
+    verify_hash(Path(sealed_plan_file), V4_PLAN_FILE_SHA256, "sealed plan file")
+    plan = load_json(sealed_plan_file)
+    plan_content = seal.get("sealed_plan_content_sha256")
+    if not isinstance(plan_content, str) or len(plan_content) != 64:
+        raise ValueError("sealed plan content hash is malformed")
+    if not isinstance(plan, Mapping) or content_sha256(plan) != plan_content:
+        raise ValueError("sealed plan canonical content hash mismatch")
+
+    payload_hashes = _sha_map(seal.get("public_payload_sha256"), "public_payload_sha256")
+    complete_hashes = _sha_map(seal.get("public_complete_sha256"), "public_complete_sha256")
+    if content_sha256(payload_hashes) != seal.get("public_payload_tree_sha256"):
+        raise ValueError("postbuild public payload tree hash mismatch")
+    if content_sha256(complete_hashes) != seal.get("public_complete_tree_sha256"):
+        raise ValueError("postbuild public complete tree hash mismatch")
+    expected_binding = hashlib.sha256(
+        f"{scene_id}:{plan_content}:{seal['public_payload_tree_sha256']}".encode()
+    ).hexdigest()
+    if binding_id != expected_binding:
+        raise ValueError("postbuild binding_id formula mismatch")
+    public = validate_public_scene(public_scene)
+    if public["public_tree"] != complete_hashes or public["public_tree_sha256"] != seal.get(
+        "public_complete_tree_sha256"
+    ):
+        raise ValueError("live public tree is not the postbuild-complete tree")
+    if set(complete_hashes).difference(payload_hashes) != {"PROXY_RECEIPT.json", "COMPLETE.json"}:
+        raise ValueError("postbuild public payload/completion boundary is malformed")
+    for filename in ("PROXY_RECEIPT.json", "COMPLETE.json"):
+        receipt = load_json(Path(public_scene) / filename)
+        if not isinstance(receipt, Mapping) or receipt.get("binding_id") != binding_id:
+            raise ValueError(f"{filename} is not bound to the postbuild seal")
+
+    truth = seal.get("evaluator_truth")
+    if not isinstance(truth, dict) or truth.get("scene_id", scene_id) != scene_id:
+        raise ValueError("postbuild evaluator_truth is missing or scene-mismatched")
+    target = truth.get("target")
+    if (
+        not isinstance(target, Mapping)
+        or target.get("closed_query") not in QUERY_IDS
+        or not isinstance(target.get("local_scalars"), Mapping)
+    ):
+        raise ValueError("postbuild evaluator truth lacks certified endpoint targets")
+    quality = seal.get("quality_gate")
+    geometry = seal.get("geometry_certificate")
+    if not isinstance(quality, Mapping) or quality.get("pass") is not True:
+        raise ValueError("postbuild quality gate did not pass")
+    if (
+        not isinstance(geometry, Mapping)
+        or geometry.get("alignment_pass") is not True
+        or not isinstance(geometry.get("closure"), Mapping)
+        or geometry["closure"].get("identifiable") is not True
+        or geometry["closure"].get("closed_query") not in QUERY_IDS
+        or geometry["closure"].get("closed_query") != target.get("closed_query")
+    ):
+        raise ValueError("postbuild geometry certificate did not pass")
+
+    source_root_value = plan.get("source_root") if isinstance(plan, Mapping) else None
+    source_root = Path(source_root_value or "")
+    if not source_root.is_absolute():
+        raise ValueError("postbuild evaluator truth lacks absolute source_root")
+    source_scene = source_root / scene_id
+    source_hashes = _sha_map(seal.get("source_synthesis_sha256"), "source_synthesis_sha256")
+    continuous_hashes = _sha_map(seal.get("continuous_validation_asset_sha256"), "continuous_validation_asset_sha256")
+    part_seg_hashes = _sha_map(seal.get("sealed_endpoint_part_seg_sha256"), "sealed_endpoint_part_seg_sha256")
+    if len(source_hashes) != 400 or len(continuous_hashes) != 18 or len(part_seg_hashes) != 20:
+        raise ValueError("postbuild source/continuous/part-seg coverage is incomplete")
+    _verify_sha_map(source_hashes, source_scene, "source")
+    _verify_sha_map(continuous_hashes, source_scene, "continuous-validation")
+    _verify_sha_map(part_seg_hashes, Path("/"), "sealed-part-seg")
+    verify_hash(source_scene / "transforms.json", str(seal.get("source_transforms_sha256", "")), "source transforms")
+    truth["source_root"] = str(source_root)
+    return seal, source_root
 
 
 def verify_hash(path: Path, expected: str, label: str) -> None:
@@ -94,6 +209,10 @@ def resolve_asset(source_root: Path, scene_id: str, asset: str) -> Path:
 
 
 def expected_asset_hash(view: Mapping[str, Any], modality: str, asset: str) -> str:
+    if modality == "part_seg" and isinstance(view.get("part_seg_sha256"), str):
+        expected = view["part_seg_sha256"]
+        if len(expected) == 64:
+            return expected
     hashes = view.get("source_sha256", view.get("asset_sha256"))
     if not isinstance(hashes, Mapping):
         raise ValueError(f"sealed view lacks source_sha256 for {modality}")
@@ -101,6 +220,16 @@ def expected_asset_hash(view: Mapping[str, Any], modality: str, asset: str) -> s
     if not isinstance(expected, str) or len(expected) != 64:
         raise ValueError(f"sealed view lacks a valid sha256 for {modality}")
     return expected
+
+
+def deterministic_sample_indices(count: int, cap: int = PHYSICAL_SAMPLE_CAP) -> tuple[int, ...]:
+    """Return a fixed, non-random, evenly spaced subset of original indices."""
+
+    if count < 0 or cap <= 0:
+        raise ValueError("sample count/cap must be non-negative/positive")
+    if count <= cap:
+        return tuple(range(count))
+    return tuple((index * count) // cap for index in range(cap))
 
 
 def camera_from_view(episode: Mapping[str, Any], view: Mapping[str, Any], torch: Any, Cameras: Any) -> Any:
@@ -170,8 +299,9 @@ def candidate_articulation_metrics(
     valid = bool(learned.is_valid.item())
     type_correct = valid and int(learned.articulation_type.item()) == int(articulation_type)
     result: dict[str, Any] = {"valid": valid, "type_correct": type_correct}
-    if not type_correct:
-        return result
+    # Continuous errors remain candidate-derived even when the learned type or
+    # validity flag is wrong. This preserves complete metric coverage while the
+    # separate validity/type fields record the categorical failure.
     span = float(predicted_scalars[QUERY_IDS[1]] - predicted_scalars[QUERY_IDS[0]])
     candidate_dict: dict[str, Any] = {"type": articulation_type, "axis": learned.axis.detach()}
     if articulation_type != ArticulationType.PRISMATIC:
@@ -187,10 +317,11 @@ def candidate_articulation_metrics(
     return result
 
 
-def gaussian_physical_certificate(model: Any, scalar: float) -> dict[str, Any]:
+def gaussian_physical_certificate(model: Any, scalar: float, anchor_scalar: float, ns_scale: float) -> dict[str, Any]:
     """Deterministic candidate-derived contact/penetration proxy."""
 
     import torch
+    from pytorch3d.ops import knn_points
     from pytorch3d.transforms import axis_angle_to_matrix
     from torch.nn.functional import normalize
 
@@ -209,44 +340,89 @@ def gaussian_physical_certificate(model: Any, scalar: float) -> dict[str, Any]:
             return {"valid": False, "reason": "empty thresholded static/mobile support"}
         static_means = means[static_mask]
         static_radii = radii[static_mask]
-        mobile_means = means[mobile_mask].clone()
+        base_mobile_means = means[mobile_mask]
         mobile_radii = radii[mobile_mask]
         mobile_states = states[mobile_mask]
+        static_total = int(static_means.shape[0])
+        mobile_total = int(base_mobile_means.shape[0])
+        static_indices = torch.as_tensor(
+            deterministic_sample_indices(static_total), device=means.device, dtype=torch.long
+        )
+        mobile_indices = torch.as_tensor(
+            deterministic_sample_indices(mobile_total), device=means.device, dtype=torch.long
+        )
+        static_means = static_means[static_indices]
+        static_radii = static_radii[static_indices]
+        base_mobile_means = base_mobile_means[mobile_indices]
+        mobile_radii = mobile_radii[mobile_indices]
+        mobile_states = mobile_states[mobile_indices]
         axis = normalize(model.articulation_params.axis, dim=0)
-        factors = torch.where(mobile_states == 0, float(scalar), float(scalar) - 1.0)
         articulation_type = ArticulationType(int(model.articulation_params.articulation_type.item()))
-        if articulation_type in {ArticulationType.REVOLUTE, ArticulationType.CYLINDRICAL}:
-            pivot = model.articulation_params.pivot
-            rotations = axis_angle_to_matrix(axis[None] * (model.articulation_params.angle * factors)[:, None])
-            mobile_means = torch.bmm(rotations, (mobile_means - pivot)[:, :, None]).squeeze(-1) + pivot
-        if articulation_type in {ArticulationType.PRISMATIC, ArticulationType.CYLINDRICAL}:
-            mobile_means = mobile_means + axis * (model.articulation_params.dist * factors)[:, None]
 
-        gaps = []
-        for start in range(0, len(mobile_means), 256):
-            distances = torch.cdist(mobile_means[start : start + 256], static_means)
-            nearest_distance, nearest_index = distances.min(dim=1)
-            gaps.append(nearest_distance - mobile_radii[start : start + 256] - static_radii[nearest_index])
-        gap = torch.cat(gaps)
-        min_abs_gap = gap.abs().min().item()
-        max_penetration = torch.relu(-gap).max().item()
-        terminal_contact_valid = min_abs_gap <= 0.01 and max_penetration <= 0.02
+        def surface_gaps(query: float) -> Any:
+            mobile_means = base_mobile_means.clone()
+            factors = torch.where(mobile_states == 0, float(query), float(query) - 1.0)
+            if articulation_type in {ArticulationType.REVOLUTE, ArticulationType.CYLINDRICAL}:
+                pivot = model.articulation_params.pivot
+                rotations = axis_angle_to_matrix(axis[None] * (model.articulation_params.angle * factors)[:, None])
+                mobile_means = torch.bmm(rotations, (mobile_means - pivot)[:, :, None]).squeeze(-1) + pivot
+            if articulation_type in {ArticulationType.PRISMATIC, ArticulationType.CYLINDRICAL}:
+                mobile_means = mobile_means + axis * (model.articulation_params.dist * factors)[:, None]
+            nearest = knn_points(mobile_means[None], static_means[None], K=1, return_nn=False)
+            nearest_distance = nearest.dists[0, :, 0].clamp_min(0).sqrt()
+            nearest_index = nearest.idx[0, :, 0]
+            return nearest_distance - mobile_radii - static_radii[nearest_index]
+
+        gap_raw = surface_gaps(float(scalar)) / float(ns_scale)
+        anchor_gap_raw = surface_gaps(float(anchor_scalar)) / float(ns_scale)
+        contact_tolerance_m = 0.005
+        penetration_tolerance_m = 0.002
+        contact_fraction = (gap_raw.abs() <= contact_tolerance_m).float().mean().item()
+        anchor_contact_fraction = (anchor_gap_raw.abs() <= contact_tolerance_m).float().mean().item()
+        contact_gain = contact_fraction - anchor_contact_fraction
+        penetration = torch.relu(-gap_raw)
+        penetration_fraction = (penetration > penetration_tolerance_m).float().mean().item()
+        penetration_q99 = torch.quantile(penetration, 0.99).item()
+        gap_q01, gap_q50, gap_q99 = (torch.quantile(gap_raw, q).item() for q in (0.01, 0.5, 0.99))
+        terminal_contact_valid = (
+            contact_fraction >= 0.01
+            and contact_gain >= 0.005
+            and penetration_fraction <= 0.01
+            and penetration_q99 <= penetration_tolerance_m
+        )
         return {
             "valid": True,
-            "static_count": int(static_mask.sum().item()),
-            "mobile_count": int(mobile_mask.sum().item()),
+            "static_count": static_total,
+            "mobile_count": mobile_total,
+            "static_sample_count": int(static_indices.numel()),
+            "mobile_sample_count": int(mobile_indices.numel()),
+            "sample_cap_per_part": PHYSICAL_SAMPLE_CAP,
+            "sampling_rule": PHYSICAL_SAMPLE_RULE,
             "opacity_threshold": 0.1,
             "mobility_threshold": 0.5,
-            "contact_tolerance_model_units": 0.01,
-            "penetration_tolerance_model_units": 0.02,
-            "minimum_absolute_surface_gap": min_abs_gap,
-            "penetration_depth": max_penetration,
+            "contact_tolerance_m": contact_tolerance_m,
+            "penetration_tolerance_m": penetration_tolerance_m,
+            "anchor_scalar": float(anchor_scalar),
+            "contact_fraction": contact_fraction,
+            "anchor_contact_fraction": anchor_contact_fraction,
+            "contact_fraction_gain": contact_gain,
+            "surface_gap_q01_m": gap_q01,
+            "surface_gap_q50_m": gap_q50,
+            "surface_gap_q99_m": gap_q99,
+            "penetration_fraction": penetration_fraction,
+            "penetration_q99_m": penetration_q99,
+            "penetration_depth": float(penetration.max().item()),
             "terminal_contact_valid": terminal_contact_valid,
         }
 
 
 def evaluate_candidate(
-    prediction_path: Path, sealed_path: Path, public_scene: Path, artifact_root: Path
+    prediction_path: Path,
+    postbuild_seal_path: Path,
+    builder_file: Path,
+    sealed_plan_file: Path,
+    public_scene: Path,
+    artifact_root: Path,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     import numpy as np
     import torch
@@ -260,11 +436,12 @@ def evaluate_candidate(
     from splart_renderer import SplartRenderer
 
     prediction = load_json(prediction_path)
-    sealed = load_json(sealed_path)
     scene_id = prediction.get("scene_id")
     if not isinstance(scene_id, str):
         raise ValueError("prediction scene_id missing")
-    episode = scene_record(sealed, scene_id)
+    seal, source_root = load_postbuild_seal(postbuild_seal_path, public_scene, builder_file, sealed_plan_file)
+    episode = seal["evaluator_truth"]
+    scoring_truth = {"episodes": {scene_id: episode}}
     paths = verify_candidate(prediction, public_scene)
     if artifact_root.exists():
         raise FileExistsError(f"candidate render artifact root already exists: {artifact_root}")
@@ -277,9 +454,6 @@ def evaluate_candidate(
     psnr = PeakSignalNoiseRatio(data_range=1.0).to(device)
     ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     lpips = LearnedPerceptualImagePatchSimilarity(normalize=True).to(device)
-    source_root = Path(sealed.get("source_root", ""))
-    if not source_root.is_absolute():
-        raise ValueError("sealed source_root must be absolute")
     predicted_rows = {row["query_id"]: row for row in prediction["endpoint_predictions"]}
     predicted_scalars = {query_id: float(predicted_rows[query_id]["predicted_local_scalar"]) for query_id in QUERY_IDS}
     measurement: dict[str, Any] = {
@@ -287,7 +461,8 @@ def evaluate_candidate(
         "scene_id": scene_id,
         "candidate_checkpoint_sha256": prediction["candidate"]["checkpoint"]["sha256"],
         "prediction_sha256": sha256_file(prediction_path),
-        "sealed_manifest_sha256": sha256_file(sealed_path),
+        "postbuild_seal_sha256": sha256_file(postbuild_seal_path),
+        "postbuild_binding_id": seal["binding_id"],
         "endpoint_metrics": {},
     }
 
@@ -364,8 +539,12 @@ def evaluate_candidate(
         measurement["endpoint_metrics"][query_id] = {"views": view_metrics}
 
     measurement["articulation"] = candidate_articulation_metrics(renderer, episode, predicted_scalars)
+    anchors = {QUERY_IDS[0]: 0.0, QUERY_IDS[1]: 1.0}
     physical_queries = {
-        query_id: gaussian_physical_certificate(renderer.model, predicted_scalars[query_id]) for query_id in QUERY_IDS
+        query_id: gaussian_physical_certificate(
+            renderer.model, predicted_scalars[query_id], anchors[query_id], renderer.ns_s_raw
+        )
+        for query_id in QUERY_IDS
     }
     valid_certificates = [value for value in physical_queries.values() if value.get("valid")]
     if len(valid_certificates) != len(QUERY_IDS):
@@ -377,15 +556,18 @@ def evaluate_candidate(
         and all(value["terminal_contact_valid"] for value in valid_certificates),
         "penetration_depth": max((value["penetration_depth"] for value in valid_certificates), default=float("inf")),
     }
+    validate_complete_measurement(measurement, episode["articulation"]["type"])
     measurement["content_sha256"] = content_sha256(measurement)
-    scored = aggregate_scenes([evaluate_scene(prediction, sealed, measurement)])
+    scored = aggregate_scenes([evaluate_scene(prediction, scoring_truth, measurement)])
     return measurement, scored
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prediction", type=Path, required=True)
-    parser.add_argument("--sealed-manifest", type=Path, required=True)
+    parser.add_argument("--postbuild-seal", type=Path, required=True)
+    parser.add_argument("--builder-file", type=Path, required=True)
+    parser.add_argument("--sealed-plan-file", type=Path, required=True)
     parser.add_argument("--public-scene", type=Path, required=True)
     parser.add_argument("--artifact-root", type=Path, required=True)
     parser.add_argument("--measurement-output", type=Path, required=True)
@@ -394,7 +576,12 @@ def main() -> None:
     if args.measurement_output.exists() or args.score_output.exists():
         raise FileExistsError("measurement/score output must be fresh")
     measurement, scored = evaluate_candidate(
-        args.prediction, args.sealed_manifest, args.public_scene, args.artifact_root
+        args.prediction,
+        args.postbuild_seal,
+        args.builder_file,
+        args.sealed_plan_file,
+        args.public_scene,
+        args.artifact_root,
     )
     write_json_atomic(args.measurement_output, measurement)
     write_json_atomic(args.score_output, scored)

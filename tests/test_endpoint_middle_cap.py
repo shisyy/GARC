@@ -24,6 +24,10 @@ def _launch() -> tuple[list[str], dict[str, str]]:
         public_scene,
         "--max-num-iterations",
         "25000",
+        "--pipeline.model.num-random",
+        "999999",
+        "--pipeline.model.random-scale",
+        "1.3",
     ]
     env = {
         "CUDA_VISIBLE_DEVICES": "2",
@@ -32,6 +36,10 @@ def _launch() -> tuple[list[str], dict[str, str]]:
         "SPLART_SOURCE_DIR": "/home/yptang/.arbor-worktrees/splart_endpoint_middle_baseline_deadbeef",
         "SPLART_SOURCE_COMMIT": "a" * 40,
         "SPLART_PUBLIC_SCENE_DIR": public_scene,
+        "SPLART_PUBLIC_TREE_SHA256": "b" * 64,
+        "SPLART_PUBLIC_FILE_COUNT": "664",
+        "SPLART_POSTBUILD_BINDING_ID": "postbuild-binding",
+        "SPLART_PROTOCOL_RECEIPT_SHA256": "c" * 64,
     }
     return argv, env
 
