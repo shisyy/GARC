@@ -15,6 +15,7 @@ import importlib.util
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -65,6 +66,7 @@ def load_public_validator(base_source: Path) -> Any:
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load frozen public-input validator")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
