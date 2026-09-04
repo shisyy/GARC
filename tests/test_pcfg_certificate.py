@@ -45,6 +45,13 @@ def test_pcfg_abstains_for_symmetric_contact_area() -> None:
     assert not prediction.closed_identifiable
 
 
+def test_pcfg_does_not_label_the_less_negative_contact_gain_as_closed() -> None:
+    prediction = pcfg_certificate(_model(), -0.3, 1.3, 1.0)
+    assert prediction.closed_mean_gain_lower <= 0.0
+    assert prediction.closed_mean_gain_upper <= 0.0
+    assert prediction.closed_end == "unknown"
+
+
 def test_even_stride_sampling_matches_v4_rule() -> None:
     assert deterministic_sample_indices(3, cap=5).tolist() == [0, 1, 2]
     assert deterministic_sample_indices(10, cap=4).tolist() == [0, 2, 5, 7]

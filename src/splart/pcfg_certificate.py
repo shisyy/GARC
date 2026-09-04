@@ -184,7 +184,11 @@ def pcfg_certificate(model: Any, lower_scalar: float, upper_scalar: float, ns_sc
     )
     mean_lower_gain = sum(gains["lower"]) / len(RADIUS_MULTIPLIERS)
     mean_upper_gain = sum(gains["upper"]) / len(RADIUS_MULTIPLIERS)
-    closed_identifiable = abs(mean_lower_gain - mean_upper_gain) >= MIN_CONTACT_GAIN
+    winning_gain = max(mean_lower_gain, mean_upper_gain)
+    closed_identifiable = (
+        winning_gain >= MIN_CONTACT_GAIN
+        and abs(mean_lower_gain - mean_upper_gain) >= MIN_CONTACT_GAIN
+    )
     closed_end: Literal["lower", "upper", "unknown"]
     if not closed_identifiable:
         closed_end = "unknown"
