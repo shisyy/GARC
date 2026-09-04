@@ -24,6 +24,8 @@ SOURCE_PARENT = PurePosixPath("/home/yptang/.arbor-worktrees")
 SOURCE_PREFIX = "splart_endpoint_middle_baseline_"
 SCENE = "100247-Box"
 EXPERIMENT_NAME = "100247-Box/baseline"
+MAX_ITERATIONS = 25_000
+RECEIPT_SCHEMA = "splart-endpoint-middle-cap/v1"
 
 
 def canonical_bytes(payload: Mapping[str, object]) -> bytes:
@@ -106,7 +108,7 @@ def validate_launch(argv: Sequence[str], env: Mapping[str, str]) -> dict[str, st
         "--data",
         str(public_scene),
         "--max-num-iterations",
-        "25000",
+        str(MAX_ITERATIONS),
         "--pipeline.model.num-random",
         "999999",
         "--pipeline.model.random-scale",
@@ -177,7 +179,7 @@ def main() -> int:
     receipt_path = Path(str(RUN_ROOT / "evidence" / "gpu-safety" / "cap-receipt.json"))
     receipt_path.parent.mkdir(parents=True, exist_ok=False)
     receipt = {
-        "schema": "splart-endpoint-middle-cap/v1",
+        "schema": RECEIPT_SCHEMA,
         "physical_gpu": PHYSICAL_GPU,
         "visible_gpu": 0,
         "requested_max_bytes": CAP_BYTES,

@@ -9,6 +9,12 @@ assert SPEC is not None and SPEC.loader is not None
 CAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CAP)
 
+SMOKE_MODULE_PATH = Path(__file__).parents[1] / "control" / "endpoint_middle_smoke_cap.py"
+SMOKE_SPEC = importlib.util.spec_from_file_location("endpoint_middle_smoke_cap", SMOKE_MODULE_PATH)
+assert SMOKE_SPEC is not None and SMOKE_SPEC.loader is not None
+SMOKE = importlib.util.module_from_spec(SMOKE_SPEC)
+SMOKE_SPEC.loader.exec_module(SMOKE)
+
 
 def _launch() -> tuple[list[str], dict[str, str]]:
     public_scene = "/home/yptang/public-middle/dev3/100247-Box"
@@ -89,3 +95,11 @@ def test_cap_rejects_experiment_traversal() -> None:
     argv[argv.index("--experiment-name") + 1] = "../escape"
     with pytest.raises(RuntimeError, match="experiment"):
         CAP.validate_launch(argv, env)
+
+
+def test_smoke_wrapper_is_fixed_gpu3_two_iteration_nonbaseline() -> None:
+    assert SMOKE.cap.PHYSICAL_GPU == 3
+    assert SMOKE.cap.MAX_ITERATIONS == 2
+    assert SMOKE.cap.EXPERIMENT_NAME.endswith("runtime-smoke")
+    assert "diagnostic" in str(SMOKE.cap.RUN_ROOT)
+    assert "runtime-smoke" in SMOKE.cap.RECEIPT_SCHEMA
