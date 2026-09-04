@@ -68,15 +68,17 @@ def _surface_gaps(mobile_means: Tensor, mobile_rot: Tensor, mobile_scales: Tenso
                   multiplier: float) -> Tensor:
     """Minimum pair surface gap using exact radial support of both ellipsoids."""
     outputs = []
-    inv_m = mobile_rot @ torch.diag_embed(mobile_scales.square().reciprocal()) @ mobile_rot.transpose(-1, -2)
-    inv_s = static_rot @ torch.diag_embed(static_scales.square().reciprocal()) @ static_rot.transpose(-1, -2)
     for start in range(0, len(mobile_means), PAIR_CHUNK):
         delta = static_means[None] - mobile_means[start:start+PAIR_CHUNK, None]
         distance = delta.norm(dim=-1).clamp_min(torch.finfo(delta.dtype).eps)
         u = delta / distance[..., None]
-        m_inv = inv_m[start:start+PAIR_CHUNK]
-        m_quad = torch.einsum("mnj,mjk,mnk->mn", u, m_inv, u)
-        s_quad = torch.einsum("mnj,njk,mnk->mn", u, inv_s, u)
+        # Evaluate u^T Sigma^-1 u in each ellipsoid's local frame.  This is
+        # algebraically identical to materialising Sigma^-1, but avoids
+        # inf*0 NaNs when a learned Gaussian has an extremely small axis.
+        local_m = torch.einsum("mji,mnj->mni", mobile_rot[start:start+PAIR_CHUNK], u)
+        local_s = torch.einsum("nji,mnj->mni", static_rot, u)
+        m_quad = (local_m / mobile_scales[start:start+PAIR_CHUNK, None]).square().sum(-1)
+        s_quad = (local_s / static_scales[None]).square().sum(-1)
         support = multiplier * (m_quad.rsqrt() + s_quad.rsqrt())
         outputs.append((distance - support).min(dim=1).values)
     return torch.cat(outputs)

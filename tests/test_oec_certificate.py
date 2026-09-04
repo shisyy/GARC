@@ -66,3 +66,14 @@ def test_anisotropic_support_differs_from_amax_sphere():
     assert ellipsoid_gap.item() > .89
     assert sphere_gap.item() == 0.
 
+
+def test_extreme_anisotropy_is_finite_without_inverse_matrix_nan():
+    dtype = torch.float64
+    means_m = torch.tensor([[0., 0., 0.]], dtype=dtype)
+    means_s = torch.tensor([[1., 0., 0.]], dtype=dtype)
+    rot = torch.eye(3, dtype=dtype)[None]
+    mobile_scale = torch.tensor([[.1, 1e-200, .1]], dtype=dtype)
+    static_scale = torch.tensor([[.1, .1, 1e-200]], dtype=dtype)
+    gap = _surface_gaps(means_m, rot, mobile_scale, means_s, rot, static_scale, 1.)
+    assert torch.isfinite(gap).all()
+    assert torch.allclose(gap, torch.tensor([.8], dtype=dtype))
