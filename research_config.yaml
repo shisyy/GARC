@@ -1,0 +1,37 @@
+task: >-
+  Convert SplArt from endpoint-observed interpolation into intermediate-state
+  endpoint extrapolation. Given two interior articulation states relabelled 0
+  and 1, predict the fully closed endpoint and the opposite physical motion
+  limit, then reconstruct held-out endpoint views without access to absolute
+  interior fractions or true URDF limits.
+coordinator:
+  max_cycles: 12
+  ui:
+    interaction_mode: auto
+metric:
+  name: guarded_endpoint_extrapolation
+  direction: minimize
+evaluation:
+  dev_split: fixed_dev3_middle_state_proxy
+  test_split: protected_disjoint_scenes
+  final_split: protected_full22
+  baseline_score: null
+  baseline_status: measure_from_scratch
+  require_all_reconstruction_metrics_noninferior: true
+  require_limit_error_improvement: true
+  require_closed_endpoint_accuracy_improvement: true
+execution:
+  remote_host: CASIA_98
+  remote_root: /home/yptang/arbor-runs/splart-endpoint-extrapolation
+  fresh_scratch: true
+  production_requires_independent_pass: true
+  per_process_cap_gib: 8
+constraints:
+  hide_absolute_interior_fractions_from_model: true
+  hide_true_joint_limits_from_model: true
+  forbid_seed_selection: true
+  forbid_checkpoint_selection: true
+  forbid_view_selection: true
+  forbid_result_selection: true
+  forbid_evaluator_modification: true
+  protect_existing_cvpr_worktree: true

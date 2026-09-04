@@ -1,0 +1,51 @@
+{
+  "version": 3,
+  "meta": {
+    "baseline_score": null,
+    "trunk_score": null,
+    "test_baseline_score": null,
+    "test_trunk_score": null,
+    "eval_cmd": "python {cwd}/control/eval_endpoint_extrapolation.py --split dev --node-id {node_id}",
+    "eval_cmd_test": "python {cwd}/control/eval_endpoint_extrapolation.py --split test --node-id {node_id}",
+    "eval_timeout": null,
+    "eval_retries": null,
+    "eval_retry_base_delay": null,
+    "eval_retry_max_delay": null,
+    "dataset_info": "fixed Dev3 middle-state proxy; sealed per-scene interior pairs; endpoint labels evaluator-only; B_test protected",
+    "metric_direction": "minimize",
+    "trunk_branch": "codex/endpoint-extrapolation-trunk",
+    "submission_path": null,
+    "sample_submission_path": null
+  },
+  "root_id": "ROOT",
+  "max_depth": 2,
+  "nodes": {
+    "ROOT": {
+      "id": "ROOT",
+      "parent_id": null,
+      "children_ids": [
+        "1",
+        "2"
+      ],
+      "depth": 0,
+      "hypothesis": "Given two interior articulation states relabelled 0 and 1, predict the fully closed endpoint and the opposite physical joint limit, and reconstruct held-out endpoint views without access to absolute interior fractions or true limits.",
+      "status": "done"
+    },
+    "1": {
+      "id": "1",
+      "parent_id": "ROOT",
+      "children_ids": [],
+      "depth": 1,
+      "hypothesis": "Mechanism: Middle-State Episode Reparameterization builds two interior multi-view states, erases their absolute joint fractions from model-facing metadata, and evaluates predicted closed/limit endpoints on held-out endpoint cameras.\nHypothesis: The current task appears successful because training states equal the URDF limits; moving both observations strictly inside the range will expose true extrapolation error and establish an honest new baseline.\nObservable: A sealed Dev3 proxy passes leakage and geometry audits, and unmodified scratch SplArt produces endpoint-limit, endpoint-render, depth, IoU, and articulation baseline metrics.\nConflicts: none - this changes the benchmark assumption rather than retreading a failed optimization mechanism.",
+      "status": "pending"
+    },
+    "2": {
+      "id": "2",
+      "parent_id": "ROOT",
+      "children_ids": [],
+      "depth": 1,
+      "hypothesis": "Mechanism: Contact-Feasible Endpoint Field scans the learned screw trajectory with differentiable static/mobile contact, penetration, and terminal-support energies, predicting two latent endpoint scalars plus a closed-end label and uncertainty interval.\nHypothesis: Physical endpoints are extrema of the collision-free configuration interval; broad closure contact and localized stop contact provide different signatures that can extrapolate beyond two interior observations.\nObservable: On sealed middle-state Dev3, normalized endpoint error and closed-end accuracy improve over scratch SplArt while endpoint PSNR, SSIM, LPIPS, depth, IoUs, and articulation remain noninferior.\nConflicts: prior IKC point-to-point experiments optimized consistency between observed endpoint states rather than inferring unseen limits; this node uses them only as implementation lessons and adds a latent feasible interval with no limit labels.",
+      "status": "pending"
+    }
+  }
+}
