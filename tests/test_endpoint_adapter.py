@@ -8,6 +8,7 @@ from splart.endpoint_adapter import (
     EndpointGeometry,
     canonicalize_state1_mobile,
     fit_endpoint_adapter,
+    fixed_multiradius_counterfactuals,
     swap_endpoint_scalars,
 )
 
@@ -142,3 +143,29 @@ def test_canonicalize_revolute_state1_is_inverse_motion() -> None:
         observed_displacement=torch.pi / 2,
     )
     assert torch.allclose(recovered, point0, atol=1.0e-8)
+
+
+def test_fixed_multiradius_counterfactual_is_penetration_aware_and_predeclared() -> None:
+    geometries = _two_state_prismatic_geometry(requires_grad=True)
+    field = _field_config()
+    probes = fixed_multiradius_counterfactuals(field)
+    assert [(probe.radius_scale, probe.support_step) for probe in probes] == [
+        (0.75, 0.02),
+        (1.0, 0.04),
+        (1.25, 0.08),
+    ]
+    assert all(probe.penetration_weight == probe.inside_weight == 64.0 for probe in probes)
+    _, prediction = fit_endpoint_adapter(
+        geometries,
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        observed_displacement=1.0,
+        field_config=field,
+        adapter_config=_adapter_config(),
+        counterfactual_field_configs=probes,
+    )
+    assert len(prediction.state_certificates) == 6
+    assert max(float(cert.lower.inside_penetration_bands) for cert in prediction.state_certificates) == 0.0
+    assert max(float(cert.upper.inside_penetration_bands) for cert in prediction.state_certificates) == 0.0
+    assert geometries[0].static_means.grad is None
+    assert geometries[0].mobile_means_state0.grad is None

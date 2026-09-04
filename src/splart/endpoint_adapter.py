@@ -9,7 +9,7 @@ this API.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Sequence
 
 import torch
@@ -158,13 +158,15 @@ class TrainableEndpointAdapter(nn.Module):
     def _interpolated_energy(self, field: EndpointEnergyField, scalar: Tensor) -> Tensor:
         if field.scalars.numel() < 2:
             raise ValueError("adapter requires a sampled endpoint field")
-        step = (field.scalars[-1] - field.scalars[0]).abs() / (field.scalars.numel() - 1)
-        width = (step * self.adapter_config.interpolation_width_steps).clamp_min(
-            torch.finfo(field.scalars.dtype).eps
-        )
-        logits = -0.5 * ((field.scalars.detach() - scalar) / width).square()
-        weights = torch.softmax(logits, dim=0)
-        return (weights * field.total_energy.detach()).sum()
+        # Piecewise-linear interpolation gives a non-vanishing gradient between
+        # samples.  The earlier narrow RBF could strand a scalar between rugged
+        # contact minima while still publishing a deeply penetrating point.
+        grid = field.scalars.detach()
+        index = torch.searchsorted(grid, scalar.detach()).clamp(1, grid.numel() - 1)
+        lo, hi = index - 1, index
+        fraction = (scalar - grid[lo]) / (grid[hi] - grid[lo]).clamp_min(torch.finfo(grid.dtype).eps)
+        energy = field.total_energy.detach()
+        return energy[lo] * (1.0 - fraction) + energy[hi] * fraction
 
     def loss_from_predictions(self, predictions: Sequence[ContactEndpointPrediction]) -> Tensor:
         if not predictions:
@@ -207,6 +209,7 @@ def fit_endpoint_adapter(
     pivot: Optional[Tensor] = None,
     field_config: EndpointFieldConfig = EndpointFieldConfig(),
     adapter_config: EndpointAdapterConfig = EndpointAdapterConfig(),
+    counterfactual_field_configs: Optional[Sequence[EndpointFieldConfig]] = None,
 ) -> tuple[TrainableEndpointAdapter, EndpointAdapterPrediction]:
     """Fit D2-CEA with a fixed schedule and return recomputed certificates."""
 
@@ -216,6 +219,16 @@ def fit_endpoint_adapter(
     axis_detached = torch.as_tensor(axis).detach()
     displacement_detached = torch.as_tensor(observed_displacement).detach()
     pivot_detached = None if pivot is None else torch.as_tensor(pivot).detach()
+    field_configs = tuple(counterfactual_field_configs or (field_config,))
+    if not field_configs:
+        raise ValueError("at least one field configuration is required")
+    for candidate_config in field_configs:
+        if (candidate_config.lower_scan, candidate_config.upper_scan, candidate_config.samples_per_side) != (
+            field_config.lower_scan,
+            field_config.upper_scan,
+            field_config.samples_per_side,
+        ):
+            raise ValueError("counterfactual fields must share the adapter scan grid")
     initial = tuple(
         infer_contact_feasible_endpoints(
             geometry.static_means,
@@ -226,10 +239,11 @@ def fit_endpoint_adapter(
             axis=axis_detached,
             observed_displacement=displacement_detached,
             pivot=pivot_detached,
-            config=field_config,
+            config=candidate_config,
             **_geometry_kwargs(geometry),
         )
         for geometry in detached
+        for candidate_config in field_configs
     )
     dtype, device = detached[0].static_means.dtype, detached[0].static_means.device
     adapter = TrainableEndpointAdapter(field_config, adapter_config, dtype=dtype, device=device)
@@ -254,14 +268,20 @@ def fit_endpoint_adapter(
             axis=axis_detached,
             observed_displacement=displacement_detached,
             pivot=pivot_detached,
-            config=field_config,
+            config=candidate_config,
             **_geometry_kwargs(geometry),
         )
         for geometry in detached
+        for candidate_config in field_configs
     )
     closed_labels = [certificate.closed_end for certificate in certificates]
-    closed_identifiable = bool(closed_labels and all(label == closed_labels[0] != "unknown" for label in closed_labels))
-    closed_end = closed_labels[0] if closed_identifiable else "unknown"
+    lower_votes = closed_labels.count("lower")
+    upper_votes = closed_labels.count("upper")
+    required_votes = max(1, (2 * len(closed_labels) + 2) // 3)
+    closed_identifiable = max(lower_votes, upper_votes) >= required_votes and lower_votes != upper_votes
+    closed_end = "lower" if closed_identifiable and lower_votes > upper_votes else (
+        "upper" if closed_identifiable else "unknown"
+    )
     prediction = EndpointAdapterPrediction(
         lower_scalar=lower.detach(),
         upper_scalar=upper.detach(),
@@ -276,6 +296,21 @@ def fit_endpoint_adapter(
     return adapter, prediction
 
 
+def fixed_multiradius_counterfactuals(base: EndpointFieldConfig) -> tuple[EndpointFieldConfig, ...]:
+    """Predeclared radius/delta probes with a hard penetration barrier."""
+
+    return tuple(
+        replace(
+            base,
+            radius_scale=radius_scale,
+            support_step=support_step,
+            penetration_weight=64.0,
+            inside_weight=64.0,
+        )
+        for radius_scale, support_step in ((0.75, 0.02), (1.0, 0.04), (1.25, 0.08))
+    )
+
+
 __all__ = [
     "EndpointAdapterConfig",
     "EndpointAdapterPrediction",
@@ -283,5 +318,6 @@ __all__ = [
     "TrainableEndpointAdapter",
     "canonicalize_state1_mobile",
     "fit_endpoint_adapter",
+    "fixed_multiradius_counterfactuals",
     "swap_endpoint_scalars",
 ]

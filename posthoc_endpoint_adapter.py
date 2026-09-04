@@ -23,7 +23,13 @@ import torch
 
 from splart.articulation_params import ArticulationType
 from splart.contact_endpoint_field import EndpointFieldConfig
-from splart.endpoint_adapter import EndpointAdapterConfig, EndpointGeometry, canonicalize_state1_mobile, fit_endpoint_adapter
+from splart.endpoint_adapter import (
+    EndpointAdapterConfig,
+    EndpointGeometry,
+    canonicalize_state1_mobile,
+    fit_endpoint_adapter,
+    fixed_multiradius_counterfactuals,
+)
 from splart_renderer import SplartRenderer
 
 
@@ -174,7 +180,7 @@ def main() -> None:
     parser.add_argument("--base-source", type=Path, required=True)
     parser.add_argument("--adapter-source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--mode", choices=("smoke", "formal"), default="formal")
+    parser.add_argument("--mode", choices=("smoke", "formal", "counterfactual"), default="formal")
     args = parser.parse_args()
     launch_text = "\n".join(str(value) for value in vars(args).values()).lower()
     if any(marker in launch_text for marker in ("sealed", "evaluator_truth", "full22", "b_test")):
@@ -199,9 +205,12 @@ def main() -> None:
         parameter.requires_grad_(False)
     before_hash = model_state_sha256(renderer.model)
     geometries, joint_kind, displacement = extract_dual_state_geometry(renderer.model)
-    if args.mode == "formal":
+    counterfactual_configs = None
+    if args.mode in {"formal", "counterfactual"}:
         field_config = EndpointFieldConfig()
         adapter_config = EndpointAdapterConfig()
+        if args.mode == "counterfactual":
+            counterfactual_configs = fixed_multiradius_counterfactuals(field_config)
     else:
         field_config = EndpointFieldConfig(
             samples_per_side=17,
@@ -219,6 +228,7 @@ def main() -> None:
         observed_displacement=displacement,
         field_config=field_config,
         adapter_config=adapter_config,
+        counterfactual_field_configs=counterfactual_configs,
     )
     after_hash = model_state_sha256(renderer.model)
     if before_hash != after_hash:
@@ -296,6 +306,9 @@ def main() -> None:
             "final_loss": float(fitted.final_loss.cpu()),
             "state_certificates": [certificate_payload(value) for value in fitted.state_certificates],
             "field_config": vars(field_config),
+            "counterfactual_field_configs": (
+                [] if counterfactual_configs is None else [vars(value) for value in counterfactual_configs]
+            ),
             "adapter_config": vars(adapter_config),
         },
     }
