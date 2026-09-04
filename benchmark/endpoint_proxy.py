@@ -233,19 +233,27 @@ def geometry_certificate(cloud: Cloud, articulation: Mapping[str, Any], voxel: f
     if any(not len(points) for points in by.values()):
         raise ValueError("geometry certificate requires both parts at both endpoints")
 
-    def alignment(source: np.ndarray, target: np.ndarray, moving: bool) -> dict[str, float]:
-        query = transform_mobile(source, articulation, 1.0) if moving else source
+    def alignment(
+        source: np.ndarray, target: np.ndarray, delta: float
+    ) -> dict[str, float]:
+        query = transform_mobile(source, articulation, delta) if delta else source
         distances = cKDTree(target).query(query, k=1, workers=-1)[0]
         return {"median_m": float(np.median(distances)), "p95_m": float(np.quantile(distances, 0.95))}
 
-    alignment_result = {
-        "static_identity": alignment(by[(0, 0)], by[(0, 1)], False),
-        "mobile_joint_transform": alignment(by[(1, 0)], by[(1, 1)], True),
+    directional = {
+        "static_0_to_1": alignment(by[(0, 0)], by[(0, 1)], 0.0),
+        "static_1_to_0": alignment(by[(0, 1)], by[(0, 0)], 0.0),
+        "mobile_0_to_1": alignment(by[(1, 0)], by[(1, 1)], 1.0),
+        "mobile_1_to_0": alignment(by[(1, 1)], by[(1, 0)], -1.0),
     }
-    alignment_pass = all(
-        values["median_m"] <= ALIGNMENT_THRESHOLDS["median_m_max"]
-        and values["p95_m"] <= ALIGNMENT_THRESHOLDS["p95_m_max"]
-        for values in alignment_result.values()
+    alignment_result = {
+        "directional": directional,
+        "worst_median_m": max(values["median_m"] for values in directional.values()),
+        "worst_p95_m": max(values["p95_m"] for values in directional.values()),
+    }
+    alignment_pass = (
+        alignment_result["worst_median_m"] <= ALIGNMENT_THRESHOLDS["median_m_max"]
+        and alignment_result["worst_p95_m"] <= ALIGNMENT_THRESHOLDS["p95_m_max"]
     )
 
     static = by[(0, 0)]
@@ -297,14 +305,21 @@ def quality_gate(validation: Mapping[str, Any]) -> dict[str, Any]:
     finite = all(np.isfinite(float(mean.get(key, np.nan))) for key in (
         "foreground_iou", "static_iou", "mobile_iou", "psnr", "depth_mae_m"
     ))
-    passed = finite and (
+    count_exact = validation.get("view_count") == 6
+    passed = finite and count_exact and (
         mean["foreground_iou"] >= PROXY_QUALITY_THRESHOLDS["foreground_iou_min"]
         and mean["static_iou"] >= PROXY_QUALITY_THRESHOLDS["static_iou_min"]
         and mean["mobile_iou"] >= PROXY_QUALITY_THRESHOLDS["mobile_iou_min"]
         and mean["psnr"] >= PROXY_QUALITY_THRESHOLDS["psnr_min"]
         and mean["depth_mae_m"] <= PROXY_QUALITY_THRESHOLDS["depth_mae_m_max"]
     )
-    return {"pass": bool(passed), "finite": bool(finite), "thresholds": PROXY_QUALITY_THRESHOLDS}
+    return {
+        "pass": bool(passed),
+        "finite": bool(finite),
+        "validation_count_exact": bool(count_exact),
+        "required_validation_count": 6,
+        "thresholds": PROXY_QUALITY_THRESHOLDS,
+    }
 
 
 def render_cloud(
@@ -505,6 +520,20 @@ def validate_proxy(scene_dir: Path, meta: Mapping[str, Any], cloud: Cloud, count
     }
 
 
+def validation_asset_hashes(scene_dir: Path, meta: Mapping[str, Any], count: int) -> dict[str, str]:
+    """Bind the exact hidden continuous-state assets selected by validate_proxy."""
+    lookup = frame_lookup(meta)
+    candidates = [lookup[p] for p in meta.get("test_filenames", []) if 0 <= float(lookup[p]["state"]) <= 1]
+    chosen = np.linspace(0, len(candidates) - 1, min(count, len(candidates))).round().astype(int)
+    relatives: list[str] = []
+    for index in chosen:
+        color = str(candidates[int(index)]["file_path"])
+        relatives.extend(
+            (color, color.replace("color/", "depth/", 1), color.replace("color/", "part-seg/", 1))
+        )
+    return source_hashes(scene_dir, relatives)
+
+
 def build_scene(
     source_root: Path,
     output_root: Path,
@@ -636,6 +665,8 @@ def build_scene(
             path.relative_to(output_scene).as_posix(): sha256_file(path) for path in public_all
         },
         "source_synthesis_sha256": source_hashes(source_scene, source_relatives),
+        "source_transforms_sha256": sha256_file(source_scene / "transforms.json"),
+        "continuous_validation_asset_sha256": validation_asset_hashes(source_scene, meta, validation_count),
         "sealed_endpoint_part_seg_sha256": endpoint_asset_hashes,
         "evaluator_truth": episode_truth,
         "quality_gate": quality,

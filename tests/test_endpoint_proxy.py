@@ -6,6 +6,8 @@ from benchmark.audit_public_proxy import walk_keys
 from benchmark.endpoint_proxy import (
     camera_points,
     classify_static_mobile,
+    Cloud,
+    geometry_certificate,
     PROXY_QUALITY_THRESHOLDS,
     public_queries,
     to_world,
@@ -71,3 +73,22 @@ def test_proxy_quality_thresholds_are_preregistered():
         "psnr_min": 16.0,
         "depth_mae_m_max": 0.025,
     }
+
+
+def test_geometry_certificate_reports_symmetric_endpoint_alignment():
+    static = np.array([[0, y, 0] for y in np.linspace(-0.04, 0.04, 9)], np.float32)
+    mobile0 = np.array([[0.2, y, 0] for y in np.linspace(-0.04, 0.04, 9)], np.float32)
+    mobile1 = mobile0 + np.array([0.05, 0, 0], np.float32)
+    cloud = Cloud(
+        points=np.concatenate((static, mobile0, static, mobile1)),
+        colors=np.zeros((36, 3), np.uint8),
+        labels=np.array([0] * 9 + [1] * 9 + [0] * 9 + [1] * 9, np.uint8),
+        source_states=np.array([0] * 18 + [1] * 18, np.uint8),
+    )
+    result = geometry_certificate(
+        cloud, {"type": 2, "axis": [1, 0, 0], "dist": 0.05}, voxel=0.004
+    )
+    assert set(result["alignment"]["directional"]) == {
+        "static_0_to_1", "static_1_to_0", "mobile_0_to_1", "mobile_1_to_0"
+    }
+    assert result["alignment_pass"]
