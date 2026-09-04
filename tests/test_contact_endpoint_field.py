@@ -4,7 +4,12 @@ import math
 
 import torch
 
-from splart.contact_endpoint_field import EndpointFieldConfig, infer_contact_feasible_endpoints
+from splart.contact_endpoint_field import (
+    EndpointFieldConfig,
+    certify_contact_feasible_endpoints,
+    infer_contact_feasible_endpoints,
+    trajectory_voxel_pair_index,
+)
 
 
 DTYPE = torch.float64
@@ -190,22 +195,94 @@ def test_revolute_field_backpropagates_to_axis_pivot_angle_and_scales() -> None:
         assert torch.isfinite(tensor.grad).all()
 
 
-def test_large_dense_pair_request_requires_explicit_broad_phase() -> None:
-    static = torch.zeros((5, 3), dtype=DTYPE)
-    mobile = torch.ones((5, 3), dtype=DTYPE)
-    config = _config(max_dense_pairs=20)
-    try:
-        infer_contact_feasible_endpoints(
-            static,
-            _scales(5),
-            mobile,
-            _scales(5),
-            joint_kind="prismatic",
-            axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
-            observed_displacement=1.0,
-            config=config,
-        )
-    except ValueError as exc:
-        assert "broad-phase pair_index" in str(exc)
-    else:
-        raise AssertionError("an unsafe dense allocation was accepted")
+def test_large_dense_pair_request_uses_capped_trajectory_broad_phase() -> None:
+    static = torch.stack((torch.linspace(-1.0, 4.0, 200), torch.zeros(200), torch.zeros(200)), dim=-1).to(DTYPE)
+    mobile = torch.stack((torch.linspace(0.0, 1.0, 160), torch.full((160,), 0.02), torch.zeros(160)), dim=-1).to(DTYPE)
+    config = _config(
+        max_dense_pairs=100,
+        max_broad_phase_pairs=256,
+        broad_phase_samples=9,
+        pair_chunk_size=31,
+        scalar_chunk_size=7,
+        samples_per_side=19,
+    )
+    prediction = infer_contact_feasible_endpoints(
+        static,
+        _scales(len(static)),
+        mobile,
+        _scales(len(mobile)),
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        observed_displacement=1.0,
+        config=config,
+    )
+    assert prediction.lower.field.scalars.numel() == config.samples_per_side
+    assert torch.isfinite(prediction.lower.field.total_energy).all()
+
+
+def test_low_opacity_part_weight_cannot_create_a_false_stop() -> None:
+    mobile = torch.tensor([[1.0, 0.0, 0.0]], dtype=DTYPE)
+    static = torch.tensor([[0.0, 0.0, 0.0], [2.9, 0.0, 0.0], [0.5, 0.0, 0.0]], dtype=DTYPE)
+    prediction = infer_contact_feasible_endpoints(
+        static,
+        _scales(3),
+        mobile,
+        _scales(1),
+        static_weights=torch.tensor([1.0, 1.0, 1.0e-4], dtype=DTYPE),
+        mobile_weights=torch.ones(1, dtype=DTYPE),
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        observed_displacement=1.0,
+        config=_config(min_geometry_weight=1.0e-2),
+    )
+    assert abs(prediction.lower.raw_value.item() - (-0.9)) < 0.04
+
+
+def test_published_scalar_has_a_recomputed_matching_certificate() -> None:
+    mobile = torch.tensor([[1.0, 0.0, 0.0]], dtype=DTYPE)
+    static = torch.tensor([[0.0, 0.0, 0.0], [2.9, 0.0, 0.0]], dtype=DTYPE)
+    config = _config(samples_per_side=83)
+    prediction = infer_contact_feasible_endpoints(
+        static,
+        _scales(2),
+        mobile,
+        _scales(1),
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        observed_displacement=1.0,
+        config=config,
+    )
+    certified = certify_contact_feasible_endpoints(
+        static,
+        _scales(2),
+        mobile,
+        _scales(1),
+        lower_scalar=prediction.lower.raw_value,
+        upper_scalar=prediction.upper.raw_value,
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        observed_displacement=1.0,
+        config=config,
+    )
+    assert torch.allclose(prediction.lower.contact_gap, certified.lower.contact_gap)
+    assert torch.allclose(prediction.upper.contact_gap, certified.upper.contact_gap)
+    assert torch.allclose(prediction.lower.contact_mass, certified.lower.contact_mass)
+
+
+def test_trajectory_voxel_pairs_are_deterministic_and_capped() -> None:
+    static = torch.tensor([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]], dtype=DTYPE)
+    mobile = torch.tensor([[1.0, 0.0, 0.0], [1.0, 0.04, 0.0]], dtype=DTYPE)
+    scalars = torch.linspace(-1.0, 2.0, 13, dtype=DTYPE)
+    kwargs = dict(
+        joint_kind="prismatic",
+        axis=torch.tensor([1.0, 0.0, 0.0], dtype=DTYPE),
+        pivot=torch.zeros(3, dtype=DTYPE),
+        observed_displacement=torch.tensor(1.0, dtype=DTYPE),
+        voxel_size=0.25,
+        neighbor_radius=1,
+        max_pairs=4,
+    )
+    first = trajectory_voxel_pair_index(static, mobile, scalars, **kwargs)
+    second = trajectory_voxel_pair_index(static, mobile, scalars, **kwargs)
+    assert first.shape[1] <= 4
+    assert torch.equal(first, second)
