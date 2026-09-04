@@ -179,10 +179,9 @@ def fuse_endpoint_cloud(scene_dir: Path, meta: Mapping[str, Any], stride: int, v
     keep = np.sort(np.concatenate(keep_chunks))
     points, colors, states = points[keep], colors[keep], states[keep]
     labels = classify_static_mobile(points, states, meta["articulation"], voxel)
-    # Static geometry is shared, so keep it from one endpoint only. Mobile
-    # geometry stays represented by both endpoints for complementary coverage.
-    keep = (labels == 1) | (states == 0)
-    return Cloud(points[keep], colors[keep], labels[keep], states[keep])
+    # Both directions are retained: reciprocal endpoint coverage is required
+    # by the symmetric geometry certificate and improves occlusion coverage.
+    return Cloud(points, colors, labels, states)
 
 
 def classify_static_mobile(
