@@ -92,6 +92,23 @@ def test_geometry_certificate_reports_symmetric_endpoint_alignment():
         "static_0_to_1", "static_1_to_0", "mobile_0_to_1", "mobile_1_to_0"
     }
     assert result["alignment_pass"]
-    # Contact is sparse in this toy cloud, so the compactness cue is allowed to
-    # decide only because the contact cue abstains rather than conflicts.
+    assert not result["closure"]["identifiable"]
+
+
+def test_counterfactual_contact_is_required_to_certify_closed_endpoint():
+    yz = np.array([[y, z] for y in np.linspace(-0.04, 0.04, 9) for z in np.linspace(-0.04, 0.04, 9)])
+    static = np.c_[np.full(len(yz), -0.02), yz].astype(np.float32)
+    mobile0 = np.c_[np.zeros(len(yz)), yz].astype(np.float32)
+    mobile1 = mobile0 + np.array([0.4, 0, 0], np.float32)
+    cloud = Cloud(
+        points=np.concatenate((static, mobile0, static, mobile1)),
+        colors=np.zeros((4 * len(yz), 3), np.uint8),
+        labels=np.array([0] * len(yz) + [1] * len(yz) + [0] * len(yz) + [1] * len(yz), np.uint8),
+        source_states=np.array([0] * (2 * len(yz)) + [1] * (2 * len(yz)), np.uint8),
+    )
+    result = geometry_certificate(
+        cloud, {"type": 2, "axis": [1, 0, 0], "dist": 0.4}, voxel=0.004
+    )
+    assert result["closure"]["contact_vote"] == 0
+    assert result["closure"]["closed_query"] == "outside_state_0"
     assert result["closure"]["identifiable"]

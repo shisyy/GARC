@@ -38,7 +38,14 @@ PROXY_QUALITY_THRESHOLDS = {
     "depth_mae_m_max": 0.025,
 }
 ALIGNMENT_THRESHOLDS = {"median_m_max": 0.012, "p95_m_max": 0.050}
-CLOSURE_THRESHOLDS = {"contact_fraction_margin_min": 0.01, "compactness_margin_min": 0.015}
+CLOSURE_THRESHOLDS = {
+    "counterfactual_delta_fraction": 0.05,
+    "contact_radius_voxel_multipliers": (2.0, 4.0, 6.0),
+    "endpoint_distributed_contact_min": 0.02,
+    "outside_conflict_increase_min": 0.015,
+    "between_endpoint_margin_min": 0.01,
+    "compactness_margin_min": 0.015,
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -258,43 +265,70 @@ def geometry_certificate(cloud: Cloud, articulation: Mapping[str, Any], voxel: f
     static = by[(0, 0)]
     mobile0 = by[(1, 0)]
     static_tree = cKDTree(static)
-    contact_epsilon = max(2.0 * voxel, 0.008)
-    endpoint: dict[str, dict[str, float]] = {}
-    for state in (0, 1):
-        mobile = mobile0 if state == 0 else transform_mobile(mobile0, articulation, 1.0)
+    delta = CLOSURE_THRESHOLDS["counterfactual_delta_fraction"]
+    radii = [voxel * value for value in CLOSURE_THRESHOLDS["contact_radius_voxel_multipliers"]]
+
+    def contact_curve(fraction: float) -> list[float]:
+        mobile = transform_mobile(mobile0, articulation, fraction) if fraction else mobile0
         nearest = static_tree.query(mobile, k=1, workers=-1)[0]
+        return [float(np.mean(nearest <= radius)) for radius in radii]
+
+    endpoint: dict[str, dict[str, Any]] = {}
+    for state in (0, 1):
+        endpoint_fraction = float(state)
+        outside_fraction = -delta if state == 0 else 1.0 + delta
+        inside_fraction = delta if state == 0 else 1.0 - delta
+        at_endpoint = contact_curve(endpoint_fraction)
+        outside = contact_curve(outside_fraction)
+        inside = contact_curve(inside_fraction)
+        outside_increase = float(np.mean(np.asarray(outside) - np.asarray(at_endpoint)))
+        inside_increase = float(np.mean(np.asarray(inside) - np.asarray(at_endpoint)))
+        conflict_increase = outside_increase - max(0.0, inside_increase)
+        mobile = transform_mobile(mobile0, articulation, endpoint_fraction) if state else mobile0
         combined = np.concatenate((static, mobile))
-        diagonal = float(np.linalg.norm(combined.max(axis=0) - combined.min(axis=0)))
         endpoint[f"outside_state_{state}"] = {
-            "contact_fraction": float(np.mean(nearest <= contact_epsilon)),
-            "contact_gap_q05_m": float(np.quantile(nearest, 0.05)),
-            "compactness_diagonal_m": diagonal,
+            "contact_radii_m": radii,
+            "endpoint_contact_fraction": at_endpoint,
+            "outside_contact_fraction": outside,
+            "inside_contact_fraction": inside,
+            "outside_increase_mean": outside_increase,
+            "inside_increase_mean": inside_increase,
+            "counterfactual_conflict_increase": conflict_increase,
+            "distributed_contact": at_endpoint[-1],
+            "compactness_diagonal_m": float(np.linalg.norm(combined.max(axis=0) - combined.min(axis=0))),
         }
     q0, q1 = endpoint["outside_state_0"], endpoint["outside_state_1"]
-    contact_delta = q0["contact_fraction"] - q1["contact_fraction"]
+    counterfactual_candidates = [
+        state
+        for state, values in enumerate((q0, q1))
+        if values["distributed_contact"] >= CLOSURE_THRESHOLDS["endpoint_distributed_contact_min"]
+        and values["counterfactual_conflict_increase"] >= CLOSURE_THRESHOLDS["outside_conflict_increase_min"]
+    ]
+    contact_vote = None
+    conflict_margin = abs(q0["counterfactual_conflict_increase"] - q1["counterfactual_conflict_increase"])
+    if len(counterfactual_candidates) == 1 and conflict_margin >= CLOSURE_THRESHOLDS["between_endpoint_margin_min"]:
+        contact_vote = counterfactual_candidates[0]
     compact_delta = (q1["compactness_diagonal_m"] - q0["compactness_diagonal_m"]) / max(
         q0["compactness_diagonal_m"], q1["compactness_diagonal_m"], 1e-9
-    )
-    contact_vote = 0 if contact_delta >= CLOSURE_THRESHOLDS["contact_fraction_margin_min"] else (
-        1 if contact_delta <= -CLOSURE_THRESHOLDS["contact_fraction_margin_min"] else None
     )
     compact_vote = 0 if compact_delta >= CLOSURE_THRESHOLDS["compactness_margin_min"] else (
         1 if compact_delta <= -CLOSURE_THRESHOLDS["compactness_margin_min"] else None
     )
-    # A cue inside its uncertainty margin abstains rather than vetoing the
-    # other cue. Opposing confident votes remain fail-closed.
-    votes = {vote for vote in (contact_vote, compact_vote) if vote is not None}
-    closed_state = votes.pop() if len(votes) == 1 else None
+    # Contact/collision evidence is mandatory. Compactness may agree or abstain,
+    # but can never identify closure on its own or override a conflict.
+    closed_state = contact_vote if contact_vote is not None and compact_vote in (None, contact_vote) else None
     return {
         "alignment": alignment_result,
         "alignment_thresholds": ALIGNMENT_THRESHOLDS,
         "alignment_pass": alignment_pass,
         "closure": {
-            "method": "contact_fraction_and_compactness_margin_nonconflict",
+            "method": "out_of_range_counterfactual_contact_with_compactness_nonconflict",
             "thresholds": CLOSURE_THRESHOLDS,
             "endpoint": endpoint,
             "contact_vote": contact_vote,
             "compactness_vote": compact_vote,
+            "counterfactual_candidates": counterfactual_candidates,
+            "between_endpoint_conflict_margin": conflict_margin,
             "closed_query": f"outside_state_{closed_state}" if closed_state is not None else "closed_unknown",
             "identifiable": closed_state is not None,
             "proxy_semantics": "geometry_contact_compactness_without_raw_urdf",
