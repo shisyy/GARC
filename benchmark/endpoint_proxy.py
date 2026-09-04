@@ -281,13 +281,16 @@ def geometry_certificate(cloud: Cloud, articulation: Mapping[str, Any], voxel: f
     compact_vote = 0 if compact_delta >= CLOSURE_THRESHOLDS["compactness_margin_min"] else (
         1 if compact_delta <= -CLOSURE_THRESHOLDS["compactness_margin_min"] else None
     )
-    closed_state = contact_vote if contact_vote is not None and compact_vote in (None, contact_vote) else None
+    # A cue inside its uncertainty margin abstains rather than vetoing the
+    # other cue. Opposing confident votes remain fail-closed.
+    votes = {vote for vote in (contact_vote, compact_vote) if vote is not None}
+    closed_state = votes.pop() if len(votes) == 1 else None
     return {
         "alignment": alignment_result,
         "alignment_thresholds": ALIGNMENT_THRESHOLDS,
         "alignment_pass": alignment_pass,
         "closure": {
-            "method": "contact_fraction_primary_with_compactness_nonconflict",
+            "method": "contact_fraction_and_compactness_margin_nonconflict",
             "thresholds": CLOSURE_THRESHOLDS,
             "endpoint": endpoint,
             "contact_vote": contact_vote,

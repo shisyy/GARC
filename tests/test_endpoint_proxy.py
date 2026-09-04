@@ -92,3 +92,6 @@ def test_geometry_certificate_reports_symmetric_endpoint_alignment():
         "static_0_to_1", "static_1_to_0", "mobile_0_to_1", "mobile_1_to_0"
     }
     assert result["alignment_pass"]
+    # Contact is sparse in this toy cloud, so the compactness cue is allowed to
+    # decide only because the contact cue abstains rather than conflicts.
+    assert result["closure"]["identifiable"]
