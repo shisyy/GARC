@@ -35,7 +35,10 @@ replace the scalar policy while using the same renderer/evaluator contract.
 
 ## Metrics
 
-`endpoint_eval.py` runs outside the model process.  It reports lower/upper and
+`endpoint_eval.py` runs outside the model process. The sealed manifest's
+`endpoint_metrics` entries are ground-truth camera/asset descriptors, not
+numeric scores. A separate post-render measurement record supplies the numeric
+PSNR/SSIM/LPIPS/depth/IoU values. The aggregator reports lower/upper and
 mean endpoint error normalized by the true local endpoint span, closed-end
 accuracy, terminal contact validity, penetration depth, PSNR, SSIM, LPIPS,
 depth MAE, static/mobile/background IoU, mIoU, and articulation validity/error
@@ -76,6 +79,6 @@ Only the evaluator process may aggregate against the sealed record:
 python endpoint_eval.py \
   --prediction prediction.json \
   --sealed-evaluator-record SEALED_RECORD.json \
+  --measurement-record POST_RENDER_METRICS.json \
   --output metrics.json
 ```
-

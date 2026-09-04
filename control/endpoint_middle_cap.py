@@ -14,7 +14,6 @@ from typing import Mapping, Sequence
 
 from splart.endpoint_baselines import assert_model_process_boundary
 
-
 CAP_BYTES = 8 * 1024**3
 CAP_NUMERATOR_MIB = 8192
 CAP_DENOMINATOR_MIB = 49140
@@ -24,6 +23,7 @@ RUN_ROOT = PurePosixPath("/home/yptang/arbor-runs/splart-endpoint-middle-baselin
 SOURCE_PARENT = PurePosixPath("/home/yptang/.arbor-worktrees")
 SOURCE_PREFIX = "splart_endpoint_middle_baseline_"
 SCENE = "100247-Box"
+EXPERIMENT_NAME = "100247-Box/baseline"
 
 
 def canonical_bytes(payload: Mapping[str, object]) -> bytes:
@@ -44,6 +44,16 @@ def exclusive_write(path: Path, payload: bytes) -> None:
         os.close(descriptor)
 
 
+def single_flag_value(argv: Sequence[str], flag: str) -> str:
+    assignment_prefix = flag + "="
+    if any(token.startswith(assignment_prefix) for token in argv):
+        raise RuntimeError(f"assignment form is forbidden for critical flag {flag}")
+    positions = [index for index, token in enumerate(argv) if token == flag]
+    if len(positions) != 1 or positions[0] + 1 >= len(argv):
+        raise RuntimeError(f"critical flag must occur exactly once: {flag}")
+    return argv[positions[0] + 1]
+
+
 def validate_launch(argv: Sequence[str], env: Mapping[str, str]) -> dict[str, str]:
     if not argv or argv[0] != "splart":
         raise RuntimeError("baseline cap accepts only the SplArt training method")
@@ -60,10 +70,15 @@ def validate_launch(argv: Sequence[str], env: Mapping[str, str]) -> dict[str, st
     public_scene = PurePosixPath(env.get("SPLART_PUBLIC_SCENE_DIR", ""))
     if public_scene.name != SCENE or not public_scene.is_absolute():
         raise RuntimeError("public Box scene binding changed")
-    if "--data" not in argv or argv[argv.index("--data") + 1] != str(public_scene):
+    data_value = single_flag_value(argv, "--data")
+    output_value = single_flag_value(argv, "--output-dir")
+    experiment_value = single_flag_value(argv, "--experiment-name")
+    if data_value != str(public_scene):
         raise RuntimeError("training argv must use only the reviewed public scene")
-    if "--output-dir" not in argv or PurePosixPath(argv[argv.index("--output-dir") + 1]).parent != RUN_ROOT:
+    if PurePosixPath(output_value) != RUN_ROOT / "model_ckpts":
         raise RuntimeError("training output escaped the fresh run root")
+    if experiment_value != EXPERIMENT_NAME or ".." in PurePosixPath(experiment_value).parts:
+        raise RuntimeError("experiment name changed or contains traversal")
     forbidden_flags = {
         "--load-dir",
         "--load-config",
@@ -74,7 +89,9 @@ def validate_launch(argv: Sequence[str], env: Mapping[str, str]) -> dict[str, st
         "--machine.seed",
         "--view",
     }
-    if forbidden_flags.intersection(argv):
+    if forbidden_flags.intersection(argv) or any(
+        any(token.startswith(flag + "=") for flag in forbidden_flags) for token in argv
+    ):
         raise RuntimeError("checkpoint/seed/view selection flag is forbidden")
     if any("endpoint-physics" in token.lower() or "contact-endpoint" in token.lower() for token in argv):
         raise RuntimeError("physics/endpoint module must be disabled in the baseline")

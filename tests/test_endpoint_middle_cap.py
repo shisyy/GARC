@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-
 MODULE_PATH = Path(__file__).parents[1] / "control" / "endpoint_middle_cap.py"
 SPEC = importlib.util.spec_from_file_location("endpoint_middle_cap", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
@@ -58,4 +57,27 @@ def test_cap_rejects_evaluator_or_physics_paths() -> None:
     argv, env = _launch()
     argv.extend(["--pipeline.model.endpoint-physics", "true"])
     with pytest.raises(RuntimeError, match="physics"):
+        CAP.validate_launch(argv, env)
+
+
+@pytest.mark.parametrize("flag", ["--data", "--output-dir", "--experiment-name"])
+def test_cap_rejects_duplicate_critical_flags(flag: str) -> None:
+    argv, env = _launch()
+    argv.extend([flag, "override"])
+    with pytest.raises(RuntimeError, match="exactly once"):
+        CAP.validate_launch(argv, env)
+
+
+@pytest.mark.parametrize("flag", ["--load-dir", "--resume", "--seed", "--view"])
+def test_cap_rejects_forbidden_assignment_form(flag: str) -> None:
+    argv, env = _launch()
+    argv.append(f"{flag}=forbidden")
+    with pytest.raises(RuntimeError, match="selection"):
+        CAP.validate_launch(argv, env)
+
+
+def test_cap_rejects_experiment_traversal() -> None:
+    argv, env = _launch()
+    argv[argv.index("--experiment-name") + 1] = "../escape"
+    with pytest.raises(RuntimeError, match="experiment"):
         CAP.validate_launch(argv, env)

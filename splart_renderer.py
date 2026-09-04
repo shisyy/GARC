@@ -28,7 +28,15 @@ from splart.splart_dataparser import SplartDataParserConfig
 
 
 class SplartRenderer:
-    def __init__(self, ckpt_dir, load_step=None, data_dir=None, background="random", device="cuda") -> None:
+    def __init__(
+        self,
+        ckpt_dir,
+        load_step=None,
+        data_dir=None,
+        background="random",
+        device="cuda",
+        data_splits=("train", "val", "test"),
+    ) -> None:
         if load_step is None or not (ckpt_path := ckpt_dir / f"step-{load_step:09d}.ckpt").exists():
             # load the latest checkpoint
             ckpt_path = max(ckpt_dir.iterdir())
@@ -48,10 +56,13 @@ class SplartRenderer:
         self.ns_T_raw = ns_S_raw @ homogenize_transforms(torch.tensor(meta["transform"], device=device))
         self.should_undistort = False
         if data_dir is not None:
+            if "train" not in data_splits:
+                raise ValueError("data_splits must include train for camera calibration")
             dataparser = SplartDataParserConfig(data=data_dir, downscale_factor=1).setup()
-            self.train_dataparser_outputs = dataparser.get_dataparser_outputs()
-            self.val_dataparser_outputs = dataparser.get_dataparser_outputs(split="val")
-            self.test_dataparser_outputs = dataparser.get_dataparser_outputs(split="test")
+            for split in data_splits:
+                if split not in {"train", "val", "test"}:
+                    raise ValueError(f"invalid data split: {split}")
+                setattr(self, f"{split}_dataparser_outputs", dataparser.get_dataparser_outputs(split=split))
             cam = self.train_dataparser_outputs.cameras[0]
             distortion_params = cam.distortion_params.numpy()
             if np.any(distortion_params):

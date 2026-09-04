@@ -8,17 +8,19 @@ directory.  Ground-truth endpoint scalars are consumed separately by
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
-
 
 SCHEMA_VERSION = "splart-endpoint-prediction/v1"
 QUERY_IDS = ("outside_state_0", "outside_state_1")
 BASELINES = ("observed-span", "symmetric-linear", "splart-middle")
 SOURCE_COMMIT = "2e5e286b3ffc027d37c9c9da1a5dc87d18301849"
+FINAL_TRAIN_STEP = 24_999
 
 # These fields are evaluator-only.  Match normalized spellings so that minor
 # punctuation changes cannot accidentally punch a hole through the boundary.
@@ -45,7 +47,16 @@ _FORBIDDEN_PUBLIC_KEYS = {
     "heldoutendpoint",
     "heldoutendpoints",
     "testfilenames",
+    "axis",
+    "pivot",
+    "angle",
+    "dist",
 }
+
+_PUBLIC_ROOT_FILES = {"transforms.json", "endpoint_queries.json", "COMPLETE.json"}
+_PUBLIC_MODALITIES = {"color", "depth", "part-seg"}
+_PUBLIC_SPLITS = {"train", "val"}
+_PUBLIC_IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
 
 
 def _normalise_key(key: object) -> str:
@@ -99,6 +110,53 @@ def _load_json(path: Path) -> Any:
         return json.load(handle)
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def content_sha256(payload: Any) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n"
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+def audit_public_tree(scene_dir: Path) -> dict[str, str]:
+    """Hash a strict allowlist; an unexpected sidecar is a launch blocker."""
+
+    scene_dir = Path(scene_dir).resolve()
+    files: dict[str, str] = {}
+    for path in sorted(scene_dir.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"public scene contains symlink: {path}")
+        relative = path.relative_to(scene_dir)
+        parts = relative.parts
+        if path.is_dir():
+            if len(parts) == 1 and parts[0] in _PUBLIC_MODALITIES:
+                continue
+            if len(parts) == 2 and parts[0] in _PUBLIC_MODALITIES and parts[1] in _PUBLIC_SPLITS:
+                continue
+            raise ValueError(f"unexpected directory in public scene: {relative.as_posix()}")
+        if len(parts) == 1 and parts[0] in _PUBLIC_ROOT_FILES:
+            assert_no_evaluator_fields(_load_json(path))
+        elif (
+            len(parts) == 3
+            and parts[0] in _PUBLIC_MODALITIES
+            and parts[1] in _PUBLIC_SPLITS
+            and path.suffix.lower() in _PUBLIC_IMAGE_SUFFIXES
+        ):
+            pass
+        else:
+            raise ValueError(f"unexpected file in public scene: {relative.as_posix()}")
+        files[relative.as_posix()] = sha256_file(path)
+    missing = {"transforms.json", "endpoint_queries.json"}.difference(files)
+    if missing:
+        raise ValueError(f"public scene is missing required files: {sorted(missing)}")
+    return files
+
+
 def _is_binary_state(value: Any) -> bool:
     return not isinstance(value, bool) and isinstance(value, (int, float)) and float(value) in (0.0, 1.0)
 
@@ -120,6 +178,7 @@ def validate_public_scene(scene_dir: Path) -> dict[str, Any]:
 
     transforms = _load_json(transforms_path)
     queries = _load_json(queries_path)
+    public_files = audit_public_tree(scene_dir)
     assert_no_evaluator_fields(transforms)
     assert_no_evaluator_fields(queries)
 
@@ -173,6 +232,8 @@ def validate_public_scene(scene_dir: Path) -> dict[str, Any]:
         "frame_count": len(frames),
         "state_counts": {str(state): sum(int(frame["state"]) == state for frame in frames) for state in (0, 1)},
         "queries": [{"query_id": query_id, "local_direction": expected_directions[query_id]} for query_id in QUERY_IDS],
+        "public_tree": public_files,
+        "public_tree_sha256": content_sha256(public_files),
     }
 
 
@@ -219,7 +280,40 @@ class BaselinePolicy:
         )  # type: ignore[return-value]
 
 
-def make_prediction(scene_dir: Path, baseline: str, checkpoint_dir: Path | None = None) -> dict[str, Any]:
+def _candidate_provenance(checkpoint_dir: Path, source_dir: Path) -> dict[str, Any]:
+    checkpoint_dir = Path(checkpoint_dir).resolve()
+    source_dir = Path(source_dir).resolve()
+    checkpoint = checkpoint_dir / f"step-{FINAL_TRAIN_STEP:09d}.ckpt"
+    config = checkpoint_dir.parent / "config.yml"
+    dataparser = checkpoint_dir.parent / "dataparser_transforms.json"
+    for label, path in (("checkpoint", checkpoint), ("config", config), ("dataparser transforms", dataparser)):
+        if path.is_symlink() or not path.is_file():
+            raise FileNotFoundError(f"missing ordinary final candidate {label}: {path}")
+    all_steps = sorted(checkpoint_dir.glob("step-*.ckpt"))
+    if checkpoint not in all_steps:
+        raise ValueError("fixed final checkpoint is absent")
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=source_dir, check=True, capture_output=True, text=True, timeout=30
+    ).stdout.strip()
+    tree = subprocess.run(
+        ["git", "rev-parse", "HEAD^{tree}"], cwd=source_dir, check=True, capture_output=True, text=True, timeout=30
+    ).stdout.strip()
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=source_dir, check=True, capture_output=True, text=True, timeout=30
+    ).stdout.strip()
+    if dirty:
+        raise ValueError("candidate source worktree is not clean")
+    return {
+        "checkpoint": {"path": str(checkpoint), "sha256": sha256_file(checkpoint), "step": FINAL_TRAIN_STEP},
+        "config": {"path": str(config), "sha256": sha256_file(config)},
+        "dataparser_transforms": {"path": str(dataparser), "sha256": sha256_file(dataparser)},
+        "source": {"path": str(source_dir), "commit": head, "tree": tree},
+    }
+
+
+def make_prediction(
+    scene_dir: Path, baseline: str, checkpoint_dir: Path | None = None, source_dir: Path | None = None
+) -> dict[str, Any]:
     public = validate_public_scene(scene_dir)
     policy = BaselinePolicy.from_name(baseline)
     if checkpoint_dir is not None:
@@ -228,6 +322,13 @@ def make_prediction(scene_dir: Path, baseline: str, checkpoint_dir: Path | None 
         raise ValueError("splart-middle requires a freshly trained checkpoint directory")
     if not policy.requires_trained_model and checkpoint_dir is not None:
         raise ValueError(f"{baseline} is scalar-only and must not receive a checkpoint")
+    if policy.requires_trained_model and source_dir is None:
+        raise ValueError("splart-middle requires the clean candidate source directory")
+    candidate = (
+        _candidate_provenance(checkpoint_dir, source_dir)  # type: ignore[arg-type]
+        if policy.requires_trained_model
+        else None
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "scene_id": public["scene_id"],
@@ -240,7 +341,12 @@ def make_prediction(scene_dir: Path, baseline: str, checkpoint_dir: Path | None 
             "seed_or_checkpoint_selection": False,
         },
         "renderer": policy.renderer,
-        "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir is not None else None,
+        "candidate": candidate,
+        "public_input": {
+            "root": public["scene_dir"],
+            "tree_sha256": public["public_tree_sha256"],
+            "file_count": len(public["public_tree"]),
+        },
         "observed_states": [0, 1],
         "endpoint_predictions": list(policy.predictions()),
     }

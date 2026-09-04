@@ -16,7 +16,6 @@ from typing import Any, Iterable, Mapping
 
 from splart.endpoint_baselines import QUERY_IDS, write_json_atomic
 
-
 RENDER_METRICS = ("psnr", "ssim", "lpips", "depth_mae", "static_iou", "mobile_iou", "background_iou", "miou")
 
 
@@ -51,6 +50,11 @@ def _scene_record(payload: Mapping[str, Any], scene_id: str) -> Mapping[str, Any
         matches = [item for item in scenes if isinstance(item, Mapping) and item.get("scene_id") == scene_id]
         if len(matches) == 1:
             return matches[0]
+    episodes = payload.get("episodes")
+    if isinstance(episodes, Mapping) and scene_id in episodes:
+        record = episodes[scene_id]
+        if isinstance(record, Mapping):
+            return {"scene_id": scene_id, **record}
     raise ValueError(f"sealed evaluator record does not contain scene {scene_id!r}")
 
 
@@ -114,8 +118,8 @@ def _canonicalise_view(view: Mapping[str, Any]) -> dict[str, float]:
     return result
 
 
-def _endpoint_render_metrics(record: Mapping[str, Any]) -> dict[str, float | None]:
-    endpoint_metrics = record.get("endpoint_metrics", record.get("render_metrics"))
+def _endpoint_render_metrics(measurement: Mapping[str, Any]) -> dict[str, float | None]:
+    endpoint_metrics = measurement.get("endpoint_metrics", measurement.get("render_metrics"))
     if endpoint_metrics is None:
         return {key: None for key in RENDER_METRICS}
     if not isinstance(endpoint_metrics, Mapping):
@@ -138,13 +142,18 @@ def _endpoint_render_metrics(record: Mapping[str, Any]) -> dict[str, float | Non
     return {key: _mean(view[key] for view in canonical_views if key in view) for key in RENDER_METRICS}
 
 
-def evaluate_scene(prediction: Mapping[str, Any], sealed_payload: Mapping[str, Any]) -> dict[str, Any]:
+def evaluate_scene(
+    prediction: Mapping[str, Any],
+    sealed_payload: Mapping[str, Any],
+    measurement_payload: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     scene_id = prediction.get("scene_id")
     if not isinstance(scene_id, str) or not scene_id:
         raise ValueError("prediction scene_id is required")
     record = _scene_record(sealed_payload, scene_id)
     target_scalars, closed_query = _target(record)
     predicted_scalars, predicted_closed = _prediction_map(prediction)
+    measurement = _scene_record(measurement_payload, scene_id) if measurement_payload is not None else {}
     target_range = target_scalars[QUERY_IDS[1]] - target_scalars[QUERY_IDS[0]]
     limit_errors = {
         query_id: abs(predicted_scalars[query_id] - target_scalars[query_id]) / target_range for query_id in QUERY_IDS
@@ -154,10 +163,10 @@ def evaluate_scene(prediction: Mapping[str, Any], sealed_payload: Mapping[str, A
         "normalized_limit_error_upper": limit_errors[QUERY_IDS[1]],
         "normalized_limit_error": fmean(limit_errors.values()),
         "closed_endpoint_accuracy": float(predicted_closed == closed_query),
-        **_endpoint_render_metrics(record),
+        **_endpoint_render_metrics(measurement),
     }
 
-    physics = record.get("physics", record.get("physical_certificate", {}))
+    physics = measurement.get("physics", measurement.get("physical_certificate", {}))
     if physics is None:
         physics = {}
     if not isinstance(physics, Mapping):
@@ -167,7 +176,7 @@ def evaluate_scene(prediction: Mapping[str, Any], sealed_payload: Mapping[str, A
     penetration = physics.get("penetration_depth", physics.get("max_penetration"))
     metrics["penetration_depth"] = None if penetration is None else _finite_float(penetration, "penetration_depth")
 
-    articulation = record.get("articulation", {})
+    articulation = measurement.get("articulation", {})
     if articulation is None:
         articulation = {}
     if not isinstance(articulation, Mapping):
@@ -175,7 +184,11 @@ def evaluate_scene(prediction: Mapping[str, Any], sealed_payload: Mapping[str, A
     valid = articulation.get("valid", articulation.get("is_valid"))
     metrics["articulation_valid"] = None if valid is None else float(bool(valid))
     for key, value in articulation.items():
-        if key not in {"valid", "is_valid"} and isinstance(value, (int, float)) and not isinstance(value, bool):
+        if key in {"valid", "is_valid"}:
+            continue
+        if isinstance(value, bool):
+            metrics[f"articulation_{key}"] = float(value)
+        elif isinstance(value, (int, float)):
             metrics[f"articulation_{key}"] = _finite_float(value, f"articulation.{key}")
 
     return {"scene_id": scene_id, "baseline": prediction.get("baseline"), "metrics": metrics}
@@ -209,10 +222,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prediction", type=Path, action="append", required=True)
     parser.add_argument("--sealed-evaluator-record", type=Path, required=True)
+    parser.add_argument(
+        "--measurement-record",
+        type=Path,
+        help="post-render numeric metrics; never the GT asset descriptors in the sealed manifest",
+    )
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     sealed = _load(args.sealed_evaluator_record)
-    scene_results = [evaluate_scene(_load(path), sealed) for path in args.prediction]
+    measurements = _load(args.measurement_record) if args.measurement_record else None
+    scene_results = [evaluate_scene(_load(path), sealed, measurements) for path in args.prediction]
     write_json_atomic(args.output, aggregate_scenes(scene_results))
     print(args.output)
 

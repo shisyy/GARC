@@ -21,7 +21,7 @@ def _validate(args: argparse.Namespace) -> None:
 
 
 def _predict(args: argparse.Namespace) -> None:
-    prediction = make_prediction(args.scene_dir, args.baseline, args.checkpoint_dir)
+    prediction = make_prediction(args.scene_dir, args.baseline, args.checkpoint_dir, args.source_dir)
     write_json_atomic(args.output, prediction)
     print(args.output)
 
@@ -34,6 +34,8 @@ def _training_request(args: argparse.Namespace) -> None:
         "source_commit": SOURCE_COMMIT,
         "scene_id": public["scene_id"],
         "public_scene_dir": public["scene_dir"],
+        "public_tree_sha256": public["public_tree_sha256"],
+        "public_file_count": len(public["public_tree"]),
         "argv": argv,
         "invariants": {
             "fresh_scratch": True,
@@ -58,6 +60,7 @@ def build_parser() -> argparse.ArgumentParser:
     predict.add_argument("--scene-dir", type=Path, required=True)
     predict.add_argument("--baseline", choices=BASELINES, required=True)
     predict.add_argument("--checkpoint-dir", type=Path)
+    predict.add_argument("--source-dir", type=Path)
     predict.add_argument("--output", type=Path, required=True)
     predict.set_defaults(func=_predict)
 

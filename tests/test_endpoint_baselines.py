@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,9 @@ def _public_scene(tmp_path: Path) -> Path:
     }
     (scene / "transforms.json").write_text(json.dumps(transforms), encoding="utf-8")
     (scene / "endpoint_queries.json").write_text(json.dumps(queries), encoding="utf-8")
+    for modality in ("color", "depth", "part-seg"):
+        for split in ("train", "val"):
+            (scene / modality / split).mkdir(parents=True)
     return scene
 
 
@@ -51,18 +55,50 @@ def test_public_scene_and_fresh_training_request(tmp_path: Path) -> None:
     argv = build_splart_training_argv(scene, tmp_path / "models", "100247-Box/run-1")
     assert "--load-dir" not in argv
     assert str(scene.resolve()) in argv
-    prediction = make_prediction(scene, "splart-middle", tmp_path / "fresh-checkpoint")
+    checkpoint_dir = tmp_path / "run" / "nerfstudio_models"
+    checkpoint_dir.mkdir(parents=True)
+    (checkpoint_dir / "step-000024999.ckpt").write_bytes(b"candidate")
+    (checkpoint_dir.parent / "config.yml").write_text("candidate: true\n", encoding="utf-8")
+    (checkpoint_dir.parent / "dataparser_transforms.json").write_text("{}\n", encoding="utf-8")
+    source = tmp_path / "source"
+    source.mkdir()
+    subprocess.run(["git", "init", "-q"], cwd=source, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=source, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=source, check=True)
+    (source / "tracked.txt").write_text("source\n", encoding="utf-8")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=source, check=True)
+    subprocess.run(["git", "commit", "-qm", "source"], cwd=source, check=True)
+    prediction = make_prediction(scene, "splart-middle", checkpoint_dir, source)
     assert prediction["training"]["endpoint_physics_enabled"] is False
     assert prediction["training"]["from_scratch"] is True
+    assert prediction["candidate"]["checkpoint"]["step"] == 24999
+    assert len(prediction["candidate"]["checkpoint"]["sha256"]) == 64
 
 
-@pytest.mark.parametrize("leak_key", ["physical_fractions", "local_gt_scalars", "closed_query", "true_joint_limits"])
+@pytest.mark.parametrize(
+    "leak_key",
+    ["physical_fractions", "local_gt_scalars", "closed_query", "true_joint_limits", "axis", "pivot", "angle", "dist"],
+)
 def test_public_scene_rejects_evaluator_leakage(tmp_path: Path, leak_key: str) -> None:
     scene = _public_scene(tmp_path)
     transforms = json.loads((scene / "transforms.json").read_text(encoding="utf-8"))
     transforms[leak_key] = [0.25, 0.75]
     (scene / "transforms.json").write_text(json.dumps(transforms), encoding="utf-8")
     with pytest.raises(ValueError, match="evaluator-only"):
+        validate_public_scene(scene)
+
+
+def test_public_scene_rejects_unexpected_sidecar(tmp_path: Path) -> None:
+    scene = _public_scene(tmp_path)
+    (scene / "true_limits.json").write_text('{"limits": [0, 1]}\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="unexpected file"):
+        validate_public_scene(scene)
+
+
+def test_public_scene_rejects_endpoint_asset_directory(tmp_path: Path) -> None:
+    scene = _public_scene(tmp_path)
+    (scene / "endpoint-targets").mkdir()
+    with pytest.raises(ValueError, match="unexpected directory"):
         validate_public_scene(scene)
 
 
@@ -82,11 +118,24 @@ def test_evaluator_aggregates_limit_render_physics_and_articulation(tmp_path: Pa
     scene = _public_scene(tmp_path)
     prediction = make_prediction(scene, "observed-span")
     sealed = {
+        "episodes": {
+            "100247-Box": {
+                "scene_id": "100247-Box",
+                "target": {
+                    "local_scalars": {"outside_state_0": -1.0, "outside_state_1": 2.0},
+                    "closed_query": "outside_state_1",
+                },
+                # These are descriptors/GT parameters, not numeric predictions.
+                "endpoint_metrics": {
+                    "outside_state_0": {"views": [{"assets": {"color": "private.png"}}]},
+                    "outside_state_1": {"views": [{"assets": {"color": "private.png"}}]},
+                },
+                "articulation": {"type": "revolute", "angle": 1.2},
+            }
+        }
+    }
+    measurements = {
         "scene_id": "100247-Box",
-        "target": {
-            "local_scalars": {"outside_state_0": -1.0, "outside_state_1": 2.0},
-            "closed_query": "outside_state_1",
-        },
         "endpoint_metrics": {
             "outside_state_0": {
                 "views": [
@@ -110,7 +159,7 @@ def test_evaluator_aggregates_limit_render_physics_and_articulation(tmp_path: Pa
         "physics": {"terminal_contact_valid": True, "penetration_depth": 0.002},
         "articulation": {"valid": True, "axis_error": 0.1},
     }
-    result = evaluate_scene(prediction, sealed)
+    result = evaluate_scene(prediction, sealed, measurements)
     metrics = result["metrics"]
     assert metrics["normalized_limit_error_lower"] == pytest.approx(1 / 3)
     assert metrics["normalized_limit_error_upper"] == pytest.approx(1 / 3)
@@ -126,3 +175,26 @@ def test_evaluator_aggregates_limit_render_physics_and_articulation(tmp_path: Pa
     aggregate = aggregate_scenes([result])
     assert aggregate["macro"]["psnr"] == 32
     assert aggregate["coverage"]["psnr"] == 1
+
+
+def test_sealed_asset_descriptors_are_not_misread_as_metrics(tmp_path: Path) -> None:
+    scene = _public_scene(tmp_path)
+    prediction = make_prediction(scene, "observed-span")
+    sealed = {
+        "episodes": {
+            "100247-Box": {
+                "target": {
+                    "local_scalars": {"outside_state_0": -0.5, "outside_state_1": 1.5},
+                    "closed_query": "outside_state_0",
+                },
+                "endpoint_metrics": {
+                    query_id: {"views": [{"assets": {"color": f"{query_id}.png"}}]}
+                    for query_id in ("outside_state_0", "outside_state_1")
+                },
+                "articulation": {"type": "revolute", "angle": 1.2},
+            }
+        }
+    }
+    result = evaluate_scene(prediction, sealed)
+    assert result["metrics"]["psnr"] is None
+    assert "articulation_angle" not in result["metrics"]
