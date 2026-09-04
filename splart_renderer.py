@@ -22,6 +22,7 @@ from vis_utils.utils import (
     to_np_depth,
 )
 
+from splart.endpoint_baselines import validate_query_scalar
 from splart.splart import SplartModelConfig
 from splart.splart_dataparser import SplartDataParserConfig
 
@@ -274,6 +275,45 @@ class SplartRenderer:
             color_only=color_only,
             gen_part_seg=gen_part_seg,
             animate=animate,
+            return_results=return_results,
+        )
+
+    def render_query_split(
+        self,
+        split: Literal["train", "val", "test"],
+        query_scalar: float,
+        output_dir,
+        name=None,
+        show_img_ids=False,
+        mobility=None,
+        vis_articulation=False,
+        color_only=False,
+        gen_part_seg=True,
+        return_results=False,
+    ):
+        """Render every camera in ``split`` at one local articulation scalar.
+
+        Endpoint extrapolation intentionally uses values outside ``[0, 1]``.
+        Validate finiteness here, but do not clamp or otherwise transform the
+        scalar before it reaches the original SplArt motion equation.
+        """
+
+        query_scalar = validate_query_scalar(query_scalar)
+        if name is None:
+            name = f"query_{query_scalar:+.6f}"
+        dataparser_outputs = getattr(self, f"{split}_dataparser_outputs")
+        return self.render_views(
+            dataparser_outputs.cameras,
+            output_dir,
+            name=name,
+            img_ids=[img_path.stem for img_path in dataparser_outputs.image_filenames],
+            show_img_ids=show_img_ids,
+            mobility=mobility,
+            articulation_states=[query_scalar] * len(dataparser_outputs.cameras),
+            vis_articulation=vis_articulation,
+            pose_type="cam2ns",
+            color_only=color_only,
+            gen_part_seg=gen_part_seg,
             return_results=return_results,
         )
 
