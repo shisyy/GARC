@@ -51,3 +51,18 @@ URDF limits, physical interior fractions, original endpoint state labels, and
 held-out endpoint images may be used by the benchmark builder and evaluator
 only. They are forbidden from all model inputs, training manifests, learned
 sidecars, adaptive thresholds, and candidate selection.
+
+## RGB-D proxy status
+
+Until the source PartNet Mobility URDF is available, the initial Dev3 benchmark
+is explicitly a geometry proxy. The builder fuses endpoint RGB-D, separates
+static/mobile surfaces by competing identity and one-DOF motion hypotheses,
+then renders two interior multi-view states. Released test part masks are used
+only to validate proxy fidelity on original continuous-state frames; this is a
+data-quality check, not a model-performance result.
+
+The public root contains only local state labels 0/1, joint type, images, depth,
+masks and camera calibration. Its query file contains direction identifiers
+only. Physical fractions, true endpoint scalars, the closed-side label, full
+articulation parameters and held-out endpoint views live in a separately sealed
+evaluator manifest outside the model-facing root.
