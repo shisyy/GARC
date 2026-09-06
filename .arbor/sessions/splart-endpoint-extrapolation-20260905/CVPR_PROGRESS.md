@@ -116,9 +116,20 @@ Promotion requires all of the following on sealed B_dev objects:
 
 - lower object-macro NMAE than frozen D2, symmetric linear, and global/range priors;
 - exact observation-order swap residual below `1e-10`;
-- preregistered 90% object-level interval coverage;
-- narrower intervals than marginal/global conformal controls;
-- wins over zero-geometry, order-only, and permuted-profile nulls.
+- preregistered simultaneous two-endpoint object coverage (the nine-object
+  confirmatory sample requires `9/9` empirical coverage to meet 90%);
+- wins over coordinate-only, fixed-permutation, D2-scalar-only, pooled-profile,
+  and unshared-head controls.
+
+A target-unread protocol audit found that the original head preregistration did
+not completely freeze optimization, duplicated its zero-geometry/order-only
+nulls, and compared intervals with mismatched coverage semantics. Before any
+split membership or target access, a superseding addendum froze AdamW training,
+one seed and one final checkpoint, train-only normalization, all strong nulls,
+and a profile-conditioned scale with object-level joint conformal scores. Width
+is now descriptive rather than a promotion gate. The platform-independent P0
+binds canonical JSON hashes and passes 4/4 tests at trunk commits `94fa7ce` and
+`9268db9`; evaluator launch deliberately remains unauthorized.
 
 The head and real-data adapter are implemented at commits `bbc03b1` and
 `c071a05`; 52/52 tests pass. The adapter independently verified all 12 public
@@ -183,15 +194,19 @@ segmentation/hash checks passing. Materialization receipt SHA256:
 independent audit SHA256:
 `c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949`.
 Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
-writing a step-9 checkpoint. Two durable 25k workers are active on those GPUs
-with 12 disjoint new objects each; 14/24 fresh step-24999 checkpoints have
-completed and the eighth pair is running. Both logs confirm no Nerfstudio
-checkpoint was loaded. GPU4 is not used because it hosts an unrelated VLLM
-process. No split, target, sealed mapping, score, B_test, or Full22 file has
-been read.
+writing a step-9 checkpoint. After 16/24 fresh step-24999 checkpoints completed,
+the remaining eight objects were redistributed without redraw across GPUs
+2/3/5/6 using explicit disjoint lists and `O_CREAT|O_EXCL` claims. The queue
+coverage audit proves `16 complete + 8 delta = 24`, with no duplicate or
+omitted object (SHA256
+`30cef6583af23fa38f7d518c0905f7526d25c1e6cbd043b003d75591864fb1e5`).
+All active logs confirm fresh random initialization and no checkpoint load.
+GPU4 is not used because it hosts an unrelated VLLM process, and GPU7 is
+reserved for profile export. No split, target, sealed mapping, score, B_test,
+or Full22 file has been read.
 
 GPU7 subsequently became genuinely idle and is used for incremental
-target-free profile export without interrupting training. All first-fourteen
+target-free profile export without interrupting training. All first-sixteen
 profiles pass shape
 `[2,3,257,9]`, step-24999, artifact-rehash, exact clean D2 provenance, and
 base-state-before/after equality checks. Incremental index SHA256 values are
@@ -200,8 +215,11 @@ for the first six and
 `8800bfcb68add185f421eae5af320628e93ac473f359f06ab48865a57839b34d`
 `90d671d5c825a7f3e5430fd7ed02ccb72eb3c25bdec8eb7328ffd63ca38ac627`,
 `b5604d5ac202921bf17e55af495f568ca5adcdab841dde30bea7a916dd6c85db`,
-and `82faad8386eff9e14256608cd0649eff21285bb88995477b7d2e9741fca49925`
+`82faad8386eff9e14256608cd0649eff21285bb88995477b7d2e9741fca49925`,
+and `05e7b9a81c968c32e25b8d19033ebea80ef78ce47167fa3403fb4365e03202be`
 for the subsequent two-object batches.
+The immutable reference-only cumulative 16-object index SHA256 is
+`3ef628cef1d118e0646a3c8e5e0797d11e44ef85aee7e5bd98cbee7eec83eaae`.
 No head training or protected-data access occurred.
 
 ## Remaining blockers before a complete CVPR evidence loop
