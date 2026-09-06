@@ -165,6 +165,21 @@ profiles and the sealed split manifest pass independent P0.
 - Immutable preregister SHA256:
   `8d00e654a990e2d96b912164bf4c5aaaefc7159304aeceaf3544e0f4ea6d85cc`
 
+The first-36 public roster is now frozen and passes the prefix gate: the
+original 12 objects are exactly the first-12 prefix, while the extension adds
+24 objects without target-dependent redraw. Its target-free manifest SHA256 is
+`79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f`.
+After preserving three failed infrastructure preflights, the fourth preflight
+passes 24/24. Four NJC assets require visual-only renderer URDFs because their
+published URDFs reference absent collision-proxy directories; this is allowed
+only for RGB-D/segmentation generation and does not restore a terminal-contact
+claim. Preflight SHA256:
+`a05dcc634cdef8051702d3aec81da9b513c5b27330e87cc7abb433ba0b329a72`.
+A 128x128 smoke materialized 24/24 objects, and full 512x512 materialization
+with 32 training plus 4 validation views per state is active on GPU3 under a
+128-GiB disk gate. No split, target, sealed mapping, score, B_test, or Full22
+file has been read.
+
 ## Remaining blockers before a complete CVPR evidence loop
 
 1. Finish multi-object RGB-D/multi-view materialization and true scratch SplArt
