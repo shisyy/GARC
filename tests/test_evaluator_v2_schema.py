@@ -1,6 +1,6 @@
 import pytest
 import torch
-from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines,error_summary,validate_authorization,fsha
+from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines,error_summary,validate_authorization,fsha,bootstrap_ci
 def row():return {'endpoint_truth':{'local_endpoint_targets':{'extension0_joint_units':1.,'extension0_observation_units':.2,'extension1_joint_units':2.,'extension1_observation_units':.4,'local_lower_scalar':-.2,'local_upper_scalar':1.4}}}
 def test_exact_builder_schema():assert target_pair(row())==[.2,.4]
 def test_fail_closed_extra_or_missing():
@@ -36,3 +36,6 @@ def test_authorization_exact_hash_and_path(tmp_path):
  auth={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(__import__('run_node22_sealed_evaluator').__file__),'truth_sha256':fsha(truth),'profile_index_sha256':[fsha(idx)],'profile_set_sha256':__import__('hashlib').sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export_sha256':fsha(base),'output_absolute_path':str(out.resolve()),'one_execution_only':True,'v3_allowed':False};validate_authorization(auth,a,rows)
  auth['output_absolute_path']+='-tamper'
  with pytest.raises(ValueError):validate_authorization(auth,a,rows)
+def test_fixed_object_bootstrap_is_reproducible():
+ g=torch.Generator().manual_seed(220290);idx=torch.randint(0,9,(10000,9),generator=g);a=bootstrap_ci(torch.arange(9,dtype=torch.float32),idx)
+ g=torch.Generator().manual_seed(220290);assert a==bootstrap_ci(torch.arange(9,dtype=torch.float32),torch.randint(0,9,(10000,9),generator=g))
