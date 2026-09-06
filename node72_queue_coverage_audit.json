@@ -1,0 +1,69 @@
+{
+  "assignment": {
+    "2": [
+      "ep72-c05056638abc3aa1",
+      "ep72-e1700dc872989b76"
+    ],
+    "3": [
+      "ep72-d9d03ab7d419d1e5",
+      "ep72-6fddad058477a028"
+    ],
+    "5": [
+      "ep72-5861eb1e5d15e433",
+      "ep72-cc94a9639dbc9e14",
+      "ep72-9033adcfed953617"
+    ],
+    "6": [
+      "ep72-378f16062ffdfef0"
+    ]
+  },
+  "captured_at": "2026-09-06T22:04:10.883960+00:00",
+  "checks": {
+    "addendum_assignment_exact": true,
+    "all_checks_pass": true,
+    "canonical_old_handed_off_exactly_8": true,
+    "canonical_old_has_16_complete": true,
+    "claims_match_assigned_gpu": true,
+    "claims_unique_subset": true,
+    "complete_plus_delta_cover_public24": true,
+    "delta_rows_unique": true,
+    "delta_union_exact_original_pending": true,
+    "eight_delta_rows": true,
+    "finalizers_pass": true,
+    "no_complete_delta_overlap": true,
+    "original_handoff_pass": true,
+    "receipts_fresh_25k": true,
+    "valid_queue_statuses": true
+  },
+  "protected_files_read": [],
+  "queue_status": {
+    "ep72-378f16062ffdfef0": "running",
+    "ep72-5861eb1e5d15e433": "running",
+    "ep72-6fddad058477a028": "pending",
+    "ep72-9033adcfed953617": "pending",
+    "ep72-c05056638abc3aa1": "running",
+    "ep72-cc94a9639dbc9e14": "pending",
+    "ep72-d9d03ab7d419d1e5": "running",
+    "ep72-e1700dc872989b76": "pending"
+  },
+  "receipt_hash_ledger": {
+    "claim_ep72-378f16062ffdfef0": "4558a33fefbf99b2980b96e1aaa95851c12f5c5ff051bab3b11f159898a4069a",
+    "claim_ep72-5861eb1e5d15e433": "943ca5492d4868eeb131aacbae8f4ddc89eddcda5968d7ba040c6633fe7958df",
+    "claim_ep72-c05056638abc3aa1": "81e7de157217cecf7a72e488ad4ae1f4b48a6a3efb31d756314d46993ffbd10b",
+    "claim_ep72-d9d03ab7d419d1e5": "9596bbdc73ee1921354ae140146a788432ef6c563e5be46a0d3ca37a7d03d4ee",
+    "delta_receipt_gpu2": "997c71072622664aa868e52fa7eefb9d9dcc2a58cef1175fd37f560dec1f3733",
+    "delta_receipt_gpu3": "5ee8802497eb92a48b92c2d9bb07f16340cfa257937d629f132da9b960ab9d52",
+    "delta_receipt_gpu5": "0395e4856f0fe64dfc89cbea13faa75ef44d890f3b37498967817df513698d3f",
+    "delta_receipt_gpu6": "fa1ef2b79fc21a5827d5c7153bd9ee542289d7e9df918d61b778b1054f9beb20",
+    "finalize_gpu2": "58370652f37f579ad8586104861c6e88e6a08417eed0247908d7253893b64f86",
+    "finalize_gpu3": "1d6de2471205b401a55731e99c887e5e9f9c22b5f484a7353873247f41c49dd4",
+    "gpu6_addendum": "fd1c0cf2792ff6a7974746ce11b96b326656d49238d72e6f9f7e85f4ae4c1703",
+    "original_handoff": "c4646cdd283a1bb4888377d9161c0add396b4e90e6b9ce200fa3f39ce60bac31",
+    "public_manifest": "79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f"
+  },
+  "schema": "splart-node7.2-redistributed-queue-audit/v1",
+  "score_files_read": [],
+  "sealed_files_read": [],
+  "status": "PASS",
+  "target_files_read": []
+}

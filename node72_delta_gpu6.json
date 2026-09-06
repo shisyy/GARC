@@ -1,0 +1,11 @@
+{
+  "schema": "splart-node7.2-explicit-delta/v1",
+  "gpu": 6,
+  "episodes": [
+    {"episode_id": "ep72-378f16062ffdfef0", "object_id": "locker"}
+  ],
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "splart-node7.2-gpu6-handoff-addendum/v1",
+  "reason": "GPU6 became fully idle after the original queue handoff was frozen; reroute one still-unclaimed object without result selection.",
+  "parent_handoff_receipt_sha256": "c4646cdd283a1bb4888377d9161c0add396b4e90e6b9ce200fa3f39ce60bac31",
+  "rerouted_episode_id": "ep72-378f16062ffdfef0",
+  "from_gpu": 2,
+  "to_gpu": 6,
+  "selection_basis": "resource availability only; object was not yet claimed or launched",
+  "gpu6_memory_used_mib": 4,
+  "gpu6_memory_free_mib": 48547,
+  "gpu6_compute_processes": [],
+  "assignment": {
+    "ep72-5861eb1e5d15e433": 5,
+    "ep72-cc94a9639dbc9e14": 5,
+    "ep72-9033adcfed953617": 5,
+    "ep72-c05056638abc3aa1": 2,
+    "ep72-e1700dc872989b76": 2,
+    "ep72-378f16062ffdfef0": 6,
+    "ep72-d9d03ab7d419d1e5": 3,
+    "ep72-6fddad058477a028": 3
+  },
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

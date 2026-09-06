@@ -1,0 +1,12 @@
+{
+  "schema": "splart-node7.2-explicit-delta/v1",
+  "gpu": 2,
+  "episodes": [
+    {"episode_id": "ep72-c05056638abc3aa1", "object_id": "rec_usb_drive_with_swivel_cover_51cc52fef9af494181cb1158a4481abf"},
+    {"episode_id": "ep72-e1700dc872989b76", "object_id": "microwave"}
+  ],
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

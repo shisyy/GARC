@@ -1,0 +1,49 @@
+{
+  "assignment": {
+    "gpu2": [
+      "ep72-c05056638abc3aa1",
+      "ep72-e1700dc872989b76",
+      "ep72-378f16062ffdfef0"
+    ],
+    "gpu3": [
+      "ep72-d9d03ab7d419d1e5",
+      "ep72-6fddad058477a028"
+    ],
+    "gpu5": [
+      "ep72-5861eb1e5d15e433",
+      "ep72-cc94a9639dbc9e14",
+      "ep72-9033adcfed953617"
+    ]
+  },
+  "checks": {
+    "all_checks_pass": true,
+    "completed_14": true,
+    "delta_no_duplicates": true,
+    "delta_union_exact_pending": true,
+    "no_completed_or_running_in_delta": true,
+    "o_excl_atomic_claim": true,
+    "pending_8": true,
+    "public_roster_24": true,
+    "roster_partition_complete": true,
+    "runner_parents_stopped": true,
+    "running_2": true
+  },
+  "completed_episode_count": 14,
+  "input_hashes": {
+    "delta_gpu2": "0875101e93c044f80b08a2c46ef586c296da21b25b47a331e14fe8c90eb16952",
+    "delta_gpu3": "1c1c7292d3836fc5fb7ac7723035abc02e7cb8313161d8c8a22846a2a2eb1d3d",
+    "delta_gpu5": "ebcfc0f1f4038381ec6af65da26ecbbf375732e278ef4108710b09020690d76c",
+    "manifest": "79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f",
+    "receipt_gpu2": "5f8424a6f1fdaf1c9ae73fea6a18b1a29a3d32a21a99b7fc7eb7003edefdb00a",
+    "receipt_gpu3": "91307d73a36149cd07d4a5937970446368a0fbe253f238a86387bda32672256a",
+    "runner": "b05644154af2ba740caec716087bd9afaa74e10c4537f4c183c1662c02c78edf"
+  },
+  "pending_episode_count": 8,
+  "protected_files_read": [],
+  "running_episode_count": 2,
+  "schema": "splart-node7.2-queue-handoff/v1",
+  "score_files_read": [],
+  "sealed_files_read": [],
+  "status": "PASS",
+  "target_files_read": []
+}

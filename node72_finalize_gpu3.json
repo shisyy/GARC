@@ -1,0 +1,21 @@
+{
+  "checkpoint_sha256": "eab7cee3843d66d962513d950fea19796a6783fc4630731550c219b332f81ce6",
+  "completed_episode_id": "ep72-71db976254df3c9d",
+  "gpu": 3,
+  "handed_off": {
+    "ep72-378f16062ffdfef0": 6,
+    "ep72-6fddad058477a028": 3,
+    "ep72-cc94a9639dbc9e14": 5,
+    "ep72-d9d03ab7d419d1e5": 3
+  },
+  "log_sha256": "955b2f8fea9586540ebb657600d03d34ea8b1d7b69ba3523e0bf8512d286dd8f",
+  "old_parent_terminated": true,
+  "preserved_receipt_sha256": "91307d73a36149cd07d4a5937970446368a0fbe253f238a86387bda32672256a",
+  "protected_files_read": [],
+  "schema": "splart-node7.2-stopped-worker-finalization/v1",
+  "score_files_read": [],
+  "sealed_files_read": [],
+  "status": "PASS",
+  "target_files_read": [],
+  "updated_receipt_sha256": "1d593800f19e11ac77ca0851ff14ec186afee40975d778d691185dd72a909a98"
+}
