@@ -44,11 +44,11 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
 
-**Insight**: The target-unread protocol defects are fixed and the exact frozen runtime now implements the shared distance-plus-scale head, deterministic train18 fit, strong comparators, joint conformal, aggregate-only output, private-field denial, and terminal rerun guard. Sixteen tests pass; launch remains gated on 36 profiles and sealed-split P0.
+**Insight**: The frozen runtime and corrected target-unread protocol are complete. Twenty added-object profiles pass the public contract; no head has been trained and evaluator launch remains gated on all 36 profiles plus sealed-split and independent source/request P0.
 
-**Result**: Runtime commit a857374; 16/16 synthetic/public-interface tests PASS; canonical addendum SHA256 654af6acc3cf1b9cffbd8251ef04619a79a429414b667b0002d2c93c3154b172; launch_authorized=false.
+**Result**: Runtime/protocol frozen; 20/24 new profiles complete; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; launch_authorized=false.
 
-**Branch**: a857374
+**Branch**: d94136c
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
@@ -180,8 +180,8 @@ Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol remove
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
 Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
 
-**Insight**: Sixteen of 24 added objects now have fresh step24999 checkpoints and audited target-free profiles. The remaining eight are covered exactly once by atomically claimed GPU2/3/5/6 queues; GPU7 remains isolated for incremental profile export.
+**Insight**: Twenty of 24 added objects now have fresh step24999 checkpoints and audited target-free profiles. The final eight-object queue is exactly covered by atomic claims across GPUs2/3/4/5/6/7; four trains remain and idle cards export only new profiles.
 
-**Result**: 16/24 added-object profiles sealed; cumulative index SHA256 3ef628cef1d118e0646a3c8e5e0797d11e44ef85aee7e5bd98cbee7eec83eaae; queue audit PASS SHA256 30cef6583af23fa38f7d518c0905f7526d25c1e6cbd043b003d75591864fb1e5.
+**Result**: 20/24 added-object profiles sealed; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; final queue audit PASS SHA256 32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97.
 
-**Branch**: 1c50270
+**Branch**: ca3712e

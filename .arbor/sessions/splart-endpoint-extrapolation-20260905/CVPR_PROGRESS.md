@@ -201,17 +201,18 @@ independent audit SHA256:
 Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
 writing a step-9 checkpoint. After 16/24 fresh step-24999 checkpoints completed,
 the remaining eight objects were redistributed without redraw across GPUs
-2/3/5/6 using explicit disjoint lists and `O_CREAT|O_EXCL` claims. The queue
-coverage audit proves `16 complete + 8 delta = 24`, with no duplicate or
+2/3/4/5/6/7 using explicit disjoint lists and `O_CREAT|O_EXCL` claims. The final
+queue coverage audit proves `16 complete + 8 delta = 24`, with no duplicate or
 omitted object (SHA256
-`30cef6583af23fa38f7d518c0905f7526d25c1e6cbd043b003d75591864fb1e5`).
+`32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97`).
+Twenty of 24 checkpoints have now completed. The task shared GPU4 only after
+five stable samples showed more than 46 GiB free; it did not stop or modify the
+long-running VLLM process.
 All active logs confirm fresh random initialization and no checkpoint load.
-GPU4 is not used because it hosts an unrelated VLLM process, and GPU7 is
-reserved for profile export. No split, target, sealed mapping, score, B_test,
-or Full22 file has been read.
+No split, target, sealed mapping, score, B_test, or Full22 file has been read.
 
-GPU7 subsequently became genuinely idle and is used for incremental
-target-free profile export without interrupting training. All first-sixteen
+Any naturally idle task GPU is used for incremental target-free profile export
+without interrupting training. All first-twenty
 profiles pass shape
 `[2,3,257,9]`, step-24999, artifact-rehash, exact clean D2 provenance, and
 base-state-before/after equality checks. Incremental index SHA256 values are
@@ -221,10 +222,13 @@ for the first six and
 `90d671d5c825a7f3e5430fd7ed02ccb72eb3c25bdec8eb7328ffd63ca38ac627`,
 `b5604d5ac202921bf17e55af495f568ca5adcdab841dde30bea7a916dd6c85db`,
 `82faad8386eff9e14256608cd0649eff21285bb88995477b7d2e9741fca49925`,
-and `05e7b9a81c968c32e25b8d19033ebea80ef78ce47167fa3403fb4365e03202be`
-for the subsequent two-object batches.
-The immutable reference-only cumulative 16-object index SHA256 is
-`3ef628cef1d118e0646a3c8e5e0797d11e44ef85aee7e5bd98cbee7eec83eaae`.
+`05e7b9a81c968c32e25b8d19033ebea80ef78ce47167fa3403fb4365e03202be`,
+`c170c0984cc72e137c306fe005d1c7240cd3d770d985f277a8e585c3048ccd63`,
+`f9f590597da64097ae94a906a64b016d819f13817c0f81ac171a13a06aac7ef8`,
+and `95ff77f7869f60978bd2dc95f24c5afcfa36f0c2b13869da23dea3c19bc69bcc`
+for the subsequent two- or one-object batches.
+The immutable reference-only cumulative 20-object index SHA256 is
+`7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967`.
 No head training or protected-data access occurred.
 
 ## Remaining blockers before a complete CVPR evidence loop
