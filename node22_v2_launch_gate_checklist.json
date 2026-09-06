@@ -1,0 +1,90 @@
+{
+  "schema": "splart-node22-v2-launch-gate-checklist/v1",
+  "decision_rule": "Every P0 item must pass before the v2 evaluator may deserialize truth. Because confirmatory evaluation is one-shot, all CVPR baselines and ablations must have target-free predictions or frozen executable definitions before launch.",
+  "protected_inputs": [
+    "B_test",
+    "Full22",
+    "sealed target values",
+    "sealed split membership"
+  ],
+  "p0": [
+    {
+      "id": "V1-TERMINAL-EVIDENCE",
+      "requirement": "A sanitized immutable receipt proves v1 ended FAILED_TERMINAL immediately after truth deserialization: optimizer/model/calibration/confirmatory/result creation all false, and neither membership nor target values were emitted or observed by a human."
+    },
+    {
+      "id": "V1-RUNNER-BINDING",
+      "requirement": "The receipt runner SHA-256 equals supersedes_runner_sha256 and includes hashes of RUN_GUARD, stdout, stderr, and the artifact inventory."
+    },
+    {
+      "id": "V2-EXACT-SCHEMA",
+      "requirement": "The parser fail-closes on the exact public-builder local_endpoint_targets schema and reads extension0/extension1_observation_units only."
+    },
+    {
+      "id": "V2-NMAE-UNITS",
+      "requirement": "Each side residual and interval width is converted from observation units with that object's target_nmae_normalization.local_scalar_error_multiplier before aggregation."
+    },
+    {
+      "id": "V2-DUAL-SIDE-MAX",
+      "requirement": "The primary object endpoint score is max(lower_endpoint_nmae, upper_endpoint_nmae), never a mean across endpoints."
+    },
+    {
+      "id": "V2-OBJECT-CONFORMAL",
+      "requirement": "Calibration uses one score per object, max over the two standardized side residuals, and rank ceil((9+1)*0.9)=9; confirmatory objects are evaluation-only."
+    },
+    {
+      "id": "V2-SPLIT-FIREWALL",
+      "requirement": "Exactly 18/9/9 object-disjoint train/calibration/confirmatory sets are enforced and no target, membership, metric, checkpoint, or exception changes training or rerun decisions."
+    },
+    {
+      "id": "V2-ONE-SHOT-SUPERSESSION",
+      "requirement": "v1 remains terminal; v2 uses a new output root and one new milestone only; no v3; method/config/seed/split/salt/targets remain byte-bound; every implementation repair is enumerated and the frozen v2 runner hash is recorded."
+    },
+    {
+      "id": "V2-INDEPENDENT-P0",
+      "requirement": "An independent public-source/request P0 receipt binds the v2 runner and authorizes exactly one v2 execution."
+    },
+    {
+      "id": "PROTECTED-SPLITS",
+      "requirement": "The evaluator, launch gate, receipts, and request prohibit B_test and Full22."
+    },
+    {
+      "id": "D2-BASELINE-EXPORTS",
+      "requirement": "Target-free exact predictions are frozen for scratch, symmetric-linear, train18 global-prior, train18 range-prior, full D2, and all D2 ablations before confirmatory targets are read."
+    },
+    {
+      "id": "HEAD-NULLS-AND-ABLATIONS",
+      "requirement": "The same one-shot evaluator includes frozen-D2/no-learned-head, coordinate-only, scalar-only MLP, pooled-summary MLP, fixed-permutation, unshared-head, and otherwise-identical shared-distance-only controls."
+    }
+  ],
+  "p1": [
+    {
+      "id": "D2-SUCCESS",
+      "requirement": "Full D2 improves the preregistered primary object score over scratch, symmetric, and both train18 priors; report every object and aggregate without selection."
+    },
+    {
+      "id": "D2-ABLATION-SUCCESS",
+      "requirement": "Full D2 outperforms no-contact, no-penetration, no-terminal-support, and single-radius ablations on the frozen aggregate."
+    },
+    {
+      "id": "HEAD-SUCCESS",
+      "requirement": "The shared full head improves endpoint NMAE over frozen D2 and the preregistered learned/null controls, while retaining the exact swap audit."
+    },
+    {
+      "id": "CONFORMAL-REPORTING",
+      "requirement": "Report simultaneous object coverage and NMAE-normalized width for learned-scale and constant-radius intervals; width is descriptive and cannot be called superior without a preregistered matched-coverage test."
+    },
+    {
+      "id": "INDEPENDENT-GAIN",
+      "requirement": "D2 is established before the head, and the head's confirmatory gain is measured over the frozen D2 output without changing D2 or selecting on calibration/confirmatory outcomes."
+    }
+  ],
+  "allowed_claim_if_p0_only": "A transparently superseding evaluator run repaired a pre-optimization schema/metric implementation defect without changing the frozen experimental design; it is not a pristine first-attempt one-shot.",
+  "forbidden_claims": [
+    "pristine first-attempt one-shot evaluation",
+    "endpoint NMAE when observation-unit errors were averaged directly",
+    "simultaneous endpoint guarantee from marginal or sample-level calibration",
+    "general object-level improvement without the preregistered baselines and ablations",
+    "B_test or Full22 generalization before a separate untouched final evaluation"
+  ]
+}
