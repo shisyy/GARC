@@ -44,11 +44,11 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
 
-**Insight**: A target-unread audit closed three protocol defects before evaluator launch: all training choices are frozen, duplicate nulls are replaced by strong comparators, and conformal coverage is object-level joint with width descriptive only. Cross-platform canonical-JSON binding passes 4/4 tests; launch stays gated on all 36 profiles and sealed-split P0.
+**Insight**: The target-unread protocol defects are fixed and the exact frozen runtime now implements the shared distance-plus-scale head, deterministic train18 fit, strong comparators, joint conformal, aggregate-only output, private-field denial, and terminal rerun guard. Sixteen tests pass; launch remains gated on 36 profiles and sealed-split P0.
 
-**Result**: Superseding protocol frozen at 94fa7ce plus line-ending-invariant P0 fix 9268db9; canonical addendum SHA256 654af6acc3cf1b9cffbd8251ef04619a79a429414b667b0002d2c93c3154b172; launch_authorized=false.
+**Result**: Runtime commit a857374; 16/16 synthetic/public-interface tests PASS; canonical addendum SHA256 654af6acc3cf1b9cffbd8251ef04619a79a429414b667b0002d2c93c3154b172; launch_authorized=false.
 
-**Branch**: 9268db9
+**Branch**: a857374
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.

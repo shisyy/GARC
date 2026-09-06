@@ -130,6 +130,11 @@ and a profile-conditioned scale with object-level joint conformal scores. Width
 is now descriptive rather than a promotion gate. The platform-independent P0
 binds canonical JSON hashes and passes 4/4 tests at trunk commits `94fa7ce` and
 `9268db9`; evaluator launch deliberately remains unauthorized.
+The matching executable runtime is frozen at `a857374`: it implements the
+shared distance-plus-scale head, all preregistered comparators, deterministic
+train18-only fitting, joint conformal calibration, aggregate-only output,
+recursive private-field denial, and terminal rerun guards. Its synthetic and
+public-interface suite passes 16/16 tests without opening any private data.
 
 The head and real-data adapter are implemented at commits `bbc03b1` and
 `c071a05`; 52/52 tests pass. The adapter independently verified all 12 public
