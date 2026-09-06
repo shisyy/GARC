@@ -44,11 +44,11 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
 
-**Insight**: All 12 target-free energy profiles are frozen and pass shape, rehash, step24999, clean D2 provenance, and base-state invariance checks. Independent protocol review blocks head training: the original preregistration omitted a fixed object split, and 12 objects cannot provide >=9 calibration objects plus honest head-train and confirmatory sets for exact 90% split conformal. No targets or scores were exposed; a prospective label-unread dataset extension is required.
+**Insight**: The node7.2 target-free adapter now accepts ep72 IDs and the new public/model roots, rejects any incomplete/nonzero-return worker or nonempty protected read list, and freezes checkpoint/config/dataparser hashes plus runtime base-state invariance. CPU dry-run passes for the first 4 completed new checkpoints without starting GPU export or head training.
 
-**Result**: 12/12 target-free profiles merged under index SHA256 328e9dffd2e8d9ad5c7372160bf3ca3ab7f2f076d72520a2fc5cc00d1ced3985. Head training is pending a prospective, deterministic, sufficiently large object split; B_test/Full22 remain sealed.
+**Result**: Node7.2 incremental CPU preflight READY_FOR_IDLE_GPU: 4/4 file triples rehash PASS; manifest SHA256 c0898c7c54a54417ef50fa0f2df09a048817d463dc09898a7c36c0d3c795f4c2; receipt SHA256 196bf0f08e8cd04037b484cd059e2e84ee07ab7d8c0760d5066f7845bbd40d8b. GPU2/3 remain reserved for scratch training and GPU4 is unrelated.
 
-**Branch**: 81e094f
+**Branch**: 5655fc1
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
