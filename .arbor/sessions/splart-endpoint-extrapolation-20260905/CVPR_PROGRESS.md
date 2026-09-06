@@ -32,8 +32,11 @@ B_test and Full22 remain protected and unread.
 
 Against the two meaningful non-learning baselines, D2 full lowers NMAE by
 29.6% relative to symmetric linear and 32.7% relative to the independent
-global range prior. The no-contact development variant is the candidate to
-freeze before blind evaluation; this selection is based only on B_dev.
+global range prior. Although no-contact was slightly better on Box v4, the
+preregistered Box a-f stability test rejected deleting contact: episode-macro
+NMAE was `0.154877` for full versus `0.155311` for no-contact, with no-contact
+winning only 2/6 episodes and slightly degrading all six reconstruction/
+penetration macro metrics. Full D2 therefore remains the frozen candidate.
 
 Independent P0 receipt for D2 full:
 `f65f28f9d80f5057d7ce0dc374982dc931418d151f2652cff7884dd0fe6e0a30`.
@@ -50,8 +53,12 @@ Independent P0 receipt for D2 full:
 
 The causal mechanism supported by this ablation is multi-scale geometric
 profiling plus penetration avoidance. The explicit contact term is slightly
-detrimental on this development case, and terminal-support is numerically
-neutral. Paper naming and claims must reflect this attribution.
+detrimental on canonical v4 but weakly beneficial across the preregistered a-f
+stability set; terminal-support is numerically neutral on v4. Paper naming and
+claims must reflect this mixed but correctly attributed evidence.
+
+Box a-f full/no-contact summary artifact SHA256:
+`042aa620df04a8648cf090bbc7eaf822a9b438159127f3730d19def6da6d42a2`.
 
 ## FECF null audit: claim withdrawn
 
