@@ -1,0 +1,31 @@
+{
+  "schema": "splart-node7.2-gpu5-guardian-attempt-ledger/v1",
+  "attempts": [
+    {
+      "attempt": "v1",
+      "status": "cancelled_before_finalization",
+      "reason": "The finalizer needed an explicit redistribution log path; the polling guardian was replaced before the child completed.",
+      "remote_log": "/data1/public/yptang/splart-endpoint-node72-data/redistribution-v1/gpu5_handoff_guardian.log",
+      "remote_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "attempt": "v2",
+      "status": "failed_closed",
+      "reason": "The finalizer still used the original worker receipt root instead of the redistribution receipt root; no finalization mutation occurred.",
+      "remote_log": "/data1/public/yptang/splart-endpoint-node72-data/redistribution-v1/gpu5_handoff_guardian-v2.log",
+      "remote_log_sha256": "9432ada48e781939504c30f73087544617ece15f75907205e5fd40ac49f44af1"
+    },
+    {
+      "attempt": "v3",
+      "status": "PASS",
+      "reason": "Explicit redistribution log and receipt paths were supplied; finalization and existing-claim skip verification completed.",
+      "remote_log": "/data1/public/yptang/splart-endpoint-node72-data/redistribution-v1/gpu5_handoff_guardian-v3.log",
+      "remote_log_sha256": "95f6e97c7bb3ed4a03f4caaf28001f739e5b9bac9f0d0ea112390ac1ba196ffe",
+      "receipt_sha256": "b3f1c29b667183d92473b013a5ca7bb3c48611a08d3a6e8aadce18ae191d843e"
+    }
+  ],
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

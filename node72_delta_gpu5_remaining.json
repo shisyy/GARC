@@ -1,0 +1,13 @@
+{
+  "schema": "splart-node7.2-explicit-delta/v1",
+  "gpu": 5,
+  "purpose": "verify that externally claimed pending objects are skipped",
+  "episodes": [
+    {"episode_id": "ep72-cc94a9639dbc9e14", "object_id": "rec_usb_drive_with_swivel_cover_0003"},
+    {"episode_id": "ep72-9033adcfed953617", "object_id": "cooler"}
+  ],
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

@@ -129,9 +129,23 @@ def main():
             try:
                 descriptor = os.open(claim_path, flags, 0o600)
             except FileExistsError:
-                status.update({"status": "blocked_existing_claim", "finished_at": now()})
+                existing_claim = json.loads(claim_path.read_text())
+                if (
+                    existing_claim.get("episode_id") != episode_id
+                    or existing_claim.get("object_id") != row["object_id"]
+                    or existing_claim.get("status") not in {"claimed", "running", "complete"}
+                ):
+                    status.update({"status": "blocked_invalid_existing_claim", "finished_at": now()})
+                    write_json_atomic(args.receipt, receipt)
+                    raise SystemExit(f"invalid existing claim: {claim_path}")
+                status.update({
+                    "status": "skipped_existing_claim",
+                    "existing_claim_gpu": existing_claim.get("gpu"),
+                    "existing_claim_path": str(claim_path),
+                    "finished_at": now(),
+                })
                 write_json_atomic(args.receipt, receipt)
-                raise SystemExit(f"claim already exists: {claim_path}")
+                continue
             with os.fdopen(descriptor, "w") as handle:
                 handle.write(claim_payload)
                 handle.flush()

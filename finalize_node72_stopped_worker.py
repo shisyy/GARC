@@ -45,6 +45,8 @@ def main():
     parser.add_argument("--session", required=True)
     parser.add_argument("--current", required=True)
     parser.add_argument("--assignment", required=True, type=Path)
+    parser.add_argument("--log-path", type=Path)
+    parser.add_argument("--receipt-path", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     if args.output.exists():
@@ -54,11 +56,11 @@ def main():
     if state(args.parent_pid) != "T":
         raise RuntimeError("old runner parent is not stopped")
     checkpoint = args.root / "scratch-25k-v1/model_ckpts" / args.current / "splart/node72-scratch25k-v1/nerfstudio_models/step-000024999.ckpt"
-    log = args.root / "scratch-25k-v1/logs" / f"{args.current}.log"
+    log = args.log_path or args.root / "scratch-25k-v1/logs" / f"{args.current}.log"
     log_text = log.read_text(errors="replace")
     if not checkpoint.is_file() or FRESH not in log_text or ERRORS.search(log_text):
         raise RuntimeError("completed child evidence failed")
-    receipt_path = args.root / f"scratch-25k-v1/receipts/worker-gpu{args.gpu}.json"
+    receipt_path = args.receipt_path or args.root / f"scratch-25k-v1/receipts/worker-gpu{args.gpu}.json"
     evidence = args.root / "redistribution-v1/evidence/pre-handoff-receipts"
     evidence.mkdir(parents=True, exist_ok=True)
     preserved = evidence / receipt_path.name

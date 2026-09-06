@@ -1,0 +1,32 @@
+{
+  "schema": "splart-node7.2-gpu4-gpu7-handoff-addendum/v1",
+  "reason": "GPU7 became idle after profile export and GPU4 had a stable low-memory resident service with more than 40 GiB free.",
+  "selection_rule": "Sort the two unclaimed GPU5 pending episode IDs lexically; send the first to GPU7 and the second to GPU4. No model result was consulted.",
+  "unclaimed_at_freeze": ["ep72-9033adcfed953617", "ep72-cc94a9639dbc9e14"],
+  "assignment": {
+    "ep72-9033adcfed953617": 7,
+    "ep72-cc94a9639dbc9e14": 4
+  },
+  "gpu7_evidence": {
+    "memory_used_mib": 4,
+    "memory_free_mib": 48547,
+    "utilization_percent": 0,
+    "compute_processes": [],
+    "profile_export_processes": []
+  },
+  "gpu4_evidence": {
+    "resident_pid": 20277,
+    "resident_owner": "root",
+    "resident_command": "VLLM::EngineCore",
+    "resident_elapsed_seconds": 911601,
+    "resident_memory_mib": 1588,
+    "five_sample_memory_used_mib": [1598, 1598, 1598, 1598, 1598],
+    "five_sample_utilization_percent": [0, 0, 0, 0, 0],
+    "free_memory_mib": 46954,
+    "policy": "coexist only; never signal, modify, or restart the resident VLLM"
+  },
+  "score_files_read": [],
+  "target_files_read": [],
+  "sealed_files_read": [],
+  "protected_files_read": []
+}

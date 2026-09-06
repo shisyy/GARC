@@ -1,0 +1,17 @@
+{
+  "completed_at": "2026-09-06T22:19:08.731140+00:00",
+  "finalize_receipt_sha256": "0debbe40c828a744304d84e8960513ee44e22b025646f99a1b2fbadc57d80d4f",
+  "old_stopped_parent_exists": false,
+  "protected_files_read": [],
+  "schema": "splart-node7.2-gpu5-handoff-guardian/v1",
+  "score_files_read": [],
+  "sealed_files_read": [],
+  "skip_verification_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "skip_verification_receipt_sha256": "d03ce9dc1133c40c4eadfed4bb99300e93a970a12f65e9c01476ecdba11aa9ed",
+  "status": "PASS",
+  "target_files_read": [],
+  "verified_external_claims": {
+    "ep72-9033adcfed953617": 7,
+    "ep72-cc94a9639dbc9e14": 4
+  }
+}

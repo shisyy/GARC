@@ -1,0 +1,37 @@
+{
+  "finished_at": "2026-09-06T22:19:08.721026+00:00",
+  "gpu": 5,
+  "initialization": "fresh random; no checkpoint/load/resume",
+  "max_num_iterations": 25000,
+  "num_shards": 6,
+  "objects": [
+    {
+      "episode_id": "ep72-cc94a9639dbc9e14",
+      "existing_claim_gpu": 4,
+      "existing_claim_path": "/data1/public/yptang/splart-endpoint-node72-data/redistribution-v1/claims/ep72-cc94a9639dbc9e14.json",
+      "finished_at": "2026-09-06T22:19:08.692474+00:00",
+      "launch_free_memory_mib": 48547,
+      "launch_output_free_mib": 4310609,
+      "object_id": "rec_usb_drive_with_swivel_cover_0003",
+      "status": "skipped_existing_claim"
+    },
+    {
+      "episode_id": "ep72-9033adcfed953617",
+      "existing_claim_gpu": 7,
+      "existing_claim_path": "/data1/public/yptang/splart-endpoint-node72-data/redistribution-v1/claims/ep72-9033adcfed953617.json",
+      "finished_at": "2026-09-06T22:19:08.720760+00:00",
+      "launch_free_memory_mib": 48547,
+      "launch_output_free_mib": 4310609,
+      "object_id": "cooler",
+      "status": "skipped_existing_claim"
+    }
+  ],
+  "protected_files_read": [],
+  "schema": "splart-order-scratch-worker/v1",
+  "score_files_read": [],
+  "sealed_files_read": [],
+  "sealed_mapping_read": false,
+  "shard_index": 5,
+  "started_at": "2026-09-06T22:19:08.623240+00:00",
+  "target_files_read": []
+}

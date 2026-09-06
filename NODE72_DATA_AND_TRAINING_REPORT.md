@@ -70,7 +70,32 @@ children completed step 24999 naturally; their logs and checkpoints were
 verified, original receipts preserved, stale rows superseded, and both stopped
 parents terminated. There are no residual stopped processes.
 
-The remaining eight-object queue is now covered exactly once across GPU2/3/5/6
-with 2/2/3/1 objects. Every launched episode owns a mode-0600 atomic claim and
-starts from random initialization. The queue coverage/receipt-hash audit passed
-with SHA256 `30cef6583af23fa38f7d518c0905f7526d25c1e6cbd043b003d75591864fb1e5`.
+The initial remaining eight-object queue was covered exactly once across
+GPU2/3/5/6 with 2/2/3/1 objects. Every launched episode owns a mode-0600 atomic
+claim and starts from random initialization. The initial queue
+coverage/receipt-hash audit passed with SHA256
+`30cef6583af23fa38f7d518c0905f7526d25c1e6cbd043b003d75591864fb1e5`.
+
+## GPU4/GPU7 resource addendum
+
+After GPU7's profile export exited, GPU7 had no compute process and 48,547 MiB
+free. GPU4's only resident compute process was root-owned VLLM PID 20277; five
+samples showed a stable 1,598 MiB allocation, zero utilization, and 46,954 MiB
+free. The VLLM process was neither signalled nor modified. The two still
+unclaimed GPU5 episodes were sorted lexically without consulting results:
+`ep72-9033adcfed953617` was atomically claimed by GPU7 and
+`ep72-cc94a9639dbc9e14` by GPU4. Both started fresh 25k training.
+
+GPU5 completed its already-running object at step 24999. A fail-closed guardian
+then preserved the original receipt, finalized the completion, terminated the
+stopped runner parent, and ran the same worker over the two diverted episodes.
+The worker validated both external claims and marked both
+`skipped_existing_claim`; it did not launch duplicate training. GPU5 was then
+fully released. Guardian receipt SHA256 is
+`b3f1c29b667183d92473b013a5ca7bb3c48611a08d3a6e8aadce18ae191d843e`.
+
+The final assignment is GPU2/3/4/5/6/7 = 2/2/1/1/1/1 objects. The final audit
+verifies eight unique objects, exact frozen pending-set coverage, claims matching
+that assignment, the GPU5 skip behavior, removal of the stopped parent, and no
+protected reads. Audit SHA256 is
+`32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97`.
