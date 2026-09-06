@@ -1,0 +1,8 @@
+{
+  "node_id": "4",
+  "hypothesis": "Mechanism: Paired-Interior Limit Calibrator (PILC) learns a state-swap-equivariant dual-endpoint and selective closed-side posterior from canonicalized static/mobile surface features plus the observed relative screw transform; object-disjoint training may use limit labels, but runtime receives no URDF, limits, or absolute state fractions.\nHypothesis: A learned geometric support prior can resolve the upper-end bias left by D2-CEA and provide calibrated nonzero closed-side coverage without changing the 3DGS reconstruction.\nObservable: On pre-registered held-out episodes, endpoint NMAE falls below 0.070, closed-side coverage is at least 0.5 with reported risk, terminal validity is positive, and state-swap/order consistency tests pass.\nConflicts: Category/range memorization, reversible metadata leakage, and genuinely unidentifiable partial surfaces could create false confidence; require object-disjoint splits, metadata audit, geometry-only/statistical ablations, and unknown abstention.",
+  "score": 0.0951539351,
+  "insight": "PILC learns genuine geometry-conditioned endpoint signal on object-disjoint Articraft and perfect selective closed-side classification on Box, but endpoint transfer to NJC/Box remains weak and terminal contact remains invalid; geometry-domain alignment is now the limiting factor.",
+  "result": "Frozen triplet macro endpoint NMAE 0.08396856, closed coverage/accuracy 1/1, terminal validity 0. Canonical v4 NMAE 0.09515394 failed the 0.070 gate and was worse than D2 0.08572745; node not merge eligible.",
+  "branch": "arbor/node-4-pilc@fadc2ceff3c2d8c36cf69f48b706be927e839c34"
+}

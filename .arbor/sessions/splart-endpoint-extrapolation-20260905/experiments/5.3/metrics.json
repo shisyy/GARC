@@ -1,0 +1,8 @@
+{
+  "node_id": "5.3",
+  "hypothesis": "Mechanism: Equivariant Null-Model Audit evaluates FECF against observation-order-aware canonical-side priors, a zero-geometry closed head, shuffled geometry, and label-frequency controls while counting only original objects as independent samples.\nHypothesis: The prior constant-local-lower control was not a valid group-equivariant null model; if FECF learned closure evidence rather than dataset ordering, it must outperform null predictors that transform labels correctly under state swap.\nObservable: On frozen c/d/e/f and retrospective v4/a/b without retraining or threshold changes, report object-level balanced accuracy, Brier score, NLL, coverage-risk, and exact swap residual; revoke the FECF innovation claim if any zero-geometry equivariant control ties its decisions or calibration.\nConflicts: Node 5 passed only against a non-equivariant constant-side baseline and all original episodes used local-lower closure; this node directly tests that hidden shortcut instead of adding more deterministic swap copies.",
+  "score": 50.0,
+  "insight": "The current FECF evidence is invalid as a geometry-dependent closure claim: all seven original Box episodes share canonical outside_state_0, an order-aware zero-geometry prior ties 100% decisions with better Brier/NLL, and cyclically shuffled geometry preserves FECF metrics.",
+  "result": "Preregister 597bf4d, final e65829b, 40 tests. Fresh c/d/e/f FECF object BA 1.0 but canonical prior BA 1.0/Brier 0/NLL about 1e-12 and shuffled geometry exact; primary fail rule triggered. No B_test/Full22.",
+  "branch": "arbor/node-5-3-equivariant-null-audit@e65829b"
+}

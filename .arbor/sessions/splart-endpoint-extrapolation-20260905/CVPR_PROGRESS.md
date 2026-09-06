@@ -1,0 +1,148 @@
+# SplArt Endpoint Extrapolation: CVPR Evidence Ledger
+
+## Current verdict
+
+The defensible paper target is **kinematic endpoint extrapolation from two
+strictly interior states**, not physical stopper/contact prediction.
+
+One method contribution is validated on the current Box development object:
+multi-radius, penetration-aware D2 endpoint search. The former FECF
+closed-side head is withdrawn as a second innovation because a zero-geometry,
+observation-order-aware prior matches its decisions and improves its
+calibration. A replacement second contribution, a gauge-equivariant
+dual-boundary energy-profile head with object-level conformal intervals, is
+preregistered as Arbor node 2.2 but has not yet passed confirmatory evaluation.
+
+B_test and Full22 remain protected and unread.
+
+## Development result: canonical Box v4
+
+| Metric | Scratch SplArt | D2 full | D2 no-contact | Symmetric linear | Global range prior |
+|---|---:|---:|---:|---:|---:|
+| Endpoint NMAE down | 0.310881 | 0.085727 | **0.084910** | 0.121763 | 0.127391 |
+| Lower NMAE down | 0.314698 | 0.011616 | **0.011621** | 0.125579 | 0.131207 |
+| Upper NMAE down | 0.307065 | 0.159839 | **0.158198** | 0.117947 | 0.123575 |
+| PSNR up | 23.1807 | 26.8976 | **26.9066** | 25.3263 | 25.2318 |
+| SSIM up | 0.808770 | **0.829077** | 0.829070 | 0.821725 | 0.821425 |
+| LPIPS down | 0.219408 | 0.165690 | **0.165440** | 0.183776 | 0.185119 |
+| Depth MAE down | 0.429544 | 0.174547 | **0.173214** | 0.201093 | 0.208748 |
+| mIoU up | 0.705265 | 0.819786 | **0.820359** | 0.790505 | 0.786964 |
+| Closed coverage | 0 | 0 | 0 | 0 | 0 |
+| Terminal validity | 0 | 0 | 0 | 0 | 0 |
+
+Against the two meaningful non-learning baselines, D2 full lowers NMAE by
+29.6% relative to symmetric linear and 32.7% relative to the independent
+global range prior. The no-contact development variant is the candidate to
+freeze before blind evaluation; this selection is based only on B_dev.
+
+Independent P0 receipt for D2 full:
+`f65f28f9d80f5057d7ce0dc374982dc931418d151f2652cff7884dd0fe6e0a30`.
+
+## Component attribution
+
+| Variant | Endpoint NMAE down | PSNR up | Depth MAE down | mIoU up |
+|---|---:|---:|---:|---:|
+| Full D2 | 0.085727 | 26.8976 | 0.174547 | 0.819786 |
+| Single radius | 0.122296 | 25.5546 | 0.216294 | 0.787295 |
+| No contact | **0.084910** | **26.9066** | **0.173214** | **0.820359** |
+| No penetration | 0.127866 | 25.3819 | 0.221466 | 0.783604 |
+| No terminal support | 0.085638 | 26.8979 | 0.174395 | 0.819850 |
+
+The causal mechanism supported by this ablation is multi-scale geometric
+profiling plus penetration avoidance. The explicit contact term is slightly
+detrimental on this development case, and terminal-support is numerically
+neutral. Paper naming and claims must reflect this attribution.
+
+## FECF null audit: claim withdrawn
+
+All seven original Box episodes use the same canonical closed side. On fresh
+c/d/e/f objects-as-episodes, FECF has balanced accuracy 1.0, but a
+zero-geometry swap-equivariant canonical-side prior also has balanced accuracy
+1.0 and achieves better Brier/NLL. Cyclically shuffling the geometry preserves
+FECF predictions and calibration.
+
+Therefore FECF currently demonstrates coordinate equivariance only, not
+geometry-dependent closure understanding, and is not counted as an innovation.
+Audit artifact SHA256:
+`43f126baaed78f136f278f3d6e6bf34e4552517f3c461c5efe807c94c327420b`.
+
+## Object-level protocol gate
+
+The native 144-object inventory is heavily authoring-biased: q=0 maps to the
+lower limit for 119 objects, upper for 2, interior for 3, and is unbounded for
+20. Honest native 6/6 lower/upper balancing is impossible without selection.
+
+Node 7.1 therefore freezes 12 unique objects by a label-independent hash, then
+uses an independent secret-salt ranking and rank parity to assign presentation
+order. Every object appears once; swaps are transformations, not extra samples.
+The sealed targets are exactly 6 outside_state0 and 6 outside_state1, while
+constant-index/order-only controls are exactly 50%. Public paths and metadata
+leak none of the order bit, rank, near/far side, canonical side, limits,
+fractions, or outside target. The selected set happens to contain 12 revolute
+objects; it was not redrawn to manufacture joint-type coverage.
+
+- Protocol commit: `f781a40193c1ee5ff6b7a421a33345e7d8da4208`
+- Public manifest SHA256: `b10b61f7022f81a0b6e62c7fc03a7b37f376b40dd6dc67b12baec1d664e41274`
+- Audit SHA256: `1163b08863ed56ee659a3e390be394c4932a802aeb5b1d904d8b0ea7679720c6`
+- Sealed mapping SHA256: `8ddedecb2c86b19bb443976728dc59a4f0397f33d0e3d9db18c0c7d559424c6a`
+- Independent P0 receipt SHA256: `a54d197246a4dc6af1d9ebbab8d6c353c427f0c2d05dd8486333b1e19a4d5ebc`
+
+This balances presentation order only. It does not create physical terminal
+labels or repair canonical lower/upper authoring bias.
+
+## Replacement second contribution under test
+
+Arbor node 2.2 retains the full bidirectional, multi-radius D2 energy profile
+instead of collapsing it immediately to a scalar optimum. A shared-weight
+gauge-equivariant head predicts both nonnegative boundary distances, while an
+object-disjoint split-conformal stage emits feasible intervals.
+
+Promotion requires all of the following on sealed B_dev objects:
+
+- lower object-macro NMAE than frozen D2, symmetric linear, and global/range priors;
+- exact observation-order swap residual below `1e-10`;
+- preregistered 90% object-level interval coverage;
+- narrower intervals than marginal/global conformal controls;
+- wins over zero-geometry, order-only, and permuted-profile nulls.
+
+The head and real-data adapter are implemented at commits `bbc03b1` and
+`c071a05`; 52/52 tests pass. The adapter independently verified all 12 public
+objects, 864 frames, and 2,604 files, checks exact clean D2 provenance and
+base-state hashes, and fails closed on target/sealed/B_test fields. Adapter
+preflight SHA256:
+`e9dadd3818ce51870ad2ffb8982f19a5ffe248f260cb6c265f19bf8780d63b69`.
+Profile export remains blocked until each fresh 25k checkpoint is available.
+
+## Remaining blockers before a complete CVPR evidence loop
+
+1. Finish multi-object RGB-D/multi-view materialization and true scratch SplArt
+   training. The 12/12 asset preflight now passes after a SAPIEN 3 camera API
+   compatibility fix and visual-scale-aware camera placement: every archive
+   hash matches, each URDF/mesh graph resolves, both strict interior probes
+   have nonempty depth, and no target is exposed to the model. Full 512x512
+   materialization (32 train plus 4 validation views per state) finished for
+   12/12 objects with 0 blocked and 2,604 files. Preflight receipt SHA256:
+   `69182f56c88d45d0ac257217cfb39fb81cf10364786024f03605bd8d58c8e31b`;
+   materialization receipt SHA256:
+   `980c11183929aca7a96b6019e0aa1ed379baa086e18857e64711eb8fa37591d0`.
+   The first two scratch workers failed before training because the deployed
+   runner still contained an unsupported Nerfstudio downscale CLI option.
+   Their failure receipts/logs are retained; a CLI-only addendum removed that
+   option. A second 10-iteration smoke exposed missing public articulation type;
+   that failure is also retained. Fresh v3 materialization then passed 12/12
+   (SHA prefix `97731bdf`) and its public integrity preflight passed 12/12
+   (SHA prefix `444255e6`). Both v3 smoke jobs completed 10 iterations and
+   wrote fresh checkpoints. The 25k v3 workers are now genuinely training:
+   GPU3 PID `3278603` and GPU4 PID `3278606`, each with a fixed six-object
+   queue and fresh random initialization per object. No smoke checkpoint is
+   loaded or resumed.
+2. Finish the strong-baseline/ablation independent P0 receipt.
+3. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
+   B_dev; use objects, not swaps or views, as the statistical unit.
+4. Freeze the selected method and evaluation code before opening B_test.
+5. Run one blind B_test/Full22 milestone and report object-level confidence
+   intervals, failures, runtime, and all null controls.
+
+Until those gates pass, the project has a credible task definition and one
+validated development method, but not yet a completed two-innovation CVPR
+submission.

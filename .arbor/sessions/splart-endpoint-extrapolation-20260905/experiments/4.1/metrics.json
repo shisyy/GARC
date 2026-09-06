@@ -1,0 +1,8 @@
+{
+  "node_id": "4.1",
+  "hypothesis": "Mechanism: Visibility-Censored Gaussian Surface Adaptation (VCGSA) trains PILC on deterministic partial-view, opacity-weighted Gaussianized surfaces generated from Articraft/NJC meshes, matching the same 47D runtime extractor while preserving the state-swap-equivariant endpoint and selective-closure heads.\nHypothesis: The remaining Box error is caused primarily by full-mesh-to-partial-3DGS feature shift; matching visibility, density, and opacity statistics during training should improve cross-domain endpoint calibration while retaining PILC's closed-side signal.\nObservable: Articraft validation and NJC calibration both beat their frozen statistical priors, zero-geometry remains worse, swap error stays below 1e-6, and a newly pre-registered Box episode set reaches macro endpoint NMAE below 0.070 with closed coverage/accuracy above 0.8.\nConflicts: Surface censoring may erase the contact geometry needed for limits or merely simulate Box-specific artifacts; use fixed Fibonacci views/hash-derived censoring, object-disjoint splits, no Box-score-guided tuning, and stop if validation does not improve before any new Box evaluation.",
+  "score": 0.1026591361,
+  "insight": "Deterministic visibility-censored Gaussianization slightly improved endpoint transfer but did not beat the NJC statistical prior; mesh-to-Gaussian appearance shift is not the sole bottleneck, and semantic/domain range priors remain dominant.",
+  "result": "Articraft validation NMAE 0.113945 beat 0.240316 prior, but NJC 0.102659 failed against 0.098711 prior. Internal gate stopped all Box evaluation; no second censor adjustment.",
+  "branch": "arbor/node-4-1-vcgsa@7938ef9fd9624cbefd81f974bc4a9e93d596318d"
+}

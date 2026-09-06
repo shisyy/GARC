@@ -1,0 +1,34 @@
+# Research Report: Given two interior articulation states relabelled 0 and 1, predict the fully closed endpoint and ...
+
+## Results
+
+- B_dev baseline: `0.3109`
+- B_dev final trunk: `0.3109`
+- B_test baseline: `N/A`
+- B_test final trunk: `N/A`
+
+## Exploration
+
+- Nodes total: `15`
+- Scored nodes: `7`
+- Merged nodes: `0`
+
+### Top Ideas By Score
+
+- **2** `0.08573` _done_: Mechanism: Contact-Feasible Endpoint Field scans the learned screw trajectory with differentiable static/mobile conta...
+- **3** `0.08573` _done_: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cam...
+- **3.1** `0.08573` _done_: Mechanism: Joint Topology-Contact Surface Refinement learns an explicit static-mobile interface SDF from public RGB-D...
+- **4** `0.09515` _done_: Mechanism: Paired-Interior Limit Calibrator (PILC) learns a state-swap-equivariant dual-endpoint and selective closed...
+- **4.1** `0.1027` _done_: Mechanism: Visibility-Censored Gaussian Surface Adaptation (VCGSA) trains PILC on deterministic partial-view, opacity...
+- **5** `0.1576` _pruned_: Mechanism: Factorized Endpoint-Closure Fusion (FECF) preserves the frozen D2-CEA physical endpoint scalars while atta...
+- **1** `0.3109` _done_: Mechanism: Middle-State Episode Reparameterization builds two interior multi-view states, erases their absolute joint...
+
+## Global Insight
+
+Children findings: [1, done, score=0.3109] Original scratch SplArt accurately recovers axis and pivot but treats interior observations as endpoints: endpoint NMAE 0.310881, closed coverage 0, terminal validity 0. | [2, done, score=0.08573] D2-CEA reduced endpoint NMAE 72.42%, raised PSNR 3.72 dB and mobile IoU 46.74% with the base model hash unchanged. However all RMS/PCFG/OEC posthoc contact certificates abstained: closed coverage and terminal validity remain zero, showing the bottleneck is contact-surface representation rather than scalar search. | [3, done, score=0.08573] Children findings: [3.1, done, score=0.08573] View-balanced voxel fusion removed order/view-density bias, but observable surface contact and closure topology vote opposite sides; posthoc frozen-geometry terminal certification remains unidentifiable on Box. | [4, done, score=0.09515] Children findings: [4.1, done, score=0.1027] Deterministic visibility-censored Gaussianization slightly improved endpoint transfer but did not beat the NJC statistical prior; mesh-to-Gaussian appearance shift is not the sole bottleneck, and semantic/domain range priors remain dominant. | [5, done, score=0.1576] Children findings:...
+
+## Artifacts
+
+- Idea tree JSON: `D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\source\.arbor\sessions\splart-endpoint-extrapolation-20260905\.coordinator\idea_tree.json`
+- Idea tree Markdown: `D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\source\.arbor\sessions\splart-endpoint-extrapolation-20260905\.coordinator\idea_tree.md`
+- Experiments: `D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\source\.arbor\sessions\splart-endpoint-extrapolation-20260905\experiments`

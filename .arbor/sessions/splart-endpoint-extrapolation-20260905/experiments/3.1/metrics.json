@@ -1,0 +1,8 @@
+{
+  "node_id": "3.1",
+  "hypothesis": "Mechanism: Joint Topology-Contact Surface Refinement learns an explicit static-mobile interface SDF from public RGB-D and alternates endpoint-scalar projection with topology-contact consistency while distilling the frozen SplArt renders.\nHypothesis: The current failure is caused by optimizing endpoints against an inaccurate frozen Gaussian collision surface; a learned interface surface and alternating feasibility projection can create physically meaningful terminal support without sacrificing the successful D2 endpoint geometry.\nObservable: On Box B_dev, endpoint NMAE stays at or below 0.085727 while closed coverage becomes nonzero with correct selective prediction, terminal validity becomes one, penetration does not increase, and endpoint rendering/articulation remain noninferior.\nConflicts: Nodes 2 and 3 showed posthoc RMS, PCFG, OEC, topology, and self-rendered certificates all abstain; this counters by changing the surface representation and training objective rather than relaxing any certificate gate.",
+  "score": 0.08572745,
+  "insight": "View-balanced voxel fusion removed order/view-density bias, but observable surface contact and closure topology vote opposite sides; posthoc frozen-geometry terminal certification remains unidentifiable on Box.",
+  "result": "Formal-v2 kept D2 endpoint NMAE 0.08572745 but closed coverage and terminal validity remained zero. Frozen certificate rejected both scalar updates; node stopped without sealed evaluator or threshold tuning.",
+  "branch": "arbor/node-3-1-jtcsr@4df5e8bf4036c8f4665c43abba1e269269e3c0e1"
+}
