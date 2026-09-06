@@ -10,7 +10,7 @@ from torch.nn import functional as F
 from .gauge_energy_profile import canonical_outward_coordinates, swap_profiles
 
 PRIVATE_KEYS={"target","targets","presentation","presentation_bit","canonical_side","joint_limits","fractions","split_membership","b_test","full22"}
-VARIANTS=("shared","coordinate_only","scalar_only_mlp","pooled_summary_mlp","fixed_permutation","unshared_head")
+VARIANTS=("shared","shared_distance_only","coordinate_only","scalar_only_mlp","pooled_summary_mlp","fixed_permutation","unshared_head")
 
 @dataclass(frozen=True)
 class TrainConfig:
@@ -64,7 +64,7 @@ class Node22Head(nn.Module):
     def forward(self,f:Tensor,x:Tensor)->tuple[Tensor,Tensor]:
         if f.ndim!=5 or f.shape[1]!=2 or f.shape[-1]!=9 or x.shape!=f.shape[:-1]: raise ValueError("profile shape")
         outs=[(self.sides[i] if self.sides else self.shared)(self._side_input(f[:,i],x[:,i])) for i in range(2)]
-        raw=torch.stack(outs,1); return F.softplus(raw[...,0]),F.softplus(raw[...,1])+1e-4
+        raw=torch.stack(outs,1); scale=torch.ones_like(raw[...,1]) if self.variant=="shared_distance_only" else F.softplus(raw[...,1])+1e-4; return F.softplus(raw[...,0]),scale
 
 def initialize_frozen(module:nn.Module,seed:int=2202)->None:
     random.seed(seed); torch.manual_seed(seed)

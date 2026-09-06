@@ -16,6 +16,6 @@ def test_max_side_and_normalized_width():
  p=torch.tensor([[.1,.5]]);t=torch.tensor([[.2,.2]]);lo=torch.tensor([[0.,.1]]);hi=torch.tensor([[.2,.7]]);m=torch.tensor([2.])
  e,w=normalized_object_metrics(p,t,lo,hi,m);assert e.item()==pytest.approx(.6) and w.item()==pytest.approx(.8)
 def test_normalizer_exact_schema_and_types():
- x=row();x['endpoint_truth']['target_nmae_normalization']={'local_scalar_error_multiplier':2.,'object_score_formula':'max','per_endpoint_formula':'x','physical_range':1.};assert metric_multiplier(x)==2
+ x=row();x['endpoint_truth']['target_nmae_normalization']={'local_scalar_error_multiplier':2.,'object_score_formula':'max(lower_endpoint_nmae,upper_endpoint_nmae)','per_endpoint_formula':'abs(predicted_local_scalar-target_local_scalar)*local_scalar_error_multiplier','physical_range':1.};assert metric_multiplier(x)==2
  x['endpoint_truth']['target_nmae_normalization']['local_scalar_error_multiplier']='2'
  with pytest.raises(ValueError):metric_multiplier(x)

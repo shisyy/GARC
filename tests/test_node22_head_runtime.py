@@ -16,6 +16,7 @@ def test_all_frozen_comparators_run_and_permutation_is_fixed():
     for v in VARIANTS:
         m=Node22Head(v); initialize_frozen(m); p,s=m(nf,nx); assert p.shape==s.shape==(4,2)
     assert torch.equal(Node22Head('fixed_permutation')._side_input(nf[:,0],nx[:,0])[...,:9],nf[:,0].flip(-2))
+    m=Node22Head('shared_distance_only');initialize_frozen(m);assert torch.equal(m(nf,nx)[1],torch.ones(4,2))
 
 def test_joint_scaled_and_constant_conformal_and_aggregate():
     p=torch.ones(9,2); t=p+torch.arange(9)[:,None]/100; scale=torch.full_like(p,.5); ids=[f'o{i}' for i in range(9)]
