@@ -61,6 +61,7 @@ def audit(
     repo: Path,
     v1_receipt_path: Path | None = None,
     independent_p0_path: Path | None = None,
+    baseline_export_receipt_path: Path | None = None,
 ) -> dict[str, Any]:
     """Return a machine-readable decision without opening any private input."""
     evaluator_path = repo / "run_node22_sealed_evaluator.py"
@@ -69,6 +70,7 @@ def audit(
     supersession_path = repo / "evaluator_v2_supersession.json"
     checklist_path = repo / "node22_v2_launch_gate_checklist.json"
     baseline_schema_path = repo / "node22_baseline_export_schema.json"
+    d2_exporter_path = repo / "export_d2_ablation_evidence.py"
     test_path = repo / "tests" / "test_evaluator_v2_schema.py"
 
     failures: list[str] = []
@@ -85,6 +87,7 @@ def audit(
         supersession_path,
         checklist_path,
         baseline_schema_path,
+        d2_exporter_path,
         test_path,
     )
     require(all(path.is_file() for path in explicit_public_paths), "PUBLIC-ARTIFACT-MISSING")
@@ -98,6 +101,7 @@ def audit(
     checklist = read_json(checklist_path)
     baseline_schema = read_json(baseline_schema_path)
     schema_test = test_path.read_text(encoding="utf-8")
+    d2_exporter = d2_exporter_path.read_text(encoding="utf-8")
     source_lower = (evaluator + "\n" + runtime).lower()
 
     evidence.update(
@@ -176,9 +180,28 @@ def audit(
     required_methods = set(baseline_schema.get("required_methods", ()))
     require(required_methods >= {"scratch", "symmetric_linear", "global_prior_train18", "range_prior_train18", "full_d2"}, "D2-BASELINE-PLAN-MISSING")
     require(required_methods >= {"no_contact", "no_penetration", "no_terminal_support", "single_radius"}, "D2-ABLATION-PLAN-MISSING")
-    require("frozen_d2_no_learned_head" in required_methods, "FROZEN-D2-HEAD-NULL-MISSING")
+    require(bool({"frozen_d2_no_learned_head", "full_d2"} & required_methods), "FROZEN-D2-HEAD-NULL-MISSING")
     require("shared_distance_only" in required_methods and "shared_distance_only" in variants, "LEARNED-SCALE-ABLATION-MISSING")
-    require(baseline_schema.get("status") == "FROZEN_READY_BEFORE_V2_AUTHORIZATION", "BASELINE-EXPORTS-NOT-FROZEN-READY")
+    require(
+        re.search(r"len\(rows\)\s*!=\s*36|len\(rows\)\s*==\s*36", d2_exporter) is not None,
+        "D2-EXPORTER-EXACT36-NOT-ENFORCED",
+    )
+    require("reject_private" in d2_exporter or "PRIVATE_KEYS" in d2_exporter, "D2-EXPORTER-PRIVATE-FIELDS-NOT-REJECTED")
+    require("path traversal" in d2_exporter.lower() or "is_relative_to" in d2_exporter or ".name !=" in d2_exporter, "D2-EXPORTER-OBJECT-ID-PATH-UNSAFE")
+
+    if baseline_export_receipt_path is None:
+        candidate = repo / "node22_target_free_baseline_export_receipt.json"
+        baseline_export_receipt_path = candidate if candidate.is_file() else None
+    if baseline_export_receipt_path is None or not baseline_export_receipt_path.is_file():
+        failures.append("BASELINE-EXPORTS-NOT-FROZEN-READY")
+    else:
+        exported = read_json(baseline_export_receipt_path)
+        evidence["baseline_export_receipt_sha256"] = sha256(baseline_export_receipt_path)
+        require(exported.get("status") == "PASS", "BASELINE-EXPORT-RECEIPT-NOT-PASS")
+        require(set(exported.get("methods", ())) >= required_methods, "BASELINE-EXPORT-METHODS-INCOMPLETE")
+        require(exported.get("objects_per_method") == 36, "BASELINE-EXPORT-OBJECT-COUNT-MISMATCH")
+        require(exported.get("targets_read") == [] and exported.get("split_membership_read") == [], "BASELINE-EXPORT-REPORTS-PRIVATE-READ")
+        require(_hex256(exported.get("artifact_index_sha256")), "BASELINE-EXPORT-INDEX-HASH-MISSING")
 
     # The supersession is a new milestone, never a retry under v1. All corrections
     # must be enumerated because the code reaches both parser and metric semantics.
@@ -258,9 +281,10 @@ def main() -> None:
     parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument("--v1-terminal-receipt", type=Path)
     parser.add_argument("--independent-p0", type=Path)
+    parser.add_argument("--baseline-export-receipt", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    result = audit(args.repo.resolve(), args.v1_terminal_receipt, args.independent_p0)
+    result = audit(args.repo.resolve(), args.v1_terminal_receipt, args.independent_p0, args.baseline_export_receipt)
     encoded = json.dumps(result, sort_keys=True, indent=2) + "\n"
     if args.output:
         if args.output.exists():
