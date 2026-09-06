@@ -49,7 +49,7 @@ def main():
   rows=[]
   for p in a.index: rows+=json.load(open(p))['objects']
   assert len(rows)==len({r['object_id'] for r in rows})==36
-  ids={r['object_id'] for r in rows}; baseline=validate_baselines(json.load(open(a.baseline_export)),ids,json.load(open(pathlib.Path(__file__).with_name('node22_baseline_export_schema.json')))
+  ids={r['object_id'] for r in rows}; baseline=validate_baselines(json.load(open(a.baseline_export)),ids,json.load(open(pathlib.Path(__file__).with_name('node22_baseline_export_schema.json'))))
   payload={r['object_id']:torch.load(r['artifact'],map_location=a.device) for r in rows}
   truth=json.load(open(a.truth));atomic(state,{'stage':'TARGET_READ','target_file_deserialized':True,'target_values_consumed':False,'optimizer_initialized':False,'retry_allowed':False}); episodes=truth['episodes'];assert len(episodes)==len({e['object_id'] for e in episodes})==36 and {e['object_id'] for e in episodes}==set(payload)
   groups={k:sorted([e for e in episodes if e['split']==k],key=lambda x:x['object_id']) for k in ('train','calibration','confirmatory')};assert list(map(lambda k:len(groups[k]),groups))==[18,9,9]
