@@ -68,8 +68,8 @@ def load_handoff(path: Path) -> dict[str, Any]:
     ids = [row.get("object_id") for row in episodes]
     if any(not isinstance(value, str) or not value for value in ids) or len(ids) != len(set(ids)):
         raise ValueError("object IDs must be non-empty and object-disjoint")
-    if any(row.get("split") not in {"train", "val"} for row in episodes):
-        raise ValueError("only public train/val episodes are allowed")
+    if any(row.get("split") not in {"train", "val", "unassigned"} for row in episodes):
+        raise ValueError("only public train/val or target-free unassigned episodes are allowed")
     return handoff
 
 

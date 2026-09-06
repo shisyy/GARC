@@ -18,6 +18,12 @@ def test_public_handoff_requires_unlocked_object_disjoint_train_val(tmp_path: Pa
     assert len(load_handoff(_write(tmp_path, value))["episodes"]) == 2
 
 
+def test_target_free_incremental_handoff_can_defer_split(tmp_path: Path) -> None:
+    value = {"schema": "splart-gauge-energy-public-episodes/v1", "training_handoff": "UNLOCKED", "episodes": [
+        {"object_id": "a", "split": "unassigned"}]}
+    assert load_handoff(_write(tmp_path, value))["episodes"][0]["split"] == "unassigned"
+
+
 @pytest.mark.parametrize("key", ["joint_limits", "closed_side", "normalized_input_states", "ground_truth"])
 def test_model_facing_handoff_rejects_target_leakage(tmp_path: Path, key: str) -> None:
     value = {"schema": "splart-gauge-energy-public-episodes/v1", "training_handoff": "UNLOCKED", "episodes": [
