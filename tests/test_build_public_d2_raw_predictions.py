@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from build_public_d2_raw_predictions import canonical_sha, reject_private, scalar_to_distance, write_exclusive
+from build_public_d2_raw_predictions import canonical_sha, opaque_id, reject_private, scalar_to_distance, write_exclusive
 
 
 def test_scalar_to_nonnegative_observation_distance() -> None:
@@ -15,6 +15,14 @@ def test_scalar_to_nonnegative_observation_distance() -> None:
 
 def test_canonical_config_hash_is_order_independent() -> None:
     assert canonical_sha({"a": 1, "b": 2}) == canonical_sha({"b": 2, "a": 1})
+
+
+def test_source_names_are_replaced_by_opaque_ids() -> None:
+    value = opaque_id("rec_sewing_box_with_simple_hinged_lid_0001")
+    assert value.startswith("obj-") and len(value) == 28
+    assert "sewing" not in value
+    with pytest.raises(ValueError, match="unsafe"):
+        opaque_id("../escape")
 
 
 @pytest.mark.parametrize("key", ["target", "split", "membership", "aggregate", "score"])

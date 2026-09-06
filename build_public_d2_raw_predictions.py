@@ -18,7 +18,7 @@ METHODS = ("scratch", "symmetric_linear", "full_d2", "single_radius", "no_contac
 D2_MODE = {"full_d2": "full", "single_radius": "single-radius", "no_contact": "no-contact",
            "no_penetration": "no-penetration", "no_terminal_support": "no-terminal-support"}
 FORBIDDEN_KEYS = {"target", "targets", "split", "membership", "ground_truth", "score", "scores", "aggregate"}
-OPAQUE_ID = re.compile(r"^(?:ep|ep72)-[A-Za-z0-9]+$")
+OPAQUE_ID = re.compile(r"^obj-[0-9a-f]{24}$")
 
 
 def sha256_file(path: Path) -> str:
@@ -31,6 +31,12 @@ def sha256_file(path: Path) -> str:
 
 def canonical_sha(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def opaque_id(source_id: str) -> str:
+    if not isinstance(source_id, str) or not source_id or "/" in source_id or "\\" in source_id or ".." in source_id:
+        raise ValueError("unsafe source object ID")
+    return "obj-" + hashlib.sha256(source_id.encode()).hexdigest()[:24]
 
 
 def reject_private(value: Any, path: str = "root") -> None:
@@ -61,9 +67,10 @@ def build_method(method: str, index: dict[str, Any], index_path: Path) -> dict[s
         raise ValueError("source index must contain exact36 objects")
     output = []
     for source_row in rows:
-        object_id = source_row.get("object_id")
-        if not isinstance(object_id, str) or not OPAQUE_ID.fullmatch(object_id):
-            raise ValueError("non-opaque or unsafe object ID")
+        source_id = source_row.get("object_id")
+        object_id = opaque_id(source_id)
+        if not OPAQUE_ID.fullmatch(object_id):
+            raise AssertionError("opaque ID construction failed")
         artifact = Path(source_row["artifact"])
         if artifact.is_symlink() or not artifact.is_file() or sha256_file(artifact) != source_row["artifact_sha256"]:
             raise ValueError(f"artifact provenance mismatch: {object_id}")
