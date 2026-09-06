@@ -180,8 +180,8 @@ Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol remove
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
 Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
 
-**Insight**: The frozen 24-object extension is fully materialized at 512px: every object has 72 frames and 217 files with complete RGB/depth/segmentation/hash checks. Independent 10-step fresh-random smoke passed on GPU2/3, and two disjoint 12-object 25k workers are active with no checkpoint load. All split/target/sealed/score/B_test/Full22 inputs remain unread.
+**Insight**: Full 512px materialization and smoke gates remain valid. The two fresh-random 25k workers have completed 4/24 new objects and are training the third pair; no OOM/CUDA/NaN/disk/leakage errors. GPU4 is correctly excluded because it hosts an unrelated VLLM process.
 
-**Result**: Materialization receipt SHA256 97b9df75919c85ce214e22c781624e3a77df864a89d451ee459a9b04f9008c2d; audit SHA256 c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949. GPU2/3 fresh 25k workers each own 12 unique new objects.
+**Result**: 4/24 new step24999 checkpoints complete; GPU2/3 queues healthy, 10 objects per worker remain including the running pair. Target-free profile adapter preparation proceeds CPU-side without taking a training GPU.
 
 **Branch**: b7a2a3658816fc2f0a93ab046e8091a8542da448

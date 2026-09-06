@@ -183,10 +183,12 @@ segmentation/hash checks passing. Materialization receipt SHA256:
 independent audit SHA256:
 `c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949`.
 Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
-writing a step-9 checkpoint. Two durable 25k workers are now active on those
-GPUs with 12 disjoint new objects each; both logs confirm no Nerfstudio
-checkpoint was loaded. No split, target, sealed mapping, score, B_test, or
-Full22 file has been read.
+writing a step-9 checkpoint. Two durable 25k workers are active on those GPUs
+with 12 disjoint new objects each; 4/24 fresh step-24999 checkpoints have
+completed and the third pair is running. Both logs confirm no Nerfstudio
+checkpoint was loaded. GPU4 is not used because it hosts an unrelated VLLM
+process. No split, target, sealed mapping, score, B_test, or Full22 file has
+been read.
 
 ## Remaining blockers before a complete CVPR evidence loop
 
