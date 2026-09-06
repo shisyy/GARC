@@ -44,11 +44,11 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
 
-**Insight**: The node7.2 adapter has now passed a real six-object target-free GPU7 export: exact clean D2, step24999, [2,3,257,9], artifact rehash, and base-state before/after equality all pass. It used no training GPUs and read no split, targets, sealed data, scores, B_test, or Full22.
+**Insight**: Eight node7.2 profiles now pass the real export contract. The second incremental run exported exactly the two completed-but-unprofiled objects, with shape, step24999, rehash, clean D2 provenance, base-state invariance, 0700, and leakage checks all passing.
 
-**Result**: First 6/24 node7.2 profiles frozen under index SHA256 2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55. Wait for remaining fresh checkpoints and independent 36-profile/split P0 before any head training.
+**Result**: 8/24 node7.2 profiles frozen across index SHA256 2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55 and 8800bfcb68add185f421eae5af320628e93ac473f359f06ab48865a57839b34d. Await remaining checkpoints and split P0 before head training.
 
-**Branch**: e7555f0
+**Branch**: 4cf0341
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
@@ -180,8 +180,8 @@ Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol remove
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
 Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
 
-**Insight**: Six of 24 added objects have completed fresh step24999 training; the fourth pair is running. A genuinely idle GPU7 exported profiles for all six without interrupting GPU2/3. All six pass shape, rehash, clean D2 provenance, and base-state invariance, with protected inputs unread.
+**Insight**: Eight of 24 added objects now have fresh step24999 checkpoints and audited target-free profiles; the fifth training pair is running. GPU7 exported only the two-new-object set by explicit difference audit, avoiding recomputation and preserving GPU2/3 throughput. All provenance, base-state, error, and leakage guards pass.
 
-**Result**: 6/24 added checkpoints and 6/24 target-free profiles complete. Incremental profile index SHA256 2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55; head remains untrained.
+**Result**: 8/24 added checkpoints and profiles complete. Profile batch SHA256 values: 2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55 (first 6), 8800bfcb68add185f421eae5af320628e93ac473f359f06ab48865a57839b34d (next 2).
 
 **Branch**: b7a2a3658816fc2f0a93ab046e8091a8542da448

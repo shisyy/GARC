@@ -184,17 +184,21 @@ independent audit SHA256:
 `c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949`.
 Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
 writing a step-9 checkpoint. Two durable 25k workers are active on those GPUs
-with 12 disjoint new objects each; 6/24 fresh step-24999 checkpoints have
-completed and the fourth pair is running. Both logs confirm no Nerfstudio
+with 12 disjoint new objects each; 8/24 fresh step-24999 checkpoints have
+completed and the fifth pair is running. Both logs confirm no Nerfstudio
 checkpoint was loaded. GPU4 is not used because it hosts an unrelated VLLM
 process. No split, target, sealed mapping, score, B_test, or Full22 file has
 been read.
 
-GPU7 subsequently became genuinely idle and was used for target-free profile
-export without interrupting training. All first-six profiles pass shape
+GPU7 subsequently became genuinely idle and is used for incremental
+target-free profile export without interrupting training. All first-eight
+profiles pass shape
 `[2,3,257,9]`, step-24999, artifact-rehash, exact clean D2 provenance, and
-base-state-before/after equality checks. Incremental index SHA256:
-`2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55`.
+base-state-before/after equality checks. Incremental index SHA256 values are
+`2b794007ccd31e0e7cd6c064275497782801dbcfbd6ca5ee9858037dfbd8ab55`
+for the first six and
+`8800bfcb68add185f421eae5af320628e93ac473f359f06ab48865a57839b34d`
+for the next two.
 No head training or protected-data access occurred.
 
 ## Remaining blockers before a complete CVPR evidence loop
