@@ -11,7 +11,15 @@ def hstate(m):
 def target_pair(e):
  t=e['endpoint_truth']['local_endpoint_targets']
  if set(t)!={'extension0_joint_units','extension0_observation_units','extension1_joint_units','extension1_observation_units','local_lower_scalar','local_upper_scalar'}:raise ValueError('truth schema mismatch')
+ if any(type(t[k]) not in (int,float) for k in t):raise ValueError('truth scalar type mismatch')
  return [float(t['extension0_observation_units']),float(t['extension1_observation_units'])]
+def metric_multiplier(e):
+ n=e['endpoint_truth']['target_nmae_normalization']; expected={'local_scalar_error_multiplier','object_score_formula','per_endpoint_formula','physical_range'}
+ if set(n)!=expected or type(n['local_scalar_error_multiplier']) not in (int,float) or not n['local_scalar_error_multiplier']>0:raise ValueError('normalization schema mismatch')
+ return float(n['local_scalar_error_multiplier'])
+def normalized_object_metrics(pred,target,lo,hi,multiplier):
+ err=(pred-target).abs()*multiplier[:,None]; width=(hi-lo)*multiplier[:,None]
+ return err.amax(1),width.mean(1)
 def main():
  q=argparse.ArgumentParser();q.add_argument('--index',action='append',required=True);q.add_argument('--truth',required=True);q.add_argument('--authorization',required=True);q.add_argument('--output',required=True);q.add_argument('--device',default='cuda');a=q.parse_args()
  if any(x in ' '.join(vars(a).values() if False else a.index+[a.truth,a.authorization,a.output]).lower() for x in FORBID):raise ValueError('protected path')
@@ -34,7 +42,7 @@ def main():
     ff=torch.stack([payload[e['object_id']]['features'] for e in group]);ss=torch.stack([payload[e['object_id']]['scalars'] for e in group]);nf,nx=n(ff,ss);return m(nf,nx)
    cp,cs=pred(groups['calibration']);cy=torch.tensor([target_pair(e) for e in groups['calibration']],device=a.device);conf=fit_joint_conformal(cp,cs,cy,[e['object_id'] for e in groups['calibration']]);const=fit_joint_conformal(cp,cs,cy,[e['object_id'] for e in groups['calibration']],kind='constant')
    ep,es=pred(groups['confirmatory']);ey=torch.tensor([target_pair(e) for e in groups['confirmatory']],device=a.device);lo,hi=conf.interval(ep,es);cl,ch=const.interval(ep,es)
-   base=(ep-ey).abs().mean(1);rowsout=[{'object_id':str(i),'endpoint_nmae':base[i].item(),'joint_covered':float(((ey[i]>=lo[i])&(ey[i]<=hi[i])).all()),'mean_joint_width':(hi[i]-lo[i]).mean().item()} for i in range(9)]
+   mul=torch.tensor([metric_multiplier(e) for e in groups['confirmatory']],device=a.device);base,width=normalized_object_metrics(ep,ey,lo,hi,mul);rowsout=[{'object_id':str(i),'endpoint_nmae':base[i].item(),'joint_covered':float(((ey[i]>=lo[i])&(ey[i]<=hi[i])).all()),'mean_joint_width':width[i].item()} for i in range(9)]
    ag=aggregate_confirmatory(rowsout);ag.update({'constant_joint_coverage':float(((ey>=cl)&(ey<=ch)).all(1).float().mean()),'constant_mean_joint_width':float((ch-cl).mean()),'swap_error':None if variant=='unshared_head' else exact_swap_error(m,*n(f,s)),'model_sha256':hstate(m),'runtime_config':receipt['config']});results[variant]=ag
   full=results['shared']['metrics']['endpoint_nmae'];wins=sum(results[v]['metrics']['endpoint_nmae']<full for v in VARIANTS if v!='shared');final={'schema':'splart-node2.2-sealed-aggregate/v1','status':'PASS','methods':results,'baseline_wins_over_full':wins,'objects':{'train':18,'calibration':9,'confirmatory':9},'membership_emitted':False,'targets_emitted':False,'protected_splits_read':[]};atomic(out/'RESULT.json',final);atomic(state,{'stage':'COMPLETE','target_read':True,'optimizer_initialized':True,'retry_allowed':False});print(json.dumps({'status':'PASS','result':str(out/'RESULT.json')}))
  except Exception as e:
