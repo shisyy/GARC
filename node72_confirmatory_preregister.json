@@ -1,0 +1,40 @@
+{
+  "schema": "splart-node7.2-object-split-preregister/v1",
+  "status": "FROZEN_BEFORE_TARGET_OR_SCORE_READ",
+  "source_inventory": {
+    "path": "/data/yptang/workspace/splart-endpoint-balanced-data/inventory/source_inventory_v2.json",
+    "sha256": "83bc4abac1a7c9761e7e1f37d4c723e16c30c3ed6cc5409a2f8795dda42c5880"
+  },
+  "existing_public_manifest_sha256": "b10b61f7022f81a0b6e62c7fc03a7b37f376b40dd6dc67b12baec1d664e41274",
+  "sealed_split_salt_sha256": "7d94832908e12ec238b4abba232b140214e47cda6f1d2074c95a27f919c600c9",
+  "eligibility": "error is null; visual_geometry_count>0; exactly one bounded non-degenerate primary joint of type revolute or prismatic; primary_joint.zero_relation is lower or upper",
+  "selection": "Sort all eligible rows by SHA256('node7.1-object-selection-v1|'+source+'|'+object_id), select first 36. This extends the already-frozen node7.1 prefix, so an existing profiled object is included iff it belongs to that same first-36 prefix; profile availability is never consulted.",
+  "split": {
+    "rank": "Sort selected 36 by SHA256(raw_sealed_salt || '|node7.2-split-rank-v1|' || source || '|' || object_id)",
+    "assignment": "ranks 0..17 train; 18..26 calibration; 27..35 confirmatory",
+    "counts": {"train": 18, "calibration": 9, "confirmatory": 9},
+    "object_disjoint": true,
+    "no_redraw_or_stratification": true
+  },
+  "conformal": {
+    "coverage": 0.9,
+    "unit": "object",
+    "calibration_objects": 9,
+    "rank": "ceil((9+1)*0.9)=9",
+    "score": "maximum absolute normalized two-endpoint distance residual per object"
+  },
+  "service": {
+    "mode": "sealed evaluator owned",
+    "method_submission": "frozen source commit, exact config, and one from-scratch head-training request",
+    "executor_visibility": "public profile schema and non-target provenance only; no presentation bit, canonical side, limits, fractions, raw target, calibration target, confirmatory target, salt, rank, or score",
+    "training": "evaluator trains once on the sealed 18-object train partition using the preregistered loss and returns only a model hash/receipt",
+    "calibration": "evaluator computes the fixed conformal radius on nine sealed calibration objects after the head is frozen",
+    "confirmatory": "evaluator scores nine sealed confirmatory objects once; no retry, checkpoint choice, seed choice, threshold choice, or result selection",
+    "outputs": "aggregate preregistered metrics, coverage and provenance receipt only; no per-object targets"
+  },
+  "protected": ["B_test", "Full22", "all score files before split freeze"],
+  "score_files_read": [],
+  "target_files_read": [],
+  "launch_authorized": false,
+  "authorization_condition": "A separate independent receipt must materialize and hash all 36 public profiles plus a sealed split manifest that exactly implements this preregistration."
+}
