@@ -1,0 +1,48 @@
+{
+  "schema": "arbor-preregister/v1",
+  "node_id": "2.2",
+  "title": "Gauge-Equivariant Dual-Boundary Energy Profile Head",
+  "base_commit": "dd78dcc5355fd0f41fb00541d6a18dc36d87ef91",
+  "status": "preregistered_before_implementation",
+  "inputs": {
+    "source": "frozen full D2 bidirectional multi-radius trajectory energy profiles",
+    "allowed": ["scan scalar grid", "contact", "penetration", "support", "inside-penetration", "contact-mass", "support-rise", "total-energy", "posterior"],
+    "forbidden": ["sealed endpoint labels as model input", "B_test", "Full22", "node7.1 mapping edits", "view selection", "checkpoint selection", "seed selection"]
+  },
+  "model": {
+    "prediction": "two non-negative distances from observations 0 and 1",
+    "endpoint_map": ["q_lower=-d_lower", "q_upper=1+d_upper"],
+    "weight_sharing": "one shared side encoder and positive distance head",
+    "swap_action": "swap/reverse sides; output distances swap exactly",
+    "distance_activation": "softplus",
+    "profile_order": "scalar order is preserved and supplied explicitly"
+  },
+  "training": {
+    "from_scratch_head": true,
+    "frozen_d2": true,
+    "loss": "object-macro symmetric log-distance regression plus exact swap consistency audit",
+    "split": "object-disjoint train/calibration/dev supplied by node7.1 materialization",
+    "box_policy": "retrospective development only; never confirmatory",
+    "selection": "single preregistered configuration; no seed/checkpoint/result selection"
+  },
+  "conformal": {
+    "coverage": 0.9,
+    "unit": "object",
+    "score": "max absolute normalized endpoint-distance residual per object",
+    "calibration": "object-disjoint split conformal finite-sample quantile",
+    "comparators": ["marginal per-endpoint conformal", "global pooled conformal"]
+  },
+  "primary_gates": [
+    "object-macro endpoint NMAE improves over frozen full D2",
+    "object-macro endpoint NMAE improves over global prior",
+    "object-macro endpoint NMAE improves over range prior",
+    "object coverage is at least 0.90",
+    "paired interval is narrower than marginal and global conformal at matched coverage"
+  ],
+  "nulls": {
+    "zero_geometry": "replace all energy channels by zero while retaining scalar coordinates",
+    "profile_permutation": "permute profile samples but retain the original scalar coordinates at their positions",
+    "order_only": "retain scalar/order coordinates and remove all geometry-derived energy channels"
+  },
+  "stopping": "implementation, CPU tests, and profile-export preflight only until node7.1 materialization exists"
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "splart-node2.2-head-protocol-addendum/v1",
+  "status": "FROZEN_BEFORE_TARGET_OR_SPLIT_READ",
+  "supersedes": {
+    "document": "gauge_energy_preregister.json",
+    "sha256": "2f85224478d1ded6683e2634e41aac7548f1fe793dcdb725a614823d599c3ee7",
+    "scope": ["training configuration", "null definitions", "conformal score and claims"]
+  },
+  "preserves": ["frozen D2 profiles", "shared side encoder", "swap equivariance", "object-disjoint evaluation", "B_test and Full22 prohibition"],
+  "head": {
+    "architecture": "shared profile encoder with two outputs per side: softplus distance and softplus conditional scale plus 1e-4",
+    "point_encoder": ["Linear(10,64)", "SiLU", "Linear(64,64)", "SiLU", "Conv1d(64,64,kernel=5,padding=2)", "SiLU"],
+    "pooling": "mean and max over 257 scalar samples, then mean over 3 radii",
+    "readout": ["Linear(128,64)", "SiLU", "Linear(64,2)"],
+    "feature_normalization": "channel-wise mean/std over all samples and radii of the 18 sealed train objects only; std=sqrt(population_variance+1e-6); statistics frozen before optimization and hashed in receipt",
+    "scalar_normalization": "canonical outward distance transformed as log1p(distance), then train-only population mean/std with epsilon 1e-6",
+    "loss": "per-object mean of joint_score + 0.05*mean(log(scale)); joint_score=max_side(abs(predicted_distance-target_distance)/scale); one row per object",
+    "swap_audit": "maximum absolute difference between swapped predictions/scales and side-reversed originals must be <=1e-6"
+  },
+  "training": {
+    "framework": "PyTorch deterministic algorithms",
+    "device": "single CUDA GPU",
+    "dtype": "float32",
+    "seed": 2202,
+    "initialization": "torch.manual_seed(2202), CUDA manual_seed_all(2202), Xavier-uniform weights and zero biases in module traversal order",
+    "optimizer": "AdamW",
+    "learning_rate": 0.001,
+    "betas": [0.9, 0.999],
+    "weight_decay": 0.0001,
+    "steps": 4000,
+    "batch": "full batch of exactly 18 unique train objects in lexicographic object_id order; no shuffle",
+    "gradient_clip_norm": 1.0,
+    "scheduler": "none",
+    "checkpoint": "write exactly one final step-4000 checkpoint; no intermediate selection, early stopping, or best checkpoint",
+    "rerun": "after optimizer initialization or any target read, any exception is terminal and no retry is allowed; before either event, infrastructure retry is allowed once only with byte-identical request and an immutable failure receipt"
+  },
+  "fixed_comparators": {
+    "coordinate_only": "all nine geometry channels set to zero; retain scalar coordinates; replaces duplicate zero_geometry and order_only names",
+    "scalar_only_mlp": "shared per-sample MLP Linear(1,64)-SiLU-Linear(64,64)-SiLU, mean/max sample pooling, radius mean, same two-output readout",
+    "pooled_summary_mlp": "concatenate per-side per-channel mean and max plus scalar mean and max across radii/samples; MLP Linear(20,64)-SiLU-Linear(64,2)",
+    "fixed_permutation": "reverse feature sample indices 256..0 within every radius while leaving scalar coordinates at original indices",
+    "unshared_head": "two independently initialized side encoders/readouts with otherwise identical architecture and training configuration",
+    "evaluation": "run every comparator exactly once on the identical frozen train/calibration/confirmatory object split; never use comparator results for selection or reruns"
+  },
+  "conformal": {
+    "coverage": 0.9,
+    "unit": "one score per calibration object",
+    "profile_conditioned_score": "max_side(abs(predicted_distance-target_distance)/predicted_scale)",
+    "quantile": "q is sorted calibration score at 1-indexed rank ceil((n_cal+1)*0.9); fail if rank>n_cal",
+    "interval": "for each side: [max(0,predicted_distance-q*predicted_scale), predicted_distance+q*predicted_scale]",
+    "primary_claim": "simultaneous two-endpoint object coverage only",
+    "constant_radius_comparator": "r is the same finite-sample quantile of max_side absolute residual; intervals use distance plus/minus r",
+    "width_reporting": "descriptive only; report mean joint interval width for both methods only when both use the same nine calibration objects and same rank, and report confirmatory joint coverage beside width; no superiority gate or matched-coverage interpolation"
+  },
+  "protected_inputs": ["B_test", "Full22", "endpoint targets before evaluator service", "split membership before sealed materialization", "presentation bits", "canonical sides", "joint limits", "fractions"],
+  "target_files_read": [],
+  "split_membership_read": [],
+  "score_files_read": [],
+  "launch_authorized": false,
+  "unlock_requires": ["36-profile materialization receipt", "sealed 18/9/9 split receipt", "independent source and request P0 PASS"]
+}

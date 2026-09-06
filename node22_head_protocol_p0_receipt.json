@@ -1,0 +1,8 @@
+{
+  "addendum_sha256": "c6778c0781c3f8dc2b348172f3d216639b6cad2596d4fc98d72b2de01c6abaef",
+  "failures": [],
+  "launch_authorized": false,
+  "old_sha256": "2f85224478d1ded6683e2634e41aac7548f1fe793dcdb725a614823d599c3ee7",
+  "schema": "splart-node2.2-head-protocol-p0/v1",
+  "status": "PASS"
+}
