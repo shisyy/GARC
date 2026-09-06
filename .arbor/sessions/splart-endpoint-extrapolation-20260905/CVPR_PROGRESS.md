@@ -224,6 +224,10 @@ No head training or protected-data access occurred.
 
 ## Remaining blockers before a complete CVPR evidence loop
 
+The immutable decision rules, evaluator sequence, required baselines, and
+allowed claim boundary are consolidated in `CVPR_FREEZE_CHECKLIST.md` before
+private evaluation.
+
 1. Finish multi-object RGB-D/multi-view materialization and true scratch SplArt
    training. The 12/12 asset preflight now passes after a SAPIEN 3 camera API
    compatibility fix and visual-scale-aware camera placement: every archive
