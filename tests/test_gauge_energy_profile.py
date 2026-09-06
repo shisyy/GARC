@@ -4,7 +4,7 @@ import torch
 
 from splart.gauge_energy_profile import (
     GaugeEquivariantProfileHead, fields_to_profile, fit_object_split_conformal,
-    make_profile_null, object_macro_nmae, swap_profiles,
+    make_profile_null, object_macro_nmae, predictions_to_profile, swap_profiles,
 )
 
 
@@ -74,3 +74,23 @@ def test_complete_multiradius_profile_export() -> None:
     features, scalars = fields_to_profile((field(0), field(1)), (field(2), field(3)))
     assert features.shape == (2, 2, 5, 9)
     assert scalars.shape == (2, 2, 5)
+
+
+def test_dual_state_predictions_are_aggregated_per_radius_without_order_bias() -> None:
+    def endpoint_field(value, lower):
+        scalars = torch.linspace(-2, -0.1, 5) if lower else torch.linspace(1.1, 3, 5)
+        payload = {name: torch.full((5,), float(value)) for name in (
+            "signed_gap", "contact_energy", "penetration_energy", "support_energy",
+            "inside_penetration_energy", "contact_mass", "support_rise", "total_energy", "posterior")}
+        return SimpleNamespace(scalars=scalars, **payload)
+    predictions = []
+    for geometry in range(2):
+        for radius in range(3):
+            predictions.append(SimpleNamespace(
+                lower=SimpleNamespace(field=endpoint_field(10 * geometry + radius, True)),
+                upper=SimpleNamespace(field=endpoint_field(20 + 10 * geometry + radius, False))))
+    features, scalars = predictions_to_profile(tuple(predictions), 3)
+    assert features.shape == (2, 3, 5, 9)
+    assert torch.all(features[0, 2] == 7.0)
+    assert torch.all(features[1, 1] == 26.0)
+    assert scalars.shape == (2, 3, 5)

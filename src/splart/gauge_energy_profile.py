@@ -141,8 +141,35 @@ def fields_to_profile(lower_fields: tuple, upper_fields: tuple) -> tuple[Tensor,
     return torch.stack(sides), torch.stack(grids)
 
 
+def predictions_to_profile(predictions: tuple, num_radii: int) -> tuple[Tensor, Tensor]:
+    """Aggregate dual reconstructed states without privileging observation order."""
+    if num_radii < 1 or not predictions or len(predictions) % num_radii:
+        raise ValueError("predictions must contain a complete geometry-by-radius grid")
+    num_geometries = len(predictions) // num_radii
+    lower, upper = [], []
+    for radius in range(num_radii):
+        lower.append(tuple(predictions[g * num_radii + radius].lower.field for g in range(num_geometries)))
+        upper.append(tuple(predictions[g * num_radii + radius].upper.field for g in range(num_geometries)))
+
+    def aggregate(radius_groups: list[tuple]) -> tuple:
+        values = []
+        for group in radius_groups:
+            reference = group[0]
+            if any(not torch.equal(field.scalars, reference.scalars) for field in group[1:]):
+                raise ValueError("dual-state D2 fields do not share a scalar gauge")
+            payload = {
+                name: torch.stack([getattr(field, name) for field in group]).mean(0)
+                for name in PROFILE_CHANNELS
+            }
+            values.append(type("AggregatedField", (), {"scalars": reference.scalars, **payload})())
+        return tuple(values)
+
+    return fields_to_profile(aggregate(lower), aggregate(upper))
+
+
 __all__ = [
     "GaugeEquivariantProfileHead", "ObjectSplitConformal", "PROFILE_CHANNELS",
     "canonical_outward_coordinates", "fields_to_profile", "fit_global_conformal",
-    "fit_marginal_conformal", "fit_object_split_conformal", "make_profile_null", "object_macro_nmae", "swap_profiles",
+    "fit_marginal_conformal", "fit_object_split_conformal", "make_profile_null", "object_macro_nmae",
+    "predictions_to_profile", "swap_profiles",
 ]
