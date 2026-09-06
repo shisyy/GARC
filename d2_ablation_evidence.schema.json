@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "splart-d2-public-ablation-evidence-v2",
+  "title": "Target-free frozen D2 baseline and ablation evidence",
+  "type": "object",
+  "required": ["schema", "object_id", "provenance", "base_state", "modes"],
+  "properties": {
+    "schema": {"const": "splart-d2-public-ablation-evidence/v2"},
+    "object_id": {"type": "string", "minLength": 1},
+    "provenance": {
+      "type": "object",
+      "required": ["d2_commit", "d2_tree", "checkpoint", "config", "dataparser_transforms"],
+      "additionalProperties": true
+    },
+    "base_state": {
+      "type": "object",
+      "required": ["before_sha256", "after_sha256", "unchanged"],
+      "properties": {"unchanged": {"const": true}},
+      "additionalProperties": true
+    },
+    "modes": {
+      "type": "object",
+      "required": ["full", "single-radius", "no-contact", "no-penetration", "no-terminal-support"],
+      "additionalProperties": {
+        "type": "object",
+        "required": ["lower_scalar", "upper_scalar", "closed_end", "final_loss", "field_configs", "state_certificates"]
+      }
+    }
+  },
+  "additionalProperties": false
+}
