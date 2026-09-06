@@ -8,6 +8,10 @@ def hstate(m):
  h=hashlib.sha256()
  for k,v in sorted(m.state_dict().items()):h.update(k.encode()+v.detach().cpu().numpy().tobytes())
  return h.hexdigest()
+def fsha(p):return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+def validate_authorization(auth,a,rows):
+ ids=sorted(r['object_id'] for r in rows); expected={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(__file__),'truth_sha256':fsha(a.truth),'profile_index_sha256':[fsha(x) for x in a.index],'profile_set_sha256':hashlib.sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export_sha256':fsha(a.baseline_export),'output_absolute_path':str(pathlib.Path(a.output).resolve()),'one_execution_only':True,'v3_allowed':False}
+ if any(auth.get(k)!=v for k,v in expected.items()):raise ValueError('authorization binding mismatch')
 def target_pair(e):
  t=e['endpoint_truth']['local_endpoint_targets']
  if set(t)!={'extension0_joint_units','extension0_observation_units','extension1_joint_units','extension1_observation_units','local_lower_scalar','local_upper_scalar'}:raise ValueError('truth schema mismatch')
@@ -48,10 +52,11 @@ def main():
  if out.exists():raise FileExistsError('single execution output already exists')
  out.mkdir(mode=0o700,parents=True);state=out/'RUN_GUARD.json';atomic(state,{'stage':'PREFLIGHT','target_read':False,'optimizer_initialized':False,'retry_allowed':True})
  try:
-  auth=json.load(open(a.authorization));runner_sha=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest();assert auth['schema']=='splart-node22-v2-authorization/v1' and auth['status']=='AUTHORIZED_FOR_EVALUATOR' and auth['runner_sha256']==runner_sha
+  auth=json.load(open(a.authorization))
   rows=[]
   for p in a.index: rows+=json.load(open(p))['objects']
   assert len(rows)==len({r['object_id'] for r in rows})==36
+  validate_authorization(auth,a,rows)
   ids={r['object_id'] for r in rows}; baseline=validate_baselines(json.load(open(a.baseline_export)),ids,json.load(open(pathlib.Path(__file__).with_name('node22_baseline_export_schema.json'))))
   payload={r['object_id']:torch.load(r['artifact'],map_location=a.device) for r in rows}
   truth=json.load(open(a.truth));atomic(state,{'stage':'TARGET_READ','target_file_deserialized':True,'target_values_consumed':False,'optimizer_initialized':False,'retry_allowed':False}); episodes=truth['episodes'];assert len(episodes)==len({e['object_id'] for e in episodes})==36 and {e['object_id'] for e in episodes}==set(payload)
@@ -73,5 +78,5 @@ def main():
   for name,pp in priors.items():metrics,internal_scores[name]=error_summary(pp[None].expand_as(ey),ey,em);results[name]={'schema':'splart-node2.2-baseline-aggregate/v2','metrics':metrics}
   results['shared']['wins_vs_full_d2']=int((internal_scores['shared']<internal_scores['full_d2']).sum());final={'schema':'splart-node2.2-sealed-aggregate/v3','status':'PASS','methods':results,'wins_definition':'shared lower object max-side normalized NMAE than full_d2; count only','objects':{'train':18,'calibration':9,'confirmatory':9},'per_object_values_emitted':False,'membership_emitted':False,'targets_emitted':False,'protected_splits_read':[]};atomic(out/'RESULT.json',final);atomic(state,{'stage':'COMPLETE','target_read':True,'optimizer_initialized':True,'retry_allowed':False});print(json.dumps({'status':'PASS','result':str(out/'RESULT.json')}))
  except Exception as e:
-  atomic(state,{'stage':'FAILED_TERMINAL','target_read':True,'retry_allowed':False,'error_type':type(e).__name__});raise
+  prior=json.loads(state.read_text());prior.update({'failed_from_stage':prior.get('stage'),'stage':'FAILED_TERMINAL','retry_allowed':False,'error_type':type(e).__name__});atomic(state,prior);raise
 if __name__=='__main__':main()
