@@ -1,0 +1,26 @@
+{
+  "channels": [
+    "signed_gap",
+    "contact_energy",
+    "penetration_energy",
+    "support_energy",
+    "inside_penetration_energy",
+    "contact_mass",
+    "support_rise",
+    "total_energy",
+    "posterior"
+  ],
+  "contains_geometry": false,
+  "contains_labels": false,
+  "contract_sha256": "3d3d190ef9684a8df7ce52aebd28e02b45e7df38acf700ce4bb43b8f50f61f12",
+  "nonnegative": true,
+  "schema": "gauge-energy-profile-preflight/v1",
+  "shape": [
+    1,
+    2,
+    3,
+    33,
+    9
+  ],
+  "swap_bit_exact": true
+}
