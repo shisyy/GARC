@@ -1,6 +1,6 @@
 import pytest
 import torch
-from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines,error_summary
+from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines,error_summary,validate_authorization,fsha
 def row():return {'endpoint_truth':{'local_endpoint_targets':{'extension0_joint_units':1.,'extension0_observation_units':.2,'extension1_joint_units':2.,'extension1_observation_units':.4,'local_lower_scalar':-.2,'local_upper_scalar':1.4}}}
 def test_exact_builder_schema():assert target_pair(row())==[.2,.4]
 def test_fail_closed_extra_or_missing():
@@ -30,3 +30,9 @@ def test_paper_error_summary_is_aggregate_only():
  p=torch.tensor([[0.,.4],[.4,0.]]);t=torch.zeros_like(p);m=torch.tensor([2.,1.]);s,rows=error_summary(p,t,m)
  assert s['lower_nmae']==pytest.approx(.2) and s['upper_nmae']==pytest.approx(.4) and s['endpoint_nmae']==pytest.approx(.6)
  assert set(s)=={'lower_nmae','upper_nmae','endpoint_nmae','median_endpoint_nmae'} and rows.shape==(2,)
+def test_authorization_exact_hash_and_path(tmp_path):
+ from types import SimpleNamespace
+ truth=tmp_path/'truth';truth.write_text('x');base=tmp_path/'base';base.write_text('y');idx=tmp_path/'idx';idx.write_text('z');out=tmp_path/'fresh';rows=[{'object_id':str(i)} for i in range(36)];a=SimpleNamespace(truth=str(truth),baseline_export=str(base),index=[str(idx)],output=str(out));ids=sorted(r['object_id'] for r in rows)
+ auth={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(__import__('run_node22_sealed_evaluator').__file__),'truth_sha256':fsha(truth),'profile_index_sha256':[fsha(idx)],'profile_set_sha256':__import__('hashlib').sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export_sha256':fsha(base),'output_absolute_path':str(out.resolve()),'one_execution_only':True,'v3_allowed':False};validate_authorization(auth,a,rows)
+ auth['output_absolute_path']+='-tamper'
+ with pytest.raises(ValueError):validate_authorization(auth,a,rows)
