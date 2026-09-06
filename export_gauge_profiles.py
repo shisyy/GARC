@@ -96,7 +96,7 @@ def preflight_public_materialization(public_manifest_path: Path, receipt_path: P
     root = receipt_path.parent / "episodes"
     rows = []
     tree_digest = hashlib.sha256()
-    for object_id in sorted(public_by_id):
+    for object_id in sorted(receipt_by_id):
         pub, rec = public_by_id[object_id], receipt_by_id[object_id]
         if pub["episode_id"] != rec["episode_id"] or rec.get("status") != "materialized":
             raise ValueError("episode identity/status mismatch")
