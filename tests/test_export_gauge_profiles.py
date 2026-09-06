@@ -60,3 +60,7 @@ def test_real_public_manifest_and_materialization_receipt_join_training_outputs(
     handoff = build_handoff(public_path, receipt_path, trained_path)
     assert len(handoff["episodes"]) == 12
     assert preflight_public_materialization(public_path, receipt_path)["objects"][0]["files"] == 3
+
+    trained["objects"] = trained["objects"][:6]
+    trained_path.write_text(json.dumps(trained))
+    assert len(build_handoff(public_path, receipt_path, trained_path)["episodes"]) == 6

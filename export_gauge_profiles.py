@@ -149,11 +149,11 @@ def build_handoff(public_manifest_path: Path, receipt_path: Path, training_path:
     public_by_id = {row["object_id"]: row for row in public["episodes"]}
     receipt_by_id = {row["object_id"]: row for row in receipt["objects"]}
     trained_by_id = {row["object_id"]: row for row in training.get("objects", [])}
-    if set(public_by_id) != set(receipt_by_id) or set(public_by_id) != set(trained_by_id):
-        raise ValueError("public, materialized, and trained object sets differ")
+    if set(public_by_id) != set(receipt_by_id) or not trained_by_id or not set(trained_by_id).issubset(public_by_id):
+        raise ValueError("trained objects must be a non-empty subset of the complete public materialization")
     materialized_root = receipt_path.parent
     episodes = []
-    for object_id in sorted(public_by_id):
+    for object_id in sorted(trained_by_id):
         public_row, receipt_row, trained = public_by_id[object_id], receipt_by_id[object_id], trained_by_id[object_id]
         if public_row["episode_id"] != receipt_row["episode_id"] or receipt_row.get("status") != "materialized":
             raise ValueError("episode identity/status mismatch")
