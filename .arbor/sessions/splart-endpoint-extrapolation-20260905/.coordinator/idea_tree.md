@@ -180,8 +180,8 @@ Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol remove
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
 Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
 
-**Insight**: The prospective first-36 roster passed its label-unread prefix gate: existing 12 are exactly the first-12 prefix and 24 new objects are fixed without redraw. After preserving three infrastructure failures, public preflight-v4 passed 24/24; four NJC assets use explicitly visual-only URDFs because published collision proxies are absent, so no physical terminal claim is made. 128px smoke passed 24/24 and full 512px materialization is running.
+**Insight**: The frozen 24-object extension is fully materialized at 512px: every object has 72 frames and 217 files with complete RGB/depth/segmentation/hash checks. Independent 10-step fresh-random smoke passed on GPU2/3, and two disjoint 12-object 25k workers are active with no checkpoint load. All split/target/sealed/score/B_test/Full22 inputs remain unread.
 
-**Result**: Public target-free manifest SHA256 79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f; 24/24 preflight SHA256 a05dcc634cdef8051702d3aec81da9b513c5b27330e87cc7abb433ba0b329a72; 24/24 smoke receipt SHA256 57b640ed6cefdad86896d18379b837d1b3dc9c861a61b135936f90ec5be079f4. Full materialization active on GPU3; protected inputs unread.
+**Result**: Materialization receipt SHA256 97b9df75919c85ce214e22c781624e3a77df864a89d451ee459a9b04f9008c2d; audit SHA256 c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949. GPU2/3 fresh 25k workers each own 12 unique new objects.
 
 **Branch**: b7a2a3658816fc2f0a93ab046e8091a8542da448

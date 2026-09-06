@@ -175,10 +175,18 @@ published URDFs reference absent collision-proxy directories; this is allowed
 only for RGB-D/segmentation generation and does not restore a terminal-contact
 claim. Preflight SHA256:
 `a05dcc634cdef8051702d3aec81da9b513c5b27330e87cc7abb433ba0b329a72`.
-A 128x128 smoke materialized 24/24 objects, and full 512x512 materialization
-with 32 training plus 4 validation views per state is active on GPU3 under a
-128-GiB disk gate. No split, target, sealed mapping, score, B_test, or Full22
-file has been read.
+A 128x128 smoke materialized 24/24 objects. Full 512x512 materialization then
+completed all 24 fixed objects with 72 frames each (32 training plus 4
+validation views per state), 217 files per object, and 24/24 image/depth/
+segmentation/hash checks passing. Materialization receipt SHA256:
+`97b9df75919c85ce214e22c781624e3a77df864a89d451ee459a9b04f9008c2d`;
+independent audit SHA256:
+`c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949`.
+Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
+writing a step-9 checkpoint. Two durable 25k workers are now active on those
+GPUs with 12 disjoint new objects each; both logs confirm no Nerfstudio
+checkpoint was loaded. No split, target, sealed mapping, score, B_test, or
+Full22 file has been read.
 
 ## Remaining blockers before a complete CVPR evidence loop
 
