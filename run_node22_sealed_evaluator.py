@@ -9,6 +9,10 @@ def hstate(m):
  for k,v in sorted(m.state_dict().items()):h.update(k.encode()+v.detach().cpu().numpy().tobytes())
  return h.hexdigest()
 def fsha(p):return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+def sync(device):
+ if str(device).startswith('cuda') and torch.cuda.is_available():torch.cuda.synchronize()
+def bootstrap_ci(scores,indices):
+ means=scores.detach().cpu()[indices].mean(1);q=torch.quantile(means,torch.tensor([.025,.975]));return [float(q[0]),float(q[1])]
 def validate_authorization(auth,a,rows):
  ids=sorted(r['object_id'] for r in rows); expected={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(__file__),'truth_sha256':fsha(a.truth),'profile_index_sha256':[fsha(x) for x in a.index],'profile_set_sha256':hashlib.sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export_sha256':fsha(a.baseline_export),'output_absolute_path':str(pathlib.Path(a.output).resolve()),'one_execution_only':True,'v3_allowed':False}
  if any(auth.get(k)!=v for k,v in expected.items()):raise ValueError('authorization binding mismatch')
@@ -50,7 +54,7 @@ def main():
  if any(x in ' '.join(a.index+[a.truth,a.authorization,a.baseline_export,a.output]).lower() for x in FORBID):raise ValueError('protected path')
  out=pathlib.Path(a.output)
  if out.exists():raise FileExistsError('single execution output already exists')
- out.mkdir(mode=0o700,parents=True);state=out/'RUN_GUARD.json';atomic(state,{'stage':'PREFLIGHT','target_read':False,'optimizer_initialized':False,'retry_allowed':True})
+ out.mkdir(mode=0o700,parents=True);state=out/'RUN_GUARD.json';atomic(state,{'stage':'PREFLIGHT','target_file_deserialized':False,'target_values_consumed_for_training':False,'optimizer_initialized':False,'retry_allowed':True});total_start=time.perf_counter()
  try:
   auth=json.load(open(a.authorization))
   rows=[]
@@ -63,6 +67,7 @@ def main():
   groups={k:sorted([e for e in episodes if e['split']==k],key=lambda x:x['object_id']) for k in ('train','calibration','confirmatory')};assert list(map(lambda k:len(groups[k]),groups))==[18,9,9]
   results={};internal_scores={}
   for variant in VARIANTS:
+   sync(a.device);variant_start=time.perf_counter()
    tr=groups['train'];f=torch.stack([payload[e['object_id']]['features'] for e in tr]);s=torch.stack([payload[e['object_id']]['scalars'] for e in tr]);y=torch.tensor([target_pair(e) for e in tr],device=a.device)
    atomic(state,{'stage':'TARGET_VALUES_CONSUMED','target_file_deserialized':True,'target_values_consumed_for_training':True,'optimizer_initialized':False,'retry_allowed':False,'method':variant});mark=lambda:atomic(state,{'stage':'OPTIMIZER_INITIALIZED','target_file_deserialized':True,'target_values_consumed_for_training':True,'optimizer_initialized':True,'retry_allowed':False,'method':variant});m,n,receipt=train_once(f,s,y,[e['object_id'] for e in tr],variant,on_optimizer_initialized=mark)
    def pred(group):
@@ -70,13 +75,15 @@ def main():
    cp,cs=pred(groups['calibration']);cy=torch.tensor([target_pair(e) for e in groups['calibration']],device=a.device);cm=torch.tensor([metric_multiplier(e) for e in groups['calibration']],device=a.device);conf=fit_joint_conformal(cp,cs,cy,[e['object_id'] for e in groups['calibration']]);scores=((cp-cy).abs()*cm[:,None]).amax(1);r=float(scores.sort().values[8])
    ep,es=pred(groups['confirmatory']);ey=torch.tensor([target_pair(e) for e in groups['confirmatory']],device=a.device);lo,hi=conf.interval(ep,es);em=torch.tensor([metric_multiplier(e) for e in groups['confirmatory']],device=a.device);cl=(ep-r/em[:,None]).clamp_min(0);ch=ep+r/em[:,None]
    mul=torch.tensor([metric_multiplier(e) for e in groups['confirmatory']],device=a.device);base,width=normalized_object_metrics(ep,ey,lo,hi,mul);rowsout=[{'object_id':str(i),'endpoint_nmae':base[i].item(),'joint_covered':float(((ey[i]>=lo[i])&(ey[i]<=hi[i])).all()),'mean_joint_width':width[i].item()} for i in range(9)]
-   metrics,internal_scores[variant]=error_summary(ep,ey,em);ag={'schema':'splart-node2.2-head-aggregate/v2','metrics':metrics,'joint_coverage':float(((ey>=lo)&(ey<=hi)).all(1).float().mean()),'normalized_mean_width':float(((hi-lo)*em[:,None]).mean()),'constant_joint_coverage':float(((ey>=cl)&(ey<=ch)).all(1).float().mean()),'constant_normalized_mean_width':float(((ch-cl)*em[:,None]).mean()),'swap_error':None if variant=='unshared_head' else exact_swap_error(m,*n(f,s)),'model_sha256':hstate(m),'runtime_config':receipt['config']};results[variant]=ag
+   metrics,internal_scores[variant]=error_summary(ep,ey,em);sync(a.device);ag={'schema':'splart-node2.2-head-aggregate/v2','metrics':metrics,'joint_coverage':float(((ey>=lo)&(ey<=hi)).all(1).float().mean()),'normalized_mean_width':float(((hi-lo)*em[:,None]).mean()),'constant_joint_coverage':float(((ey>=cl)&(ey<=ch)).all(1).float().mean()),'constant_normalized_mean_width':float(((ch-cl)*em[:,None]).mean()),'swap_error':None if variant=='unshared_head' else exact_swap_error(m,*n(f,s)),'model_sha256':hstate(m),'runtime_config':receipt['config'],'wall_time_seconds':time.perf_counter()-variant_start};results[variant]=ag
   confirm=groups['confirmatory'];ey=torch.tensor([target_pair(e) for e in confirm],device=a.device);em=torch.tensor([metric_multiplier(e) for e in confirm],device=a.device)
   for name,mp in baseline.items():
-   pp=torch.tensor([mp[e['object_id']] for e in confirm],device=a.device);metrics,internal_scores[name]=error_summary(pp,ey,em);results[name]={'schema':'splart-node2.2-baseline-aggregate/v2','metrics':metrics}
+   sync(a.device);bt=time.perf_counter();pp=torch.tensor([mp[e['object_id']] for e in confirm],device=a.device);metrics,internal_scores[name]=error_summary(pp,ey,em);sync(a.device);results[name]={'schema':'splart-node2.2-baseline-aggregate/v2','metrics':metrics,'wall_time_seconds':time.perf_counter()-bt,'runtime_scope':'sealed confirmatory aggregation only'}
   tr=groups['train'];ty=torch.tensor([target_pair(e) for e in tr],device=a.device);priors={'global_prior_train18':ty.mean(0),'range_prior_train18':ty.mean().repeat(2)}
   for name,pp in priors.items():metrics,internal_scores[name]=error_summary(pp[None].expand_as(ey),ey,em);results[name]={'schema':'splart-node2.2-baseline-aggregate/v2','metrics':metrics}
-  results['shared']['wins_vs_full_d2']=int((internal_scores['shared']<internal_scores['full_d2']).sum());final={'schema':'splart-node2.2-sealed-aggregate/v3','status':'PASS','methods':results,'wins_definition':'shared lower object max-side normalized NMAE than full_d2; count only','objects':{'train':18,'calibration':9,'confirmatory':9},'per_object_values_emitted':False,'membership_emitted':False,'targets_emitted':False,'protected_splits_read':[]};atomic(out/'RESULT.json',final);atomic(state,{'stage':'COMPLETE','target_read':True,'optimizer_initialized':True,'retry_allowed':False});print(json.dumps({'status':'PASS','result':str(out/'RESULT.json')}))
+  gen=torch.Generator().manual_seed(220290);boot=torch.randint(0,9,(10000,9),generator=gen);boot_sha=hashlib.sha256(boot.numpy().tobytes()).hexdigest()
+  for name,scores in internal_scores.items():results[name]['metrics']['endpoint_nmae_bootstrap95_ci']=bootstrap_ci(scores,boot)
+  results['shared']['wins_vs_full_d2']=int((internal_scores['shared']<internal_scores['full_d2']).sum());sync(a.device);final={'schema':'splart-node2.2-sealed-aggregate/v3','status':'PASS','methods':results,'wins_definition':'shared lower object max-side normalized NMAE than full_d2; count only','bootstrap':{'unit':'confirmatory object','replicates':10000,'analysis_rng_seed':220290,'training_seed':False,'index_sha256':boot_sha,'selection_use':False},'total_wall_time_seconds':time.perf_counter()-total_start,'objects':{'train':18,'calibration':9,'confirmatory':9},'per_object_values_emitted':False,'membership_emitted':False,'targets_emitted':False,'protected_splits_read':[]};atomic(out/'RESULT.json',final);atomic(state,{'stage':'COMPLETE','target_file_deserialized':True,'target_values_consumed_for_training':True,'optimizer_initialized':True,'retry_allowed':False});print(json.dumps({'status':'PASS','result':str(out/'RESULT.json')}))
  except Exception as e:
   prior=json.loads(state.read_text());prior.update({'failed_from_stage':prior.get('stage'),'stage':'FAILED_TERMINAL','retry_allowed':False,'error_type':type(e).__name__});atomic(state,prior);raise
 if __name__=='__main__':main()
