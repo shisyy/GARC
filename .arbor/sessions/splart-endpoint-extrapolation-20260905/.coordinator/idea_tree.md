@@ -44,9 +44,9 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
 
-**Insight**: The frozen runtime and corrected target-unread protocol are complete. Twenty added-object profiles pass the public contract; no head has been trained and evaluator launch remains gated on all 36 profiles plus sealed-split and independent source/request P0.
+**Insight**: The method/runtime is frozen and all 36 public profiles now exist (original12 plus added24). No head has been trained; an independent Gate A is rehashing total-36 provenance and validating the sealed 18/9/9 contract before any evaluator launch.
 
-**Result**: Runtime/protocol frozen; 20/24 new profiles complete; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; launch_authorized=false.
+**Result**: All required public profiles materialized; added24 index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; launch_authorized=false pending Gate A.
 
 **Branch**: d94136c
 
@@ -180,8 +180,8 @@ Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol remove
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
 Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
 
-**Insight**: Twenty of 24 added objects now have fresh step24999 checkpoints and audited target-free profiles. The final eight-object queue is exactly covered by atomic claims across GPUs2/3/4/5/6/7; four trains remain and idle cards export only new profiles.
+**Insight**: All 24 added objects completed true scratch step24999 training and frozen target-free profile export. The final cumulative index has 24 unique profiles across 13 immutable batches; all provenance, state, shape, rehash, permission, and error audits pass. Independent total-36 Gate A is now running before evaluator authorization.
 
-**Result**: 20/24 added-object profiles sealed; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; final queue audit PASS SHA256 32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97.
+**Result**: 24/24 added-object checkpoints and profiles complete; final cumulative index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; evaluator not started.
 
-**Branch**: ca3712e
+**Branch**: 325c558

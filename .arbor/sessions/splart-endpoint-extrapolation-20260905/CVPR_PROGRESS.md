@@ -205,14 +205,14 @@ the remaining eight objects were redistributed without redraw across GPUs
 queue coverage audit proves `16 complete + 8 delta = 24`, with no duplicate or
 omitted object (SHA256
 `32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97`).
-Twenty of 24 checkpoints have now completed. The task shared GPU4 only after
+All 24 checkpoints have now completed. The task shared GPU4 only after
 five stable samples showed more than 46 GiB free; it did not stop or modify the
 long-running VLLM process.
 All active logs confirm fresh random initialization and no checkpoint load.
 No split, target, sealed mapping, score, B_test, or Full22 file has been read.
 
 Any naturally idle task GPU is used for incremental target-free profile export
-without interrupting training. All first-twenty
+without interrupting training. All 24 added-object
 profiles pass shape
 `[2,3,257,9]`, step-24999, artifact-rehash, exact clean D2 provenance, and
 base-state-before/after equality checks. Incremental index SHA256 values are
@@ -225,10 +225,14 @@ for the first six and
 `05e7b9a81c968c32e25b8d19033ebea80ef78ce47167fa3403fb4365e03202be`,
 `c170c0984cc72e137c306fe005d1c7240cd3d770d985f277a8e585c3048ccd63`,
 `f9f590597da64097ae94a906a64b016d819f13817c0f81ac171a13a06aac7ef8`,
-and `95ff77f7869f60978bd2dc95f24c5afcfa36f0c2b13869da23dea3c19bc69bcc`
+`95ff77f7869f60978bd2dc95f24c5afcfa36f0c2b13869da23dea3c19bc69bcc`,
+`c115c4d5032ee0e8e3c0e0014bdd46af2979998c5cddbe8602d96d9fb638fe3a`,
+`2a54d9483e5f1e70bab43aafe59af84cac1795430496d5f734abd2d8866425d6`,
+`d36098681fddcc76080d0132d86045eb6cc99c44a6a6d6c1246095b4877c65a1`,
+and `5e3960dc75f6c0fa98deee59fa370c4544cbf169005d7f51c0192a11f4bda4ec`
 for the subsequent two- or one-object batches.
-The immutable reference-only cumulative 20-object index SHA256 is
-`7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967`.
+The final immutable reference-only cumulative 24-object index SHA256 is
+`c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991`.
 No head training or protected-data access occurred.
 
 ## Remaining blockers before a complete CVPR evidence loop

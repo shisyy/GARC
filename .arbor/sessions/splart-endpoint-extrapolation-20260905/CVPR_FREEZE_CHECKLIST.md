@@ -1,7 +1,7 @@
 # CVPR Evidence Closure Checklist
 
-Status at freeze: 16/24 added-object scratch checkpoints and public profiles
-complete; the remaining eight are atomically claimed on GPUs 2/3/5/6. No
+Status at freeze: 24/24 added-object scratch checkpoints and public profiles
+complete under atomically claimed GPU queues; independent Gate A is pending. No
 endpoint target, split membership, score, B_test, or Full22 data has been read.
 
 ## Claim boundary
@@ -94,4 +94,3 @@ Endpoint-render PSNR, SSIM, LPIPS, depth, and mIoU belong in a separate table
 only if the sealed evaluator supplies genuine endpoint renders. Report
 object-level bootstrap intervals; never inflate sample size with views or
 deterministic state swaps.
-

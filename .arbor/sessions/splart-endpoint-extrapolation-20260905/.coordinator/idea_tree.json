@@ -224,8 +224,8 @@
       "hypothesis": "Mechanism: Gauge-Equivariant Dual-Boundary Energy Profile Head maps the full multi-radius D2 trajectory energy curve to two nonnegative endpoint distances and split-conformal feasible intervals, with shared weights and an exact observation-order swap operator.\nHypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lower-versus-upper error imbalance; retaining the bidirectional profile lets an object-disjoint head correct asymmetric range bias while calibrated intervals expose intrinsically ambiguous endpoints.\nObservable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.\nConflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion.",
       "status": "pending",
       "code_ref": "d94136c",
-      "insight": "The frozen runtime and corrected target-unread protocol are complete. Twenty added-object profiles pass the public contract; no head has been trained and evaluator launch remains gated on all 36 profiles plus sealed-split and independent source/request P0.",
-      "result": "Runtime/protocol frozen; 20/24 new profiles complete; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; launch_authorized=false."
+      "insight": "The method/runtime is frozen and all 36 public profiles now exist (original12 plus added24). No head has been trained; an independent Gate A is rehashing total-36 provenance and validating the sealed 18/9/9 contract before any evaluator launch.",
+      "result": "All required public profiles materialized; added24 index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; launch_authorized=false pending Gate A."
     },
     "7.2": {
       "id": "7.2",
@@ -234,9 +234,9 @@
       "depth": 2,
       "hypothesis": "Mechanism: Prospective Hash-Split 36-Object Extension expands the frozen target-free suite by the original selection hash, then uses an independent sealed salt to assign 18 train, 9 calibration, and 9 confirmatory objects before targets or scores are read.\nHypothesis: A sufficiently large object-disjoint evaluator-owned protocol removes the post-hoc split and finite-sample conformal failures that block the 12-object suite, enabling an honest test of the gauge-equivariant profile head.\nObservable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.\nConflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim.",
       "status": "running",
-      "insight": "Twenty of 24 added objects now have fresh step24999 checkpoints and audited target-free profiles. The final eight-object queue is exactly covered by atomic claims across GPUs2/3/4/5/6/7; four trains remain and idle cards export only new profiles.",
-      "result": "20/24 added-object profiles sealed; cumulative index SHA256 7a0e1df2319f73eaa5bc276441cad25030d756f05068535ae67a340cc85e4967; final queue audit PASS SHA256 32cc94123b31be429671aaeb812bab3f74732c620ff34d6d9d0bdcc4f5396d97.",
-      "code_ref": "ca3712e"
+      "insight": "All 24 added objects completed true scratch step24999 training and frozen target-free profile export. The final cumulative index has 24 unique profiles across 13 immutable batches; all provenance, state, shape, rehash, permission, and error audits pass. Independent total-36 Gate A is now running before evaluator authorization.",
+      "result": "24/24 added-object checkpoints and profiles complete; final cumulative index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; evaluator not started.",
+      "code_ref": "325c558"
     }
   }
 }
