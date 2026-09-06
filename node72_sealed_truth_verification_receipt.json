@@ -1,0 +1,30 @@
+{
+  "checks": {
+    "manifest_mode_0600": true,
+    "no_public_write": true,
+    "object_coverage": true,
+    "original_urdf_joint_limits": true,
+    "presentation_direction_mapping": true,
+    "sealed_directory_mode_0700": true,
+    "split_hash_and_counts": true,
+    "target_and_nmae_normalization": true
+  },
+  "input_hashes": {
+    "inventory": "83bc4abac1a7c9761e7e1f37d4c723e16c30c3ed6cc5409a2f8795dda42c5880",
+    "node71_preregister": "6b6e0e2dde74c74a22c85c42d2909248d4e6035e0ac217015d58c97c860246fc",
+    "node71_presentation_salt": "1592983de07a9a595730f754154356e724ecd984fdc8e2269c20226aaed629a9",
+    "node72_split_salt": "7d94832908e12ec238b4abba232b140214e47cda6f1d2074c95a27f919c600c9",
+    "public_manifest": "79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f"
+  },
+  "object_count": 36,
+  "protected_benchmark_files_read": [],
+  "schema": "splart-node7.2-sealed-endpoint-truth-independent-verification/v1",
+  "score_files_read": [],
+  "sealed_manifest_sha256": "6d0e4c57871363b69335feaa50d8ed94746d8aa3be4787fafd230f1736c516dc",
+  "split_counts": {
+    "calibration": 9,
+    "confirmatory": 9,
+    "train": 18
+  },
+  "status": "PASS"
+}

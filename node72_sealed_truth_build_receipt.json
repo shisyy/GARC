@@ -1,0 +1,47 @@
+{
+  "combined_input_sha256": "6ae7283c0e28ab7672c213a170be4516b69e640c97d89d6d96e14c8c1e740583",
+  "formula_version": "splart-node7.2-local-endpoint-truth/v1",
+  "independent_validation": {
+    "direction_mapping_reconstruction": true,
+    "joint_unit_and_range_checks": true,
+    "nmae_normalization_checks": true,
+    "object_coverage": true,
+    "split_hash_binding": true
+  },
+  "input_hashes": {
+    "inventory": "83bc4abac1a7c9761e7e1f37d4c723e16c30c3ed6cc5409a2f8795dda42c5880",
+    "node71_preregister": "6b6e0e2dde74c74a22c85c42d2909248d4e6035e0ac217015d58c97c860246fc",
+    "node71_presentation_salt": "1592983de07a9a595730f754154356e724ecd984fdc8e2269c20226aaed629a9",
+    "node71_public_manifest": "b10b61f7022f81a0b6e62c7fc03a7b37f376b40dd6dc67b12baec1d664e41274",
+    "node71_sealed_mapping": "8ddedecb2c86b19bb443976728dc59a4f0397f33d0e3d9db18c0c7d559424c6a",
+    "node72_split_salt": "7d94832908e12ec238b4abba232b140214e47cda6f1d2074c95a27f919c600c9",
+    "preregister": "8d00e654a990e2d96b912164bf4c5aaaefc7159304aeceaf3544e0f4ea6d85cc",
+    "public_manifest": "79c0f575135fed75d92d6837ec78e7aeb7ebd56b19f827d2880639802f4eb61f"
+  },
+  "no_public_leak_checks": {
+    "no_public_output_written": true,
+    "public_manifest_hash_unchanged": true,
+    "receipt_contains_no_membership_or_target_values": true,
+    "sealed_root_outside_public_data_roots": true,
+    "source_inventory_hash_unchanged": true
+  },
+  "node71_presentation_recomputed_count": 12,
+  "object_count": 36,
+  "original_urdf_bundle_sha256": "b311cad815ae808acde8c67a4995080ba7ada59f41057f2a674f296e210bbd52",
+  "original_urdf_verified_count": 36,
+  "permissions": {
+    "directory": "0700",
+    "manifest": "0600",
+    "receipt": "0600"
+  },
+  "protected_benchmark_files_read": [],
+  "schema": "splart-node7.2-sealed-endpoint-truth-build-receipt/v1",
+  "score_files_read": [],
+  "sealed_manifest_sha256": "6d0e4c57871363b69335feaa50d8ed94746d8aa3be4787fafd230f1736c516dc",
+  "split_counts": {
+    "calibration": 9,
+    "confirmatory": 9,
+    "train": 18
+  },
+  "status": "PASS"
+}
