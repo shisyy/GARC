@@ -9,7 +9,7 @@
 
 ## Exploration
 
-- Nodes total: `15`
+- Nodes total: `16`
 - Scored nodes: `8`
 - Merged nodes: `0`
 

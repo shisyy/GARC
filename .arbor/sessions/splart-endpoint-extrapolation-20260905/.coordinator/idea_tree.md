@@ -174,3 +174,14 @@ Conflicts: Node 7 proved native authored lower-versus-upper labels are 119 to 2 
 **Result**: 12/12 fresh scratch checkpoints complete. Checkpoint manifest SHA256 bb5c78aeafb0d60899ebdf0d1d6ff9f5428cf7522b004d6620465ef1e36c9141; completion receipt SHA256 a0e6f0747487292bf71854c652ceb1a299e1d7c1d10c409db21a180f97415f6e.
 
 **Branch**: 47d18a4060875e3ec3ee58c05f652169674af3ad
+
+#### 7.2: Mechanism: Prospective Hash-Split 36-Object Extension expands the frozen target-free suite by the original selection hash, then uses an independent sealed salt to assign 18 train, 9 calibration, and 9 confirmatory objects before targets or scores are read.
+Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol removes the post-hoc split and finite-sample conformal failures that block the 12-object suite, enabling an honest test of the gauge-equivariant profile head.
+Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
+Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [PENDING]
+
+**Insight**: Prospective protocol frozen before target or score access: original node7.1 selection hash extends to first 36 objects; an independent sealed salt fixes 18/9/9 train/calibration/confirmatory membership with no redraw or stratification. Launch stays unauthorized until all 36 public profiles and the sealed split manifest pass independent P0.
+
+**Result**: Preregister commit b7a2a3658816fc2f0a93ab046e8091a8542da448; immutable preregister SHA256 8d00e654a990e2d96b912164bf4c5aaaefc7159304aeceaf3544e0f4ea6d85cc. No targets, scores, B_test, or Full22 read.
+
+**Branch**: b7a2a3658816fc2f0a93ab046e8091a8542da448

@@ -183,7 +183,8 @@
       "id": "7",
       "parent_id": "ROOT",
       "children_ids": [
-        "7.1"
+        "7.1",
+        "7.2"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Object-Level Balanced Endpoint-Free Suite builds pre-registered interior-state episodes on disjoint articulated objects with canonical closed labels balanced between local lower and upper, stratified by revolute versus prismatic motion and observation span.\nHypothesis: Same-object Box episodes cannot distinguish physical extrapolation from object or ordering priors; object-disjoint balanced sampling makes generalization and closed-side evidence statistically identifiable.\nObservable: A public manifest contains at least twelve eligible objects with no identity leakage, both joint types where available, balanced canonical closed sides, fixed train/dev/test partitions, and runnable scratch, symmetric-prior, D2, PILC, and FECF evaluations whose confidence intervals use objects as the sampling unit.\nConflicts: Nodes 1 through 5 evaluated one Box object and node 6 showed existing visual assets lack reliable collision transitions; this suite targets kinematic authored endpoints and functional closure labels only, explicitly excluding terminal-contact claims.",
@@ -225,6 +226,17 @@
       "code_ref": "81e094f",
       "insight": "All 12 target-free energy profiles are frozen and pass shape, rehash, step24999, clean D2 provenance, and base-state invariance checks. Independent protocol review blocks head training: the original preregistration omitted a fixed object split, and 12 objects cannot provide >=9 calibration objects plus honest head-train and confirmatory sets for exact 90% split conformal. No targets or scores were exposed; a prospective label-unread dataset extension is required.",
       "result": "12/12 target-free profiles merged under index SHA256 328e9dffd2e8d9ad5c7372160bf3ca3ab7f2f076d72520a2fc5cc00d1ced3985. Head training is pending a prospective, deterministic, sufficiently large object split; B_test/Full22 remain sealed."
+    },
+    "7.2": {
+      "id": "7.2",
+      "parent_id": "7",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Prospective Hash-Split 36-Object Extension expands the frozen target-free suite by the original selection hash, then uses an independent sealed salt to assign 18 train, 9 calibration, and 9 confirmatory objects before targets or scores are read.\nHypothesis: A sufficiently large object-disjoint evaluator-owned protocol removes the post-hoc split and finite-sample conformal failures that block the 12-object suite, enabling an honest test of the gauge-equivariant profile head.\nObservable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.\nConflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim.",
+      "status": "pending",
+      "insight": "Prospective protocol frozen before target or score access: original node7.1 selection hash extends to first 36 objects; an independent sealed salt fixes 18/9/9 train/calibration/confirmatory membership with no redraw or stratification. Launch stays unauthorized until all 36 public profiles and the sealed split manifest pass independent P0.",
+      "result": "Preregister commit b7a2a3658816fc2f0a93ab046e8091a8542da448; immutable preregister SHA256 8d00e654a990e2d96b912164bf4c5aaaefc7159304aeceaf3544e0f4ea6d85cc. No targets, scores, B_test, or Full22 read.",
+      "code_ref": "b7a2a3658816fc2f0a93ab046e8091a8542da448"
     }
   }
 }

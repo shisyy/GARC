@@ -149,6 +149,21 @@ confirmation. No target was exposed. The prospective repair is a label- and
 score-unread dataset extension with a deterministic object split frozen before
 materialization or target service; the existing 12-object profiles remain
 target-free development artifacts only until that gate is satisfied.
+The immutable independent BLOCKED receipt SHA256 is
+`d2c6a9dbe686becb35b2d3813dd166193eed79bd73d058b2000e20301b18d8e5`.
+
+Prospective node 7.2 is now frozen before any target or score access. It uses
+the original node-7.1 selection hash to extend the public suite to the first 36
+objects, then an independent sealed salt to assign 18 head-training, 9
+calibration, and 9 confirmatory objects without redraw or label-based
+stratification. The evaluator alone owns targets, training, calibration, and
+the one-shot confirmatory score. Its finite-sample calibration rank is
+`ceil((9+1)*0.9)=9`. Launch remains unauthorized until all 36 target-free
+profiles and the sealed split manifest pass independent P0.
+
+- Preregister commit: `b7a2a3658816fc2f0a93ab046e8091a8542da448`
+- Immutable preregister SHA256:
+  `8d00e654a990e2d96b912164bf4c5aaaefc7159304aeceaf3544e0f4ea6d85cc`
 
 ## Remaining blockers before a complete CVPR evidence loop
 
