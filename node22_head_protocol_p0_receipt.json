@@ -1,8 +1,10 @@
 {
-  "addendum_sha256": "c6778c0781c3f8dc2b348172f3d216639b6cad2596d4fc98d72b2de01c6abaef",
+  "addendum_canonical_json_sha256": "654af6acc3cf1b9cffbd8251ef04619a79a429414b667b0002d2c93c3154b172",
+  "addendum_file_sha256_windows_checkout": "af86da9e20c9404de3c4558e68dc0d24cf3ca2afa466b617f06b28349d342423",
   "failures": [],
   "launch_authorized": false,
-  "old_sha256": "2f85224478d1ded6683e2634e41aac7548f1fe793dcdb725a614823d599c3ee7",
-  "schema": "splart-node2.2-head-protocol-p0/v1",
+  "old_canonical_json_sha256": "b8ed9387b72f21153ef5c9181ac209497fd629f1d409e3d15ffc9a20933e6f8b",
+  "old_file_sha256_windows_checkout": "04033bdd3eb1817ff65ca43c71a84d7394d590f8941d1943c8a08da9a208e10b",
+  "schema": "splart-node2.2-head-protocol-p0/v2",
   "status": "PASS"
 }

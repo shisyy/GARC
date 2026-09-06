@@ -2,16 +2,20 @@
 import argparse, hashlib, json, math
 from pathlib import Path
 
-OLD_SHA = "2f85224478d1ded6683e2634e41aac7548f1fe793dcdb725a614823d599c3ee7"
+OLD_CANONICAL_SHA = "b8ed9387b72f21153ef5c9181ac209497fd629f1d409e3d15ffc9a20933e6f8b"
 FORBIDDEN = ("b_test", "full22")
 
 def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def canonical_sha(payload):
+    encoded=json.dumps(payload,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 def audit(old_path, addendum_path):
     old=json.loads(old_path.read_text()); a=json.loads(addendum_path.read_text()); failures=[]
     def require(value, name):
         if not value: failures.append(name)
-    require(sha(old_path)==OLD_SHA==a["supersedes"]["sha256"], "old-preregister-binding")
+    require(canonical_sha(old)==OLD_CANONICAL_SHA==a["supersedes"]["canonical_json_sha256"], "old-preregister-binding")
     require(a["status"]=="FROZEN_BEFORE_TARGET_OR_SPLIT_READ", "freeze-status")
     require(a["target_files_read"]==a["split_membership_read"]==a["score_files_read"]==[], "no-private-read")
     require(a["launch_authorized"] is False, "fail-closed-launch")
@@ -26,7 +30,7 @@ def audit(old_path, addendum_path):
     require(c["primary_claim"]=="simultaneous two-endpoint object coverage only", "coverage-only-primary")
     require("no superiority gate" in c["width_reporting"], "no-width-claim")
     require(set(a["protected_inputs"]) >= {"B_test", "Full22"}, "protected-splits-explicit")
-    return {"schema":"splart-node2.2-head-protocol-p0/v1","status":"PASS" if not failures else "FAIL","failures":failures,"old_sha256":sha(old_path),"addendum_sha256":sha(addendum_path),"launch_authorized":False}
+    return {"schema":"splart-node2.2-head-protocol-p0/v2","status":"PASS" if not failures else "FAIL","failures":failures,"old_canonical_json_sha256":canonical_sha(old),"addendum_canonical_json_sha256":canonical_sha(a),"old_file_sha256":sha(old_path),"addendum_file_sha256":sha(addendum_path),"launch_authorized":False}
 
 def main():
     p=argparse.ArgumentParser(); p.add_argument("--old",type=Path,required=True); p.add_argument("--addendum",type=Path,required=True); p.add_argument("--output",type=Path,required=True); x=p.parse_args()

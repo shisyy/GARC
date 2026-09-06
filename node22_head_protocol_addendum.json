@@ -3,7 +3,8 @@
   "status": "FROZEN_BEFORE_TARGET_OR_SPLIT_READ",
   "supersedes": {
     "document": "gauge_energy_preregister.json",
-    "sha256": "2f85224478d1ded6683e2634e41aac7548f1fe793dcdb725a614823d599c3ee7",
+    "canonical_json_sha256": "b8ed9387b72f21153ef5c9181ac209497fd629f1d409e3d15ffc9a20933e6f8b",
+    "hash_semantics": "SHA256 of UTF-8 canonical JSON with sorted keys and compact separators; invariant to checkout line endings",
     "scope": ["training configuration", "null definitions", "conformal score and claims"]
   },
   "preserves": ["frozen D2 profiles", "shared side encoder", "swap equivariance", "object-disjoint evaluation", "B_test and Full22 prohibition"],
