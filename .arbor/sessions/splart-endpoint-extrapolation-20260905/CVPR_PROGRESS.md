@@ -59,6 +59,14 @@ claims must reflect this mixed but correctly attributed evidence.
 
 Box a-f full/no-contact summary artifact SHA256:
 `042aa620df04a8648cf090bbc7eaf822a9b438159127f3730d19def6da6d42a2`.
+The first independent P0 audit reproduced every metric and provenance check
+but failed one operational assertion: the new evaluation root was mode `0755`
+while its report claimed `0700`. A permission-only repair changed only the
+root directory mode, preserving its inode, mtime, complete content-tree hash,
+and path-plus-mtime manifest. The superseding independent P0 re-ran the full
+numerical, provenance, checkpoint, render-count, leakage, and filesystem audit
+and passed. Immutable receipt SHA256:
+`559138980c579fbfa6df4dbd17b16773dae520f98974f3b0c23305a5abb130ea`.
 
 ## FECF null audit: claim withdrawn
 
@@ -118,7 +126,14 @@ objects, 864 frames, and 2,604 files, checks exact clean D2 provenance and
 base-state hashes, and fails closed on target/sealed/B_test fields. Adapter
 preflight SHA256:
 `e9dadd3818ce51870ad2ffb8982f19a5ffe248f260cb6c265f19bf8780d63b69`.
-Profile export remains blocked until each fresh 25k checkpoint is available.
+Target-free incremental profile export has passed for the first six finished
+25k checkpoints: 6/6 artifacts have shape `[2,3,257,9]`, independently
+recomputed hashes, unchanged base-model state before/after export, and frozen
+step-24999 checkpoint/config/dataparser provenance. Index SHA256:
+`c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28`.
+These profiles remain explicitly `unassigned`; no head was trained and no
+targets, sealed mapping, B_test, or Full22 were read. The remaining six
+profiles wait for their corresponding fresh 25k checkpoints.
 
 ## Remaining blockers before a complete CVPR evidence loop
 
@@ -150,14 +165,15 @@ Profile export remains blocked until each fresh 25k checkpoint is available.
    marked `failed_enospc`, with stale originals preserved under the v4 evidence
    directory. Both disk-gated v4 smoke runs completed 10 iterations and wrote
    729,905,478-byte checkpoints while logging `No Nerfstudio checkpoint to
-   load`. The full 25k v4 workers are now active on GPU3/GPU4 (training child
-   PIDs `3293825` and `3293824`), each with six unique objects, 4.2 TiB output
-   headroom, `score_files_read=[]`, and `sealed_mapping_read=false`.
-2. Finish the strong-baseline/ablation independent P0 receipt.
-3. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
+   load`. The full 25k v4 workers remain active on GPU3/GPU4. Six of twelve
+   objects have completed fresh step-24999 checkpoints; the fourth pair is
+   running and two objects per worker remain queued. The workers retain about
+   4.2 TiB output headroom, `score_files_read=[]`, and
+   `sealed_mapping_read=false`.
+2. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
    B_dev; use objects, not swaps or views, as the statistical unit.
-4. Freeze the selected method and evaluation code before opening B_test.
-5. Run one blind B_test/Full22 milestone and report object-level confidence
+3. Freeze the selected method and evaluation code before opening B_test.
+4. Run one blind B_test/Full22 milestone and report object-level confidence
    intervals, failures, runtime, and all null controls.
 
 Until those gates pass, the project has a credible task definition and one

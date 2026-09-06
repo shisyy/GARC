@@ -198,8 +198,11 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Endpoint Extrapolation Null Suite implements symmetric linear extension, an object-disjoint global range prior, and single-factor D2 ablations for contact, penetration, terminal support, radius aggregation, and axis-pivot quality.\nHypothesis: Scratch SplArt is not a sufficient comparator for an endpoint-extrapolation method; D2 is credible only if its counterfactual geometric terms outperform non-geometric range priors and each claimed component has measurable causal value.\nObservable: On frozen development episodes and then the object-level balanced suite, report endpoint NMAE, per-end error, win rate, bootstrap confidence intervals, and runtime for every baseline and ablation under one pre-registered evaluation budget without score-selected hyperparameters.\nConflicts: Node 2 showed a large canonical Box gain but only about 2.3 percent macro improvement on c/d and lacked strong null models; this node tests mechanism necessity and stability rather than proposing another endpoint estimator.",
-      "status": "running",
-      "code_ref": "arbor/node-8-endpoint-baselines-ablation"
+      "status": "done",
+      "code_ref": "b610f01a7f3e5a85cc568d0872749d2f460403bd",
+      "score": 0.154877451511864,
+      "insight": "Across six preregistered Box development episodes, full D2 retains contact: macro NMAE 0.154877 vs 0.155311 without contact, no-contact wins only 2/6 and slightly worsens every reconstruction/penetration macro; both have terminal validity zero. Strong symmetric and range priors plus v4 component ablations support multi-radius profiling and penetration avoidance, not physical terminal contact. Superseding independent P0 PASS receipt 559138980c579fbfa6df4dbd17b16773dae520f98974f3b0c23305a5abb130ea.",
+      "result": "Frozen full-vs-no-contact a-f evaluation and all hashes/provenance independently reproduced after a permission-only 0755-to-0700 repair. Delete-contact gate failed; full D2 remains candidate. Receipt SHA256 559138980c579fbfa6df4dbd17b16773dae520f98974f3b0c23305a5abb130ea."
     },
     "7.1": {
       "id": "7.1",

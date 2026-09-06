@@ -31,9 +31,13 @@ Conflicts: prior IKC point-to-point experiments optimized consistency between ob
 #### 2.1: Mechanism: Endpoint Extrapolation Null Suite implements symmetric linear extension, an object-disjoint global range prior, and single-factor D2 ablations for contact, penetration, terminal support, radius aggregation, and axis-pivot quality.
 Hypothesis: Scratch SplArt is not a sufficient comparator for an endpoint-extrapolation method; D2 is credible only if its counterfactual geometric terms outperform non-geometric range priors and each claimed component has measurable causal value.
 Observable: On frozen development episodes and then the object-level balanced suite, report endpoint NMAE, per-end error, win rate, bootstrap confidence intervals, and runtime for every baseline and ablation under one pre-registered evaluation budget without score-selected hyperparameters.
-Conflicts: Node 2 showed a large canonical Box gain but only about 2.3 percent macro improvement on c/d and lacked strong null models; this node tests mechanism necessity and stability rather than proposing another endpoint estimator. [RUNNING]
+Conflicts: Node 2 showed a large canonical Box gain but only about 2.3 percent macro improvement on c/d and lacked strong null models; this node tests mechanism necessity and stability rather than proposing another endpoint estimator. [DONE] (score: 0.1549)
 
-**Branch**: arbor/node-8-endpoint-baselines-ablation
+**Insight**: Across six preregistered Box development episodes, full D2 retains contact: macro NMAE 0.154877 vs 0.155311 without contact, no-contact wins only 2/6 and slightly worsens every reconstruction/penetration macro; both have terminal validity zero. Strong symmetric and range priors plus v4 component ablations support multi-radius profiling and penetration avoidance, not physical terminal contact. Superseding independent P0 PASS receipt 559138980c579fbfa6df4dbd17b16773dae520f98974f3b0c23305a5abb130ea.
+
+**Result**: Frozen full-vs-no-contact a-f evaluation and all hashes/provenance independently reproduced after a permission-only 0755-to-0700 repair. Delete-contact gate failed; full D2 remains candidate. Receipt SHA256 559138980c579fbfa6df4dbd17b16773dae520f98974f3b0c23305a5abb130ea.
+
+**Branch**: b610f01a7f3e5a85cc568d0872749d2f460403bd
 
 #### 2.2: Mechanism: Gauge-Equivariant Dual-Boundary Energy Profile Head maps the full multi-radius D2 trajectory energy curve to two nonnegative endpoint distances and split-conformal feasible intervals, with shared weights and an exact observation-order swap operator.
 Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lower-versus-upper error imbalance; retaining the bidirectional profile lets an object-disjoint head correct asymmetric range bias while calibrated intervals expose intrinsically ambiguous endpoints.
