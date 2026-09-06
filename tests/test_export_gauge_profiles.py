@@ -70,3 +70,10 @@ def test_real_public_manifest_and_materialization_receipt_join_training_outputs(
     trained["objects"] = trained["objects"][:6]
     trained_path.write_text(json.dumps(trained))
     assert len(build_handoff(public_path, receipt_path, trained_path)["episodes"]) == 6
+
+    public["schema"] = "splart-node7.2-target-free-public-profiles/v1"
+    public["profiles"] = public.pop("episodes") + [{"object_id": "not-materialized", "episode_id": "ep72-extra"}]
+    public_path.write_text(json.dumps(public))
+    receipt["public_manifest_sha256"] = hashlib.sha256(public_path.read_bytes()).hexdigest()
+    receipt_path.write_text(json.dumps(receipt))
+    assert len(build_handoff(public_path, receipt_path, trained_path)["episodes"]) == 6

@@ -79,20 +79,20 @@ def preflight_public_materialization(public_manifest_path: Path, receipt_path: P
     receipt = json.loads(receipt_path.read_text())
     _reject_private(public)
     _reject_private(receipt)
-    if public.get("schema") != "splart-endpoint-free-order-public/v1":
+    if public.get("schema") not in {"splart-endpoint-free-order-public/v1", "splart-node7.2-target-free-public-profiles/v1"}:
         raise ValueError("unexpected public episode manifest schema")
     if receipt.get("schema") != "splart-order-materialization-receipt/v1":
         raise ValueError("unexpected materialization receipt schema")
-    episodes = public.get("episodes", [])
+    episodes = public.get("episodes", public.get("profiles", []))
     objects = receipt.get("objects", [])
-    if receipt.get("ready") != 12 or receipt.get("blocked") != 0 or len(episodes) != 12 or len(objects) != 12:
-        raise ValueError("materialization is not exactly 12/12 complete")
+    if receipt.get("ready") != len(objects) or receipt.get("blocked") != 0 or not episodes or not objects:
+        raise ValueError("materialization receipt is not complete")
     if receipt.get("public_manifest_sha256") != sha256_file(public_manifest_path):
         raise ValueError("receipt does not bind the public episode manifest")
     public_by_id = {row["object_id"]: row for row in episodes}
     receipt_by_id = {row["object_id"]: row for row in objects}
-    if len(public_by_id) != 12 or set(public_by_id) != set(receipt_by_id):
-        raise ValueError("public and materialized object sets differ")
+    if len(public_by_id) != len(episodes) or not set(receipt_by_id).issubset(public_by_id):
+        raise ValueError("materialized objects are not a unique subset of the public manifest")
     root = receipt_path.parent / "episodes"
     rows = []
     tree_digest = hashlib.sha256()
@@ -138,18 +138,18 @@ def build_handoff(public_manifest_path: Path, receipt_path: Path, training_path:
     training = json.loads(training_path.read_text())
     for value in (public, receipt, training):
         _reject_private(value)
-    if public.get("schema") != "splart-endpoint-free-order-public/v1":
+    if public.get("schema") not in {"splart-endpoint-free-order-public/v1", "splart-node7.2-target-free-public-profiles/v1"}:
         raise ValueError("unexpected public episode manifest schema")
-    if receipt.get("schema") != "splart-order-materialization-receipt/v1" or receipt.get("ready") != 12 or receipt.get("blocked") != 0:
+    if receipt.get("schema") != "splart-order-materialization-receipt/v1" or receipt.get("ready") != len(receipt.get("objects", [])) or receipt.get("blocked") != 0:
         raise ValueError("materialization receipt is not complete")
     if receipt.get("public_manifest_sha256") != sha256_file(public_manifest_path):
         raise ValueError("receipt does not bind the public episode manifest")
     if training.get("schema") != "splart-frozen-d2-training-outputs/v1" or training.get("status") != "COMPLETE":
         raise ValueError("frozen D2 training outputs are incomplete")
-    public_by_id = {row["object_id"]: row for row in public["episodes"]}
+    public_by_id = {row["object_id"]: row for row in public.get("episodes", public.get("profiles", []))}
     receipt_by_id = {row["object_id"]: row for row in receipt["objects"]}
     trained_by_id = {row["object_id"]: row for row in training.get("objects", [])}
-    if set(public_by_id) != set(receipt_by_id) or not trained_by_id or not set(trained_by_id).issubset(public_by_id):
+    if not set(receipt_by_id).issubset(public_by_id) or not trained_by_id or not set(trained_by_id).issubset(receipt_by_id):
         raise ValueError("trained objects must be a non-empty subset of the complete public materialization")
     materialized_root = receipt_path.parent
     episodes = []
