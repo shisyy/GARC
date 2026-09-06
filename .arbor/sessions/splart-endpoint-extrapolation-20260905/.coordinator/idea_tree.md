@@ -44,11 +44,11 @@ Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lo
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
 Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [RUNNING]
 
-**Insight**: Implementation and target-free real-data adapter are validated: 53/53 tests, exact swap equivariance, fail-closed leakage guards, and 8/8 finished-object D2 profiles exported at step24999 with shape [2,3,257,9], immutable provenance, and unchanged base-state hashes. Head training remains correctly blocked until an evaluator supplies legal object-disjoint B_dev splits/targets; B_test/Full22 stay unread.
+**Insight**: Target-free export now covers 10/12 fresh scratch checkpoints. All ten profiles have [2,3,257,9] shape, artifact rehash PASS, unchanged base state, exact clean D2 provenance, and clean error scans. Profiles remain unassigned; no targets, sealed mapping, B_test, or Full22 were read and no head was trained.
 
-**Result**: Incremental target-free profile batches cover 8/12 fresh scratch checkpoints. Index SHA256 c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28 (first 6) and d991c24f4e84231a877449586a51da192b5d0e70c234cbf53b317b73efa137ee (next 2). Four scratch checkpoints remain; no head trained.
+**Result**: Ten target-free profiles are frozen across batch-index SHA256 c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28, d991c24f4e84231a877449586a51da192b5d0e70c234cbf53b317b73efa137ee, and 78250ad6a75922004407845ce149bdb9d870bf3b5e288d4a445c6395fa7d046a. Final two profiles await the running scratch checkpoints.
 
-**Branch**: 2727264
+**Branch**: 8fc2df7
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
