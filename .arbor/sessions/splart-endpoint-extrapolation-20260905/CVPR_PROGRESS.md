@@ -132,10 +132,20 @@ Profile export remains blocked until each fresh 25k checkpoint is available.
    that failure is also retained. Fresh v3 materialization then passed 12/12
    (SHA prefix `97731bdf`) and its public integrity preflight passed 12/12
    (SHA prefix `444255e6`). Both v3 smoke jobs completed 10 iterations and
-   wrote fresh checkpoints. The 25k v3 workers are now genuinely training:
-   GPU3 PID `3278603` and GPU4 PID `3278606`, each with a fixed six-object
-   queue and fresh random initialization per object. No smoke checkpoint is
-   loaded or resumed.
+   wrote fresh checkpoints. The first 25k v3 attempts genuinely trained from
+   random initialization to approximately step 2,000, then both failed at the
+   first checkpoint write because `/data` had only about 4.2 GiB free; one log
+   records `ENOSPC` explicitly. No later object was started and no result is
+   claimed from these failed runs. Their logs and receipts are retained. The
+   disk-only v4 recovery redirects new checkpoints to the 4.2 TiB-free
+   `/data1` filesystem, requires at least 32 GiB free before launch, and still
+   forbids checkpoint loading/resume. The v3 receipts are now explicitly
+   marked `failed_enospc`, with stale originals preserved under the v4 evidence
+   directory. Both disk-gated v4 smoke runs completed 10 iterations and wrote
+   729,905,478-byte checkpoints while logging `No Nerfstudio checkpoint to
+   load`. The full 25k v4 workers are now active on GPU3/GPU4 (training child
+   PIDs `3293825` and `3293824`), each with six unique objects, 4.2 TiB output
+   headroom, `score_files_read=[]`, and `sealed_mapping_read=false`.
 2. Finish the strong-baseline/ablation independent P0 receipt.
 3. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
    B_dev; use objects, not swaps or views, as the statistical unit.
