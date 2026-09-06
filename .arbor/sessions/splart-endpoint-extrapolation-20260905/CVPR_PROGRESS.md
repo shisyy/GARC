@@ -235,6 +235,14 @@ The final immutable reference-only cumulative 24-object index SHA256 is
 `c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991`.
 No head training or protected-data access occurred.
 
+Independent Gate A subsequently rehashed all original-12 and added-24
+artifacts, reconstructed the frozen first-36 selection, verified all tensor,
+state, checkpoint, D2, and recursive denylist contracts, and checked the sealed
+salt plus 18/9/9 coverage and disjointness without exposing membership. It
+issued `AUTHORIZED_FOR_EVALUATOR`; public receipt SHA256:
+`ec7c93e6a9743b2958c6c6cf3f4d30406c2bed503b95af6abb470b26cf9f106b`.
+B_test and Full22 remain unread.
+
 ## Remaining blockers before a complete CVPR evidence loop
 
 The immutable decision rules, evaluator sequence, required baselines, and

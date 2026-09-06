@@ -1,7 +1,8 @@
 # CVPR Evidence Closure Checklist
 
 Status at freeze: 24/24 added-object scratch checkpoints and public profiles
-complete under atomically claimed GPU queues; independent Gate A is pending. No
+complete under atomically claimed GPU queues; independent Gate A passed and
+authorized the sealed evaluator. No
 endpoint target, split membership, score, B_test, or Full22 data has been read.
 
 ## Claim boundary

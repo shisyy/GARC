@@ -10,7 +10,7 @@
 ## Exploration
 
 - Nodes total: `16`
-- Scored nodes: `8`
+- Scored nodes: `9`
 - Merged nodes: `0`
 
 ### Top Ideas By Score
@@ -23,6 +23,7 @@
 - **2.1** `0.1549` _done_: Mechanism: Endpoint Extrapolation Null Suite implements symmetric linear extension, an object-disjoint global range p...
 - **5** `0.1576` _pruned_: Mechanism: Factorized Endpoint-Closure Fusion (FECF) preserves the frozen D2-CEA physical endpoint scalars while atta...
 - **1** `0.3109` _done_: Mechanism: Middle-State Episode Reparameterization builds two interior multi-view states, erases their absolute joint...
+- **7.2** `1` _done_: Mechanism: Prospective Hash-Split 36-Object Extension expands the frozen target-free suite by the original selection ...
 
 ## Global Insight
 

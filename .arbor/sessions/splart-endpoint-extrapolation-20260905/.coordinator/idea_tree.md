@@ -42,13 +42,13 @@ Conflicts: Node 2 showed a large canonical Box gain but only about 2.3 percent m
 #### 2.2: Mechanism: Gauge-Equivariant Dual-Boundary Energy Profile Head maps the full multi-radius D2 trajectory energy curve to two nonnegative endpoint distances and split-conformal feasible intervals, with shared weights and an exact observation-order swap operator.
 Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lower-versus-upper error imbalance; retaining the bidirectional profile lets an object-disjoint head correct asymmetric range bias while calibrated intervals expose intrinsically ambiguous endpoints.
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
-Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PENDING]
+Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [RUNNING]
 
-**Insight**: The method/runtime is frozen and all 36 public profiles now exist (original12 plus added24). No head has been trained; an independent Gate A is rehashing total-36 provenance and validating the sealed 18/9/9 contract before any evaluator launch.
+**Insight**: Independent Gate A authorizes exactly one sealed evaluator run. The frozen runtime, train18/cal9/confirm9 sequence, strong baselines/nulls, joint conformal, aggregate-only outputs, and terminal rerun policy are fixed before target access.
 
-**Result**: All required public profiles materialized; added24 index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; launch_authorized=false pending Gate A.
+**Result**: Gate A PASS; one-shot evaluator dispatch requested. No confirmatory score yet; B_test and Full22 remain unread.
 
-**Branch**: d94136c
+**Branch**: bfb25bb
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
@@ -178,10 +178,10 @@ Conflicts: Node 7 proved native authored lower-versus-upper labels are 119 to 2 
 #### 7.2: Mechanism: Prospective Hash-Split 36-Object Extension expands the frozen target-free suite by the original selection hash, then uses an independent sealed salt to assign 18 train, 9 calibration, and 9 confirmatory objects before targets or scores are read.
 Hypothesis: A sufficiently large object-disjoint evaluator-owned protocol removes the post-hoc split and finite-sample conformal failures that block the 12-object suite, enabling an honest test of the gauge-equivariant profile head.
 Observable: All 36 public profiles pass leakage/provenance gates, calibration rank ceil((9+1)*0.9)=9 is valid, and one frozen head can be calibrated and scored once on nine untouched confirmatory B_dev objects.
-Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [RUNNING]
+Conflicts: Pruned [5] showed closure labels and equivariance can be solved by a zero-geometry prior; this extension counters via label-unread object splitting and mandatory zero-geometry/permuted-profile confirmatory nulls rather than reusing the biased closure claim. [DONE] (score: 1)
 
-**Insight**: All 24 added objects completed true scratch step24999 training and frozen target-free profile export. The final cumulative index has 24 unique profiles across 13 immutable batches; all provenance, state, shape, rehash, permission, and error audits pass. Independent total-36 Gate A is now running before evaluator authorization.
+**Insight**: All 36 target-free profiles and the frozen first36 roster passed independent Gate A. The sealed salt and 18/9/9 split were validated in isolation without exposing membership; the evaluator is now authorized while B_test and Full22 remain unread.
 
-**Result**: 24/24 added-object checkpoints and profiles complete; final cumulative index SHA256 c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991; evaluator not started.
+**Result**: AUTHORIZED_FOR_EVALUATOR receipt SHA256 ec7c93e6a9743b2958c6c6cf3f4d30406c2bed503b95af6abb470b26cf9f106b; 36/36 profile/provenance/denylist and sealed split checks PASS.
 
-**Branch**: 325c558
+**Branch**: bfb25bb
