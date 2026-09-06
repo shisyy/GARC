@@ -33,9 +33,12 @@ def test_paper_error_summary_is_aggregate_only():
 def test_authorization_exact_hash_and_path(tmp_path):
  from types import SimpleNamespace
  truth=tmp_path/'truth';truth.write_text('x');base=tmp_path/'base';base.write_text('y');idx=tmp_path/'idx';idx.write_text('z');out=tmp_path/'fresh';rows=[{'object_id':str(i)} for i in range(36)];a=SimpleNamespace(truth=str(truth),baseline_export=str(base),index=[str(idx)],output=str(out));ids=sorted(r['object_id'] for r in rows)
- auth={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(__import__('run_node22_sealed_evaluator').__file__),'truth_sha256':fsha(truth),'profile_index_sha256':[fsha(idx)],'profile_set_sha256':__import__('hashlib').sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export_sha256':fsha(base),'output_absolute_path':str(out.resolve()),'one_execution_only':True,'v3_allowed':False};validate_authorization(auth,a,rows)
- auth['output_absolute_path']+='-tamper'
- with pytest.raises(ValueError):validate_authorization(auth,a,rows)
+ runner=__import__('run_node22_sealed_evaluator');here=__import__('pathlib').Path(runner.__file__).resolve()
+ auth={'schema':'splart-node22-v2-authorization/v1','status':'AUTHORIZED_FOR_EVALUATOR','runner_sha256':fsha(here),'head_sha256':fsha(here.parent/'src/splart/node22_head.py'),'baseline_schema_sha256':fsha(here.parent/'node22_baseline_export_schema.json'),'supersession_sha256':fsha(here.parent/'evaluator_v2_supersession.json'),'truth':{'path':str(truth.resolve()),'sha256':fsha(truth)},'profile_indexes':[{'path':str(idx.resolve()),'sha256':fsha(idx)}],'profile_set_sha256':__import__('hashlib').sha256('\n'.join(ids).encode()).hexdigest(),'baseline_export':{'path':str(base.resolve()),'sha256':fsha(base)},'output_absolute_path':str(out.resolve()),'one_execution_only':True,'v3_allowed':False};validate_authorization(auth,a,rows)
+ for mutate in (
+  lambda x:x.update(extra='ambiguous'),lambda x:x.update(runner_sha256='0'*64),lambda x:x.update(head_sha256='0'*64),lambda x:x.update(baseline_schema_sha256='0'*64),lambda x:x.update(supersession_sha256='0'*64),lambda x:x['truth'].update(path=str(tmp_path/'elsewhere')),lambda x:x['profile_indexes'][0].update(sha256='0'*64),lambda x:x['baseline_export'].update(path=str(tmp_path/'elsewhere')),lambda x:x.update(output_absolute_path=str(tmp_path/'elsewhere'))):
+  import copy;t=copy.deepcopy(auth);mutate(t)
+  with pytest.raises(ValueError):validate_authorization(t,a,rows)
 def test_fixed_object_bootstrap_is_reproducible():
  g=torch.Generator().manual_seed(220290);idx=torch.randint(0,9,(10000,9),generator=g);a=bootstrap_ci(torch.arange(9,dtype=torch.float32),idx)
  g=torch.Generator().manual_seed(220290);assert a==bootstrap_ci(torch.arange(9,dtype=torch.float32),torch.randint(0,9,(10000,9),generator=g))
