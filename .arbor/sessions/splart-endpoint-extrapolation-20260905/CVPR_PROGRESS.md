@@ -126,13 +126,16 @@ objects, 864 frames, and 2,604 files, checks exact clean D2 provenance and
 base-state hashes, and fails closed on target/sealed/B_test fields. Adapter
 preflight SHA256:
 `e9dadd3818ce51870ad2ffb8982f19a5ffe248f260cb6c265f19bf8780d63b69`.
-Target-free incremental profile export has passed for the first six finished
-25k checkpoints: 6/6 artifacts have shape `[2,3,257,9]`, independently
+Target-free incremental profile export has passed for the first eight finished
+25k checkpoints: 8/8 artifacts have shape `[2,3,257,9]`, independently
 recomputed hashes, unchanged base-model state before/after export, and frozen
-step-24999 checkpoint/config/dataparser provenance. Index SHA256:
-`c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28`.
+step-24999 checkpoint/config/dataparser provenance. Batch index SHA256 values:
+`c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28`
+for the first six and
+`d991c24f4e84231a877449586a51da192b5d0e70c234cbf53b317b73efa137ee`
+for the next two.
 These profiles remain explicitly `unassigned`; no head was trained and no
-targets, sealed mapping, B_test, or Full22 were read. The remaining six
+targets, sealed mapping, B_test, or Full22 were read. The remaining four
 profiles wait for their corresponding fresh 25k checkpoints.
 
 ## Remaining blockers before a complete CVPR evidence loop
@@ -165,9 +168,9 @@ profiles wait for their corresponding fresh 25k checkpoints.
    marked `failed_enospc`, with stale originals preserved under the v4 evidence
    directory. Both disk-gated v4 smoke runs completed 10 iterations and wrote
    729,905,478-byte checkpoints while logging `No Nerfstudio checkpoint to
-   load`. The full 25k v4 workers remain active on GPU3/GPU4. Six of twelve
-   objects have completed fresh step-24999 checkpoints; the fourth pair is
-   running and two objects per worker remain queued. The workers retain about
+   load`. The full 25k v4 workers remain active on GPU3/GPU4. Eight of twelve
+   objects have completed fresh step-24999 checkpoints; the fifth pair is
+   running and one object per worker remains queued. The workers retain about
    4.2 TiB output headroom, `score_files_read=[]`, and
    `sealed_mapping_read=false`.
 2. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
