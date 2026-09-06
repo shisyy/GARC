@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Any, Callable
@@ -24,7 +25,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 SCHEMA = "splart-d2-public-ablation-evidence/v2"
 MODES = ("full", "single-radius", "no-contact", "no-penetration", "no-terminal-support")
-FORBIDDEN = ("sealed", "b_test", "full22", "target", "ground_truth", "joint_limits", "split")
+FORBIDDEN_PATH_MARKERS = ("sealed", "b_test", "full22")
+FORBIDDEN_KEYS = {"split", "target", "targets", "ground_truth", "joint_limits", "closed_side"}
+OBJECT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 def sha256_file(path: Path) -> str:
@@ -51,6 +54,36 @@ def profile_sufficiency() -> dict[str, Any]:
         },
         "decision": "fresh_public_reexport_required",
     }
+
+
+def reject_private(value: Any, path: str = "root") -> None:
+    """Recursively reject supervision and evaluator-only paths before use."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if str(key).lower() in FORBIDDEN_KEYS:
+                raise ValueError(f"forbidden private key at {path}.{key}")
+            reject_private(child, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            reject_private(child, f"{path}[{index}]")
+    elif isinstance(value, str) and any(marker in value.lower() for marker in FORBIDDEN_PATH_MARKERS):
+        raise ValueError(f"evaluator-only path at {path}")
+
+
+def validate_public_rows(payload: Any) -> list[dict[str, Any]]:
+    reject_private(payload)
+    rows = payload.get("rows") if isinstance(payload, dict) else None
+    if not isinstance(rows, list) or len(rows) != 36:
+        raise ValueError("exactly 36 public objects are required")
+    ids = [row.get("object_id") for row in rows]
+    if any(not isinstance(value, str) or not OBJECT_ID.fullmatch(value) or ".." in value for value in ids):
+        raise ValueError("unsafe object_id")
+    if len(set(ids)) != 36:
+        raise ValueError("36 unique object IDs are required")
+    required = {"object_id", "checkpoint", "config", "dataparser_transforms"}
+    if any(set(row) != required for row in rows):
+        raise ValueError("public rows must contain only the frozen provenance contract")
+    return rows
 
 
 def mode_field_configs(base: Any, fixed: tuple[Any, ...], mode: str) -> tuple[Any, ...]:
@@ -153,9 +186,11 @@ def main() -> None:
     parser.add_argument("--d2-commit", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--device", default="cuda")
+    parser.add_argument("--shard-index", type=int, default=0)
+    parser.add_argument("--shard-count", type=int, default=1)
     args = parser.parse_args()
     launch = "\n".join(str(value).lower() for value in vars(args).values())
-    if any(marker in launch for marker in FORBIDDEN):
+    if any(marker in launch for marker in FORBIDDEN_PATH_MARKERS):
         raise ValueError("protected/evaluator-only launch marker")
     source = args.d2_source.resolve()
     commit = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
@@ -164,9 +199,12 @@ def main() -> None:
     if commit != args.d2_commit or dirty:
         raise ValueError("D2 source is not the exact clean frozen commit")
     payload = json.loads(args.input.read_text())
-    rows = payload.get("rows")
-    if not isinstance(rows, list) or not rows or len({row.get("object_id") for row in rows}) != len(rows):
-        raise ValueError("input must contain unique public object rows")
+    rows = validate_public_rows(payload)
+    if args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count:
+        raise ValueError("invalid shard index/count")
+    rows = [row for index, row in enumerate(rows) if index % args.shard_count == args.shard_index]
+    if not rows:
+        raise ValueError("empty shard")
     args.output_dir.mkdir(mode=0o700, parents=True, exist_ok=False)
     evidence = []
     for row in rows:
@@ -175,7 +213,8 @@ def main() -> None:
         _exclusive_json(path, item)
         evidence.append({"object_id": row["object_id"], "artifact": path.name, "sha256": sha256_file(path)})
     index = {"schema": "splart-d2-public-ablation-index/v2", "sufficiency": profile_sufficiency(),
-             "d2_source": {"commit": commit, "tree": tree}, "rows": evidence}
+             "d2_source": {"commit": commit, "tree": tree},
+             "shard": {"index": args.shard_index, "count": args.shard_count}, "rows": evidence}
     _exclusive_json(args.output_dir / "index.json", index)
     os.chmod(args.output_dir, 0o700)
     print(json.dumps({"objects": len(evidence), "index_sha256": sha256_file(args.output_dir / "index.json")}))
