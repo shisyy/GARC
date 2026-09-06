@@ -126,18 +126,29 @@ objects, 864 frames, and 2,604 files, checks exact clean D2 provenance and
 base-state hashes, and fails closed on target/sealed/B_test fields. Adapter
 preflight SHA256:
 `e9dadd3818ce51870ad2ffb8982f19a5ffe248f260cb6c265f19bf8780d63b69`.
-Target-free incremental profile export has passed for the first ten finished
-25k checkpoints: 10/10 artifacts have shape `[2,3,257,9]`, independently
+Target-free profile export has passed for all twelve finished 25k checkpoints:
+12/12 artifacts have shape `[2,3,257,9]`, independently
 recomputed hashes, unchanged base-model state before/after export, and frozen
 step-24999 checkpoint/config/dataparser provenance. Batch index SHA256 values:
 `c5f5e0284e8e6385e974bfd8f42989c01590697330522dae31eae910ffb2ab28`
-for the first six and
+for the first six,
 `d991c24f4e84231a877449586a51da192b5d0e70c234cbf53b317b73efa137ee`
 and `78250ad6a75922004407845ce149bdb9d870bf3b5e288d4a445c6395fa7d046a`
-for the next two-object batches.
+for the next two-object batches, and
+`706645124e165ea440ae6e2a2744b6e531bc41c751fff967a658eabbfdfe55b0`
+for the final two. The immutable, reference-only 12-object merged index SHA256
+is `328e9dffd2e8d9ad5c7372160bf3ca3ab7f2f076d72520a2fc5cc00d1ced3985`.
 These profiles remain explicitly `unassigned`; no head was trained and no
-targets, sealed mapping, B_test, or Full22 were read. The remaining two
-profiles wait for their corresponding fresh 25k checkpoints.
+targets, sealed mapping, B_test, or Full22 were read.
+
+An independent protocol review blocks head training on these 12 objects. The
+original preregistration did not freeze an object-level train/calibration/
+confirmatory assignment, and exact 90% split conformal requires at least nine
+calibration objects, leaving too few objects for honest head training and
+confirmation. No target was exposed. The prospective repair is a label- and
+score-unread dataset extension with a deterministic object split frozen before
+materialization or target service; the existing 12-object profiles remain
+target-free development artifacts only until that gate is satisfied.
 
 ## Remaining blockers before a complete CVPR evidence loop
 
@@ -169,15 +180,21 @@ profiles wait for their corresponding fresh 25k checkpoints.
    marked `failed_enospc`, with stale originals preserved under the v4 evidence
    directory. Both disk-gated v4 smoke runs completed 10 iterations and wrote
    729,905,478-byte checkpoints while logging `No Nerfstudio checkpoint to
-   load`. The full 25k v4 workers remain active on GPU3/GPU4. Ten of twelve
-   objects have completed fresh step-24999 checkpoints; the final pair is
-   running. The workers retain about
-   4.2 TiB output headroom, `score_files_read=[]`, and
-   `sealed_mapping_read=false`.
-2. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
+   load`. Both full 25k v4 workers completed successfully: all 12 unique
+   objects have fresh step-24999 checkpoints, each worker completed six with
+   return code zero, and all config/checkpoint/dataparser/log hashes are
+   frozen. The full error scan is clean and no checkpoint load/resume occurred.
+   Checkpoint-manifest SHA256:
+   `bb5c78aeafb0d60899ebdf0d1d6ff9f5428cf7522b004d6620465ef1e36c9141`;
+   completion-receipt SHA256:
+   `a0e6f0747487292bf71854c652ceb1a299e1d7c1d10c409db21a180f97415f6e`.
+2. Freeze and execute a label-unread multi-object extension with enough
+   object-disjoint train, calibration, and confirmatory objects for exact 90%
+   split conformal; do not retrofit a split to the completed 12 profiles.
+3. Train and evaluate scratch SplArt, frozen D2, and node 2.2 on object-disjoint
    B_dev; use objects, not swaps or views, as the statistical unit.
-3. Freeze the selected method and evaluation code before opening B_test.
-4. Run one blind B_test/Full22 milestone and report object-level confidence
+4. Freeze the selected method and evaluation code before opening B_test.
+5. Run one blind B_test/Full22 milestone and report object-level confidence
    intervals, failures, runtime, and all null controls.
 
 Until those gates pass, the project has a credible task definition and one
