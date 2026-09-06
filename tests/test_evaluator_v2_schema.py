@@ -1,6 +1,6 @@
 import pytest
 import torch
-from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines
+from run_node22_sealed_evaluator import target_pair,metric_multiplier,normalized_object_metrics,validate_baselines,error_summary
 def row():return {'endpoint_truth':{'local_endpoint_targets':{'extension0_joint_units':1.,'extension0_observation_units':.2,'extension1_joint_units':2.,'extension1_observation_units':.4,'local_lower_scalar':-.2,'local_upper_scalar':1.4}}}
 def test_exact_builder_schema():assert target_pair(row())==[.2,.4]
 def test_fail_closed_extra_or_missing():
@@ -26,3 +26,7 @@ def test_scaled_score_multiplier_cancels_and_baseline_gate():
  assert len(validate_baselines(b,{str(i) for i in range(36)},schema)['scratch'])==36
  b['methods']['scratch']['rows'][0]['score']=1
  with pytest.raises(ValueError):validate_baselines(b,{str(i) for i in range(36)},schema)
+def test_paper_error_summary_is_aggregate_only():
+ p=torch.tensor([[0.,.4],[.4,0.]]);t=torch.zeros_like(p);m=torch.tensor([2.,1.]);s,rows=error_summary(p,t,m)
+ assert s['lower_nmae']==pytest.approx(.2) and s['upper_nmae']==pytest.approx(.4) and s['endpoint_nmae']==pytest.approx(.6)
+ assert set(s)=={'lower_nmae','upper_nmae','endpoint_nmae','median_endpoint_nmae'} and rows.shape==(2,)

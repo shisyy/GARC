@@ -79,12 +79,13 @@ class RunGuard:
         if not self.may_retry(): raise RuntimeError("rerun forbidden after optimizer initialization or target read")
         self.retry_count+=1
 
-def train_once(features:Tensor,scalars:Tensor,targets:Tensor,object_ids:Iterable[str],variant:str="shared",config:TrainConfig=FROZEN_CONFIG)->tuple[Node22Head,ProfileNormalizer,dict]:
+def train_once(features:Tensor,scalars:Tensor,targets:Tensor,object_ids:Iterable[str],variant:str="shared",config:TrainConfig=FROZEN_CONFIG,on_optimizer_initialized=None)->tuple[Node22Head,ProfileNormalizer,dict]:
     ids=tuple(object_ids)
     if len(ids)!=18 or len(set(ids))!=18 or ids!=tuple(sorted(ids)): raise ValueError("exactly 18 unique lexicographically ordered train objects required")
     if config!=FROZEN_CONFIG: raise ValueError("training config is frozen")
     torch.use_deterministic_algorithms(True); normalizer=ProfileNormalizer(features,scalars,config.epsilon); nf,nx=normalizer(features,scalars)
     model=Node22Head(variant).to(features.device); initialize_frozen(model,config.seed); opt=torch.optim.AdamW(model.parameters(),lr=config.learning_rate,betas=config.betas,weight_decay=config.weight_decay)
+    if on_optimizer_initialized:on_optimizer_initialized()
     for _ in range(config.steps):
         opt.zero_grad(set_to_none=True); pred,scale=model(nf,nx); loss=(torch.max((pred-targets).abs()/scale,1).values+.05*torch.log(scale).mean(1)).mean(); loss.backward(); torch.nn.utils.clip_grad_norm_(model.parameters(),config.gradient_clip_norm); opt.step()
     return model,normalizer,{"schema":"splart-node2.2-training-receipt/v1","objects":18,"steps":4000,"variant":variant,"normalizer_sha256":normalizer.digest(),"checkpoint_policy":"single-final-only","config":asdict(config)}
