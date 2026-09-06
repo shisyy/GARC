@@ -184,14 +184,14 @@ independent audit SHA256:
 `c44f7756298ca01808f93d677ba2214b087033b8c7a96c7153b7a17f30cb3949`.
 Fresh 10-step smoke training passed independently on GPU2 and GPU3, each
 writing a step-9 checkpoint. Two durable 25k workers are active on those GPUs
-with 12 disjoint new objects each; 12/24 fresh step-24999 checkpoints have
-completed and the seventh pair is running. Both logs confirm no Nerfstudio
+with 12 disjoint new objects each; 14/24 fresh step-24999 checkpoints have
+completed and the eighth pair is running. Both logs confirm no Nerfstudio
 checkpoint was loaded. GPU4 is not used because it hosts an unrelated VLLM
 process. No split, target, sealed mapping, score, B_test, or Full22 file has
 been read.
 
 GPU7 subsequently became genuinely idle and is used for incremental
-target-free profile export without interrupting training. All first-twelve
+target-free profile export without interrupting training. All first-fourteen
 profiles pass shape
 `[2,3,257,9]`, step-24999, artifact-rehash, exact clean D2 provenance, and
 base-state-before/after equality checks. Incremental index SHA256 values are
@@ -199,7 +199,8 @@ base-state-before/after equality checks. Incremental index SHA256 values are
 for the first six and
 `8800bfcb68add185f421eae5af320628e93ac473f359f06ab48865a57839b34d`
 `90d671d5c825a7f3e5430fd7ed02ccb72eb3c25bdec8eb7328ffd63ca38ac627`,
-and `b5604d5ac202921bf17e55af495f568ca5adcdab841dde30bea7a916dd6c85db`
+`b5604d5ac202921bf17e55af495f568ca5adcdab841dde30bea7a916dd6c85db`,
+and `82faad8386eff9e14256608cd0649eff21285bb88995477b7d2e9741fca49925`
 for the subsequent two-object batches.
 No head training or protected-data access occurred.
 
