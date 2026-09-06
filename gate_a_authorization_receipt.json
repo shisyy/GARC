@@ -1,0 +1,23 @@
+{
+  "evaluator_started": false,
+  "failures": [],
+  "first36_prefix_verified": true,
+  "membership_emitted": false,
+  "new24_index_sha256": "c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991",
+  "old12_index_sha256": "328e9dffd2e8d9ad5c7372160bf3ca3ab7f2f076d72520a2fc5cc00d1ced3985",
+  "profile_count": 36,
+  "profile_set_sha256": "52043406521635d072fce912fb3c7fb0cd2ddf9dc96300270f5097a084491392",
+  "protected_splits_read": [],
+  "salt_sha256": "7d94832908e12ec238b4abba232b140214e47cda6f1d2074c95a27f919c600c9",
+  "schema": "splart-gate-a-public/v1",
+  "source_commit": "f1f2bb9581e3465e6e320adf3868b015bcf15eab",
+  "source_tree": "c915fb1f2902540f5a1eaa68fc9e2dce213a478b",
+  "split_counts": [
+    18,
+    9,
+    9
+  ],
+  "split_coverage_and_disjoint": true,
+  "status": "AUTHORIZED_FOR_EVALUATOR",
+  "targets_emitted": false
+}
