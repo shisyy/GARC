@@ -1,0 +1,21 @@
+{
+  "schema": "splart-node22-v2-launch-receipt/v1",
+  "status": "READY_NOT_STARTED",
+  "host": "taizun-SYS-4029GP-TRT",
+  "run_root": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2",
+  "source_root": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/source",
+  "output": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output",
+  "authorization": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/authorization.json",
+  "authorization_sha256": "09309b68857bdf12e8f5bcb734b708695831b243909b4740c298238e4c128b7c",
+  "launch_script": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/launch.sh",
+  "launch_script_sha256": "ab3e11b36bf06c0b54c7066cae55b7d66c923664a89b25933fba210e805c8328",
+  "tmux_session": "splart-node22-v2",
+  "suggested_physical_gpu": 2,
+  "command": "tmux new-session -d -s splart-node22-v2 'bash /home/yptang/arbor-runs/splart-node22-sealed-eval-v2/launch.sh > /home/yptang/arbor-runs/splart-node22-sealed-eval-v2/evaluator.log 2>&1'",
+  "one_execution_only": true,
+  "v3_allowed": false,
+  "output_existed_at_receipt": false,
+  "evaluator_started": false,
+  "protected_splits_read": [],
+  "targets_read": []
+}

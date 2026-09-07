@@ -1,0 +1,30 @@
+{
+  "schema": "splart-node22-v2-authorization/v1",
+  "status": "AUTHORIZED_FOR_EVALUATOR",
+  "runner_sha256": "97c12d076faa3dbfa307b70a1d5feabcf09080600e309babcc1f98612cb0ff5a",
+  "head_sha256": "20cbc6557404506f82e4b1380d98100eac985b852c52dd43bc3a335440de5f76",
+  "baseline_schema_sha256": "b41ebf66c515c0e42dd34501ef4ab3199beeb45823a1078e6ef80ac8391ef034",
+  "supersession_sha256": "46f9b99d912fb418d0a7769eb02287a4d4745d70e7b208ded581b994be2553dd",
+  "truth": {
+    "path": "/home/yptang/arbor-sealed/splart-node7.2/sealed-truth-v1.json",
+    "sha256": "6d0e4c57871363b69335feaa50d8ed94746d8aa3be4787fafd230f1736c516dc"
+  },
+  "profile_indexes": [
+    {
+      "path": "/data1/public/yptang/splart-gauge-energy-v4/profiles-merged-12-v1/index.json",
+      "sha256": "328e9dffd2e8d9ad5c7372160bf3ca3ab7f2f076d72520a2fc5cc00d1ced3985"
+    },
+    {
+      "path": "/data1/public/yptang/splart-gauge-energy-v4/node72-profiles-cumulative-24-final/index.json",
+      "sha256": "c539e423db9d957f873dbb6b381728c6eb8840a6d5cbc1479cd388b3b6e61991"
+    }
+  ],
+  "profile_set_sha256": "52043406521635d072fce912fb3c7fb0cd2ddf9dc96300270f5097a084491392",
+  "baseline_export": {
+    "path": "/data1/public/yptang/splart-gauge-energy-v4/d2-ablation-evidence-v2/node22-baseline-export-v2.json",
+    "sha256": "efe29fd991f29fa89be762cc5662b962482c06a866fca6045eca917da23cdeb6"
+  },
+  "output_absolute_path": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output",
+  "one_execution_only": true,
+  "v3_allowed": false
+}

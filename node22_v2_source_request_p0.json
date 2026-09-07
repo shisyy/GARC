@@ -1,1 +1,27 @@
-{"schema":"splart-node22-v2-source-request-p0/v1","status":"FAIL","runner_sha256":"37990e6399b8e2410f5d36f37c53f8921194e2cc539db5f016c0b32b2e523b38","supersession_sha256":"5a4afe16eeda76b306665e8a39ac7e54ba62b1243bfa26090f3c892ab3439ee6","baseline_export_schema_sha256":"05953a46a2401f138faf2517c170b84f5b86c7c37ae40008ac17413a1b713e2b","metric_adapter_tests":"10 passed","method_seed_split_salt_truth_changed":false,"blocker":"No target-free exact 36-object prediction export exists for scratch, symmetric-linear, train18-only global/range priors, frozen full D2, and single-radius/no-contact/no-penetration/no-terminal-support. Existing energy profiles cannot exactly reconstruct these method outputs without rerunning their frozen inference rules; approximation is forbidden.","launch_authorized":false,"evaluator_started":false,"target_values_read":[],"split_membership_read":[],"protected_splits_read":[]}
+{
+  "schema": "splart-node22-v2-source-request-p0/v2",
+  "status": "PASS",
+  "source_commit_audited": "57b931dc53e306221b9bd869f1bb2553b213e3a0",
+  "runner_sha256": "97c12d076faa3dbfa307b70a1d5feabcf09080600e309babcc1f98612cb0ff5a",
+  "head_sha256": "20cbc6557404506f82e4b1380d98100eac985b852c52dd43bc3a335440de5f76",
+  "baseline_schema_sha256": "b41ebf66c515c0e42dd34501ef4ab3199beeb45823a1078e6ef80ac8391ef034",
+  "supersession_sha256": "46f9b99d912fb418d0a7769eb02287a4d4745d70e7b208ded581b994be2553dd",
+  "v1_binding_sha256": "3c90da583242993c4f987cf79296da99f72403a8fa24b6be48ddd191a36117aa",
+  "remote_preflight_sha256": "a9b815fcbf102dc1c134b924c6054dc422e89ca79e2cad9959db59646232ce13",
+  "authorization_sha256": "09309b68857bdf12e8f5bcb734b708695831b243909b4740c298238e4c128b7c",
+  "launch_script_sha256": "ab3e11b36bf06c0b54c7066cae55b7d66c923664a89b25933fba210e805c8328",
+  "remote_conda_tests": {"passed": 18, "failed": 0},
+  "local_final_gate_tests": {"passed": 21, "failed": 0},
+  "raw_baseline_export": {"methods": 7, "rows_per_method": 36, "sha256": "efe29fd991f29fa89be762cc5662b962482c06a866fca6045eca917da23cdeb6", "profile_set_sha256": "52043406521635d072fce912fb3c7fb0cd2ddf9dc96300270f5097a084491392", "forbidden_fields_found": []},
+  "output_absolute_path": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output",
+  "output_existed_at_authorization": false,
+  "one_execution_only": true,
+  "v3_allowed": false,
+  "launch_authorized": true,
+  "evaluator_started": false,
+  "sealed_content_parsed": false,
+  "membership_emitted": false,
+  "targets_emitted": false,
+  "protected_splits_read": [],
+  "claim_ceiling": "transparent v2 recovery milestone; not a pristine first-attempt run"
+}
