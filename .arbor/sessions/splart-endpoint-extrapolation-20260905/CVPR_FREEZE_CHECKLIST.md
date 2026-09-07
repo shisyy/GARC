@@ -44,6 +44,13 @@ closure, prismatic joints, Full22, or state of the art.
 
 ## Gate C: evaluator-only 18/9/9 execution
 
+Status: **TERMINAL FAILURE, CLOSED WITHOUT A SCORE.** The independently
+authorized v2 recovery reached optimizer initialization and consumed train
+targets, then failed at the first CUDA backward because
+`CUBLAS_WORKSPACE_CONFIG` was absent. The no-retry/no-v3 rule applies. No model,
+calibration statistic, prediction, or aggregate result exists. Abort receipt:
+`2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9`.
+
 1. The producer submits only 36 unassigned profiles and the frozen method.
 2. The evaluator verifies the sealed salt hash and 18/9/9 partition internally;
    object membership is never returned to the executor.

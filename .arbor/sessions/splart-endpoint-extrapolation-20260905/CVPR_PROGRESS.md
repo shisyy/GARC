@@ -9,11 +9,46 @@ One method contribution is validated on the current Box development object:
 multi-radius, penetration-aware D2 endpoint search. The former FECF
 closed-side head is withdrawn as a second innovation because a zero-geometry,
 observation-order-aware prior matches its decisions and improves its
-calibration. A replacement second contribution, a gauge-equivariant
-dual-boundary energy-profile head with object-level conformal intervals, is
-preregistered as Arbor node 2.2 but has not yet passed confirmatory evaluation.
+calibration. A replacement second-contribution candidate, a gauge-equivariant
+dual-boundary energy-profile head with object-level conformal intervals, was
+preregistered as Arbor node 2.2. Its sealed recovery evaluation terminated at
+training step zero for an environment error, so it has no confirmatory
+performance evidence and is not counted as a validated contribution.
 
 B_test and Full22 remain protected and unread.
+
+## Sealed 36-object outcome: terminal without a score
+
+All 36 scratch-trained objects and target-free D2 profiles completed and
+passed independent Gate A. A fresh public re-export produced exact full,
+single-radius, no-contact, no-penetration, and no-terminal-support predictions
+for every object without opening targets or split membership. Its immutable
+index SHA256 is
+`1144102be19be7e7517aacd327c9e0b62af1850a68c236fab54015df5758a03b`.
+
+The original sealed evaluator invocation (v1) terminated after manifest
+deserialization on a public nested-schema mismatch, before optimizer
+initialization and without a model, calibration statistic, prediction, or
+score. This terminal failure was retained. An independently audited v2
+recovery froze every schema/metric repair and kept the same profiles, split,
+salt, targets, method configuration, and seed. Independent server-side P0
+passed 18/18 relevant tests and the complete launch gate passed 21/21 checks.
+
+The authorized v2 process then terminated in the shared head's first backward
+pass because deterministic CUDA execution required
+`CUBLAS_WORKSPACE_CONFIG` to have been set before launch. RunGuard records that
+target values had been consumed and the optimizer initialized; therefore the
+preregistered no-retry/no-v3 rule is binding. Training step was zero and no
+model, checkpoint, calibration value, prediction, `RESULT.json`, or metric was
+produced. The frozen abort receipt SHA256 is
+`2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9`.
+
+Consequently there is no honest 36-object performance table for node 2.2 and
+no basis to claim a second validated innovation. The development-only Box v4
+and Box a-f results below remain the strongest numerical evidence. A future
+benchmark may preregister the deterministic CUDA environment before any
+private access, but it must be a genuinely new milestone rather than a retry
+of this sealed split.
 
 ## Development result: canonical Box v4
 

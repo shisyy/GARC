@@ -42,13 +42,13 @@ Conflicts: Node 2 showed a large canonical Box gain but only about 2.3 percent m
 #### 2.2: Mechanism: Gauge-Equivariant Dual-Boundary Energy Profile Head maps the full multi-radius D2 trajectory energy curve to two nonnegative endpoint distances and split-conformal feasible intervals, with shared weights and an exact observation-order swap operator.
 Hypothesis: D2's scalar optimizer discards profile shape and produces a 13.8x lower-versus-upper error imbalance; retaining the bidirectional profile lets an object-disjoint head correct asymmetric range bias while calibrated intervals expose intrinsically ambiguous endpoints.
 Observable: On sealed B_dev objects, reduce object-macro endpoint NMAE versus frozen full D2 and global/range-prior heads, preserve swap error below 1e-10, and achieve preregistered 90% object-level interval coverage with narrower width than marginal/global conformal controls.
-Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [RUNNING]
+Conflicts: pruned [5] showed an equivariant closure head learned only the canonical-side prior; this predicts geometric boundary distances from shuffled-audited energy profiles and must beat zero-geometry, permuted-profile, and order-only nulls before promotion. [PRUNED]
 
-**Insight**: Independent Gate A authorizes exactly one sealed evaluator run. The frozen runtime, train18/cal9/confirm9 sequence, strong baselines/nulls, joint conformal, aggregate-only outputs, and terminal rerun policy are fixed before target access.
+**Insight**: The independently authorized sealed v2 recovery terminated at shared-head step 0 on the first backward because deterministic CUDA execution required CUBLAS_WORKSPACE_CONFIG to be set before process launch. Targets had been consumed and the optimizer initialized, so the frozen no-retry/no-v3 rule applies. No model, checkpoint, calibration statistic, prediction, RESULT, or metric was produced; node 2.2 has no confirmatory performance evidence.
 
-**Result**: Gate A PASS; one-shot evaluator dispatch requested. No confirmatory score yet; B_test and Full22 remain unread.
+**Result**: FAILED_TERMINAL environment abort; ABORTED_ENVIRONMENT SHA256 2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9. V1 and V2 failures are retained; B_test and Full22 remain unread.
 
-**Branch**: bfb25bb
+**Branch**: commit 25119c2; runner 97c12d076faa3dbfa307b70a1d5feabcf09080600e309babcc1f98612cb0ff5a
 
 ### 3: Mechanism: Counterfactual Closure Topology renders static, mobile, and interface-only alpha-depth over all public cameras plus a fixed virtual orbit and jointly scores aperture leakage, interface exposure, enclosure, and distributed contact coverage.
 Hypothesis: Global functional topology distinguishes sealed closure from a local mechanical stop even when point-contact mass is noisy, while uncertainty gates prevent forced labels.
