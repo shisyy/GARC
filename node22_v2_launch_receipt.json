@@ -1,6 +1,6 @@
 {
   "schema": "splart-node22-v2-launch-receipt/v1",
-  "status": "READY_NOT_STARTED",
+  "status": "FAILED_TERMINAL",
   "host": "taizun-SYS-4029GP-TRT",
   "run_root": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2",
   "source_root": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/source",
@@ -15,7 +15,16 @@
   "one_execution_only": true,
   "v3_allowed": false,
   "output_existed_at_receipt": false,
-  "evaluator_started": false,
+  "output_exists_postlaunch": true,
+  "evaluator_started": true,
+  "target_file_deserialized": true,
+  "target_values_consumed_for_training": true,
+  "optimizer_initialized": true,
+  "remote_frozen_original_sha256": "f90f6cc0db9b1c43effaa543f266451b1ac74e9088e2619af9aa4e55b2cead6d",
+  "abort_receipt": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output/ABORTED_ENVIRONMENT.json",
+  "abort_receipt_sha256": "2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9",
+  "retry_authorized": false,
   "protected_splits_read": [],
-  "targets_read": []
+  "targets_read": ["sealed target values consumed for training; values not emitted"],
+  "postlaunch_ledger": "node22_v2_postlaunch_terminal_ledger.json"
 }

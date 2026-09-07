@@ -1,6 +1,8 @@
 {
   "schema": "splart-node22-v2-source-request-p0/v2",
   "status": "PASS",
+  "status_scope": "authorization-time P0 only",
+  "postlaunch_status": "FAILED_TERMINAL",
   "source_commit_audited": "57b931dc53e306221b9bd869f1bb2553b213e3a0",
   "runner_sha256": "97c12d076faa3dbfa307b70a1d5feabcf09080600e309babcc1f98612cb0ff5a",
   "head_sha256": "20cbc6557404506f82e4b1380d98100eac985b852c52dd43bc3a335440de5f76",
@@ -18,10 +20,20 @@
   "one_execution_only": true,
   "v3_allowed": false,
   "launch_authorized": true,
-  "evaluator_started": false,
-  "sealed_content_parsed": false,
+  "evaluator_started": true,
+  "sealed_content_parsed": true,
+  "target_values_consumed_for_training": true,
+  "optimizer_initialized": true,
   "membership_emitted": false,
   "targets_emitted": false,
   "protected_splits_read": [],
-  "claim_ceiling": "transparent v2 recovery milestone; not a pristine first-attempt run"
+  "claim_ceiling": "P0 passed at authorization, but the authorized v2 execution subsequently FAILED_TERMINAL after target consumption and optimizer initialization; it yielded no performance evidence and cannot be retried",
+  "postlaunch_terminal": {
+    "status": "FAILED_TERMINAL",
+    "ledger": "node22_v2_postlaunch_terminal_ledger.json",
+    "remote_abort_receipt": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output/ABORTED_ENVIRONMENT.json",
+    "remote_abort_receipt_sha256": "2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9",
+    "retry_authorized": false,
+    "v3_allowed": false
+  }
 }

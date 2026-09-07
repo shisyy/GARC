@@ -1,0 +1,84 @@
+{
+  "schema": "splart-node22-v2-postlaunch-terminal-ledger/v1",
+  "status": "FAILED_TERMINAL",
+  "recorded_at_utc": "2026-09-07T00:19:45Z",
+  "host": "taizun-SYS-4029GP-TRT",
+  "run_root": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2",
+  "output": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output",
+  "remote_abort_receipt": "/home/yptang/arbor-runs/splart-node22-sealed-eval-v2/output/ABORTED_ENVIRONMENT.json",
+  "remote_abort_receipt_sha256": "2eb45b2af72743deb213ab928dda59a2cd430e6a79c89cf77662b3d178cc5ae9",
+  "failure": {
+    "error_type": "RuntimeError",
+    "cause": "CUBLAS_WORKSPACE_CONFIG was absent at process start while PyTorch deterministic algorithms were enabled; the first shared-method backward call raised the terminal environment error",
+    "method": "shared",
+    "failed_from_stage": "OPTIMIZER_INITIALIZED",
+    "backward_completed": false,
+    "training_steps_completed": 0
+  },
+  "sealed_state": {
+    "target_file_deserialized": true,
+    "target_values_consumed_for_training": true,
+    "optimizer_initialized": true,
+    "target_was_read": true,
+    "evaluator_started": true
+  },
+  "artifact_inventory": {
+    "before_abort_receipt": {
+      "file_count": 1,
+      "manifest_sha256": "f1fde437f0a2c03863da3003516357caa6b440ced25e211a5a6471d2543f87ab",
+      "only_file": "RUN_GUARD.json"
+    },
+    "after_abort_receipt": {
+      "file_count": 2,
+      "manifest_sha256": "3624c66e0f75bf312bc4125653ccf61ad34962c02134b9acde0ef5b1a4a8184a"
+    },
+    "model_count": 0,
+    "checkpoint_count": 0,
+    "calibration_count": 0,
+    "prediction_count": 0,
+    "result_count": 0
+  },
+  "hashes": {
+    "run_guard_sha256": "6a0bf5070b916b506ea5d98a4c90866a3f3d319b146535024441a2b4182312e4",
+    "evaluator_log_sha256": "5dc0cbf2b1be6a8bbaf20e2e0c34afcf9cab958c960cc0b96c83acbe3af799d1",
+    "source_manifest_sha256": "0465b9b25972adf3863984fa25b88481b2bf7ccb144fef1486bda23658eb0f58",
+    "source_file_count": 146,
+    "source_generated_pycache_file_count": 4,
+    "runner_sha256": "97c12d076faa3dbfa307b70a1d5feabcf09080600e309babcc1f98612cb0ff5a",
+    "head_sha256": "20cbc6557404506f82e4b1380d98100eac985b852c52dd43bc3a335440de5f76",
+    "baseline_schema_sha256": "b41ebf66c515c0e42dd34501ef4ab3199beeb45823a1078e6ef80ac8391ef034",
+    "supersession_sha256": "46f9b99d912fb418d0a7769eb02287a4d4745d70e7b208ded581b994be2553dd",
+    "authorization_sha256": "09309b68857bdf12e8f5bcb734b708695831b243909b4740c298238e4c128b7c",
+    "p0_receipt_sha256": "4addff67a214cdc134765cc36b6c8caa3e1214860ee140a8bc5048a254ac188c",
+    "launch_receipt_sha256": "f90f6cc0db9b1c43effaa543f266451b1ac74e9088e2619af9aa4e55b2cead6d",
+    "launch_script_sha256": "ab3e11b36bf06c0b54c7066cae55b7d66c923664a89b25933fba210e805c8328",
+    "remote_preflight_sha256": "a9b815fcbf102dc1c134b924c6054dc422e89ca79e2cad9959db59646232ce13"
+  },
+  "sanitized_log_scan": {
+    "log_bytes": 2725,
+    "log_lines": 18,
+    "structured_target_field_mentions": 0,
+    "structured_membership_field_mentions": 0,
+    "public_profile_id_mentions": 0,
+    "tensor_dump_mentions": 0,
+    "result_token_mentions": 0,
+    "target_values_emitted": false,
+    "membership_emitted": false
+  },
+  "frozen_permissions": {
+    "run_root": "0500",
+    "source_tree_directories": "0500",
+    "source_tree_files": "0400",
+    "output_directory": "0500",
+    "output_files": "0400",
+    "log": "0400",
+    "authorization_and_launch_evidence": "0400"
+  },
+  "protocol": {
+    "retry_authorized": false,
+    "v3_allowed": false,
+    "failed_attempt_is_terminal": true,
+    "protected_splits_read": [],
+    "claim_ceiling": "The authorized v2 attempt terminated for a launch-environment error after target consumption and optimizer initialization. It produced no trained model, calibration, predictions, RESULT, or performance evidence. No retry or v3 is authorized."
+  }
+}
