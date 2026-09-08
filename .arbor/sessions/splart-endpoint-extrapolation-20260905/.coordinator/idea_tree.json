@@ -373,7 +373,7 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Rank-Quadratic Location-Scale Orthogonal Transport SMARC (RQ-LSOT-SMARC) replaces the failed linear residual null with a per-domain train-only empirical-rank quadratic location model and linear log-radial-scale model, then transports standardized object residuals through the same exact opaque-ID shift-one/balanced donor maps while preserving recipient joint/gauge offsets and mechanical displacement.\nHypothesis: Node 8.9 failed only the frozen nonlinear-dependence diagnostics while passing coverage, exact reconstruction, linear orthogonality, energy, perturbation and norm gates; a fixed three-term rank-quadratic mean plus two-term log-scale correction should remove the remaining nonlinear location and heteroscedastic dependence without changing thresholds, seeds, the predictor, or target data.\nObservable: Before any label read, freeze QR sign/rank/condition rules, ECDF held clipping, cross-fit-local preprocessing, exact hashes and the unchanged Spearman<=0.35/dCor<=0.5 and prior gates; require all four domain-by-null cells to pass twice bit-identically with row-order invariance, boundary-clipped held fraction<=25%, exact quadratic-basis orthogonality, 100% donor coverage, and no regression on any 8.9 gate.\nConflicts: Unlike 8.7/8.8 donor-distance matching and 8.9 linear OLS residualization, RQ-LSOT changes the conditional nuisance model rather than relaxing feasibility thresholds; it remains a deterministic falsification ablation rather than a permutation p-value, and if label-free feasibility fails the node is pruned without source labels, training, Box, degree search, or threshold adjustment.",
-      "status": "pending"
+      "status": "running"
     }
   }
 }
