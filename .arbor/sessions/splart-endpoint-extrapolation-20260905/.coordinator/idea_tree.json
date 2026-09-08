@@ -247,7 +247,8 @@
         "8.1",
         "8.2",
         "8.3",
-        "8.4"
+        "8.4",
+        "8.5"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -301,6 +302,14 @@
       "insight": "Dense complete-mesh contact profiles do not identify authored URDF hard limits: source-validation D2 anchor mean worst-side error is 1.088138q, 0/6 objects are reachable by the preregistered +/-0.10q residual, and posterior entropy remains low at 0.151998. The source projective-transfer mechanism is infeasible before any target adaptation.\n[Pruned: Source anchor feasibility gate failed: 0/6 validation objects lie within the bounded residual support; complete-mesh contact minima are confidently unrelated to authored hard stops, so exact36/Box evaluation was prohibited.]",
       "result": "FAIL_SOURCE_ANCHOR_IDENTIFIABILITY",
       "code_ref": "b77dbc2bcc073505b18dfd8aa2a0e1e2a0228ed2"
+    },
+    "8.5": {
+      "id": "8.5",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Closure-Anchored Range Completion (CARC) factorizes the two extrapolated endpoints into one geometry-supported closed-contact coordinate and one learned physical motion span; an exactly swap-equivariant kinematic layer places the opposite hard stop from the predicted span and the observed relative screw displacement.\nHypothesis: Surface evidence can identify closure but not an authored open stop, while source supervision can estimate mechanism span; separating these evidence types avoids forcing both endpoints through the same corrupted contact minimum and prevents independent-extension range collapse.\nObservable: With object-disjoint Articraft/NJC source validation, the full factorized model beats range-only, zero/shuffled-geometry, and the old independent PILC endpoint head by at least 15% worst-side NMAE; after target-free freeze it lowers public Box a-d macro worst-side NMAE at least 10% versus frozen D2 and wins at least 3/4 objects before any e/f access.\nConflicts: Node 5.1 found that 47D geometry harmed transfer and node 8.4 proved URDF hard stops are not contact minima; CARC counters them by using geometry only for closure/evidence gating, supervising only physical span in the range head, enforcing span closure algebraically, and pruning if a range-only or geometry-shuffled null ties.",
+      "status": "pending"
     }
   }
 }
