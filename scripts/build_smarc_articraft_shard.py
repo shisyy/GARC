@@ -141,7 +141,7 @@ def rotate(vertices,axis,pivot,angle):
 
 
 def render_states(static_mesh,mobile_mesh,axis,pivot,angles,device):
-    from pytorch3d.renderer import (AmbientLights, HardFlatShader, MeshRasterizer, MeshRenderer,
+    from pytorch3d.renderer import (AmbientLights, BlendParams, HardFlatShader, MeshRasterizer, MeshRenderer,
                                     OrthographicCameras, RasterizationSettings, TexturesVertex, look_at_view_transform)
     from pytorch3d.structures import Meshes
     sv,sf=static_mesh; mv,mf=mobile_mesh; all_states=[torch.cat((sv,rotate(mv,axis,pivot,a))) for a in angles]; faces=torch.cat((sf,mf+len(sv)))
@@ -154,7 +154,8 @@ def render_states(static_mesh,mobile_mesh,axis,pivot,angles,device):
         views=[]
         for elev,azim in VIEWS:
             R,T=look_at_view_transform(dist=3.,elev=elev,azim=azim,device=device); camera=OrthographicCameras(device=device,R=R,T=T)
-            renderer=MeshRenderer(MeshRasterizer(camera,raster),HardFlatShader(device=device,cameras=camera,lights=lights,blend_params=None))
+            renderer=MeshRenderer(MeshRasterizer(camera,raster),HardFlatShader(device=device,cameras=camera,lights=lights,
+                                                                                blend_params=BlendParams(background_color=(.05,.05,.05))))
             rgba=renderer(mesh)[0]; rgb=(rgba[...,:3].clamp(0,1)*255).to(torch.uint8).permute(2,0,1).cpu(); views.append(rgb)
         images.append(torch.stack(views))
     return torch.stack(images)
