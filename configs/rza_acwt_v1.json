@@ -1,0 +1,101 @@
+{
+  "schema": "splart-rza-acwt-label-free-preregister/v1",
+  "node": "8.11",
+  "hypothesis": "raw-z-anchored location and one anisotropic conditional covariance direction remove the remaining label-free dependence without relaxing RQ-LSOT gates",
+  "created_before_any_remote_result": true,
+  "predecessor_commit": "f7bdfa1a4a112c96c0067db19ead8c1fe1716a2e",
+  "predecessor_config_sha256": "e3d6c1b3d59e2fd4c155fcff7e818cce0af95343da81c9d2f01bb2990c0a5acc",
+  "allowed_inputs": "frozen feature caches, opaque source sidecars, renderer logs, and DINO checkpoint hash only",
+  "forbidden": ["source label open", "source label hash", "source score", "training", "Box", "sealed18/9/9", "B_test", "Full22", "remote execution during implementation"],
+  "model": {
+    "rank_transform": "per-domain train empirical mid-CDF x in [-1,1]; held uses train ECDF and clips only to [0.5/n,1-0.5/n]",
+    "raw_z_center": "subtract the domain fold-train arithmetic mean; held uses that same mean",
+    "rank_quadratic": "P2(x)=(3*x^2-1)/2",
+    "location_basis": ["1", "z_centered", "q_perp"],
+    "q_perp": "project P2(train x) off positive-QR span [1,z_centered], divide by train RMS; held applies the frozen projection and RMS",
+    "location_solver": "float64 reduced QR with positive diagonal",
+    "radial_scale": "s0=exp(OLS([1,x],log(RMS(location residual)+epsilon0)))",
+    "covariance": "g=R/s0; C0=mean(ggT); A1=mean(x*(ggT-C0)); A2=mean(P2(x)*(ggT-C0)); H=A1@A1+A2@A2",
+    "axis": "top eigenvector of symmetric H; sign makes its largest-absolute coordinate positive, lowest index breaks ties",
+    "axis_rank": 1,
+    "eigengap": "lambda_max-lambda_second must exceed 100*eps_float64*operator_norm(H)",
+    "block_scale_basis": ["1", "x", "P2(x)"],
+    "block_scales": "separate positive exp-OLS fits to log(|dot(g,v)|+epsilon_g) and log(RMS over the D-1 orthogonal coordinates+epsilon_g); no clipping",
+    "epsilon0": "max(1e-12,1e-6*RMS(centered object means))",
+    "epsilon_g": "max(1e-12,1e-6*RMS(g))",
+    "standardized_residual": "E=(dot(g,v)/s_parallel)*v+(g-dot(g,v)*v)/s_perp",
+    "transport": "per-domain sorted opaque-ID shift-one for train; sorted-held to sorted-train balanced round-robin for held; preserve recipient within-object offsets",
+    "mechanical_displacement": "recipient final displacement coordinate is appended bit-for-bit and is never transported",
+    "row_identity": "domain + ':' + stable gauge_id/row_id/joint_id:order",
+    "candidate_search": false
+  },
+  "numerics": {
+    "dtype": "float64",
+    "rank_relative_tolerance": 1e-12,
+    "condition_max": 1000000.0,
+    "eigengap_multiplier": 100.0,
+    "positive_r_diagonal_required": true,
+    "finite_required": true,
+    "scale_clipping_forbidden": true
+  },
+  "crossfit": {
+    "folds": 5,
+    "assignment": "sort by sha256('splart-rza-acwt-crossfit-v1:'+domain+':'+opaque_object_id), balanced round-robin within each domain",
+    "preprocessing": "every fold refits one joint-domain PCA and mechanical scaling; then each domain refits raw-z center, ECDF, q projection, location, s0, covariance axis, and both block scales",
+    "semantic_oof_coordinates": "map fold-local PCA E back to raw DINO coordinates",
+    "mechanical_oof_coordinates": "zero-fill fold-dropped raw geometry columns; displacement is excluded",
+    "absolute_spearman_at_most": 0.35,
+    "distance_correlation_at_most": 0.5
+  },
+  "gates": {
+    "reconstruction_max_error": 1e-10,
+    "orthogonality_max": 1e-10,
+    "raw_z_correlation_max": 1e-10,
+    "held_boundary_clipped_fraction_max": 0.25,
+    "residual_energy_ratio_at_least": 0.05,
+    "shuffle_rms_over_original_sd_at_least": 0.1,
+    "shuffled_norm_p99_ratio_at_most": 1.25,
+    "train_coverage": 1.0,
+    "held_coverage": 1.0,
+    "train_self_rate": 0.0,
+    "train_donor_marginal_exact": true,
+    "held_effective_donors_per_object": 1.0,
+    "recipient_u_max_error": 1e-12,
+    "repeat_bit_identical": true,
+    "row_order_invariant": true,
+    "independent_double_recompute": true,
+    "all_four_domain_null_cells_required": true,
+    "no_node810_gate_regression": true
+  },
+  "contexts": {
+    "semantic": "semantic_rza_acwt/final-source-features",
+    "mechanical": "mechanical_rza_acwt/final-source-features"
+  },
+  "source": {
+    "dino_checkpoint_sha256": "bf34ad0f424b9029b593e8dc3ed553bf26e88bcba0d32bf3e62a6209cb64c85e",
+    "articraft_inputs_sha256": "27fab569c7cce6be1aaecee9e2292af7ef213abc7871aef6bb013a74df4da5e9",
+    "articraft_manifest_sha256": "abcb3188479cf7f48e9707897dff3fb0811f4101278bc6c6aefaaf5832494949",
+    "njc_inputs_sha256": "dcfb65e548ea08b0d71af9f52ebc68b615b1b3dea459605bbefd554393005c9e",
+    "njc_manifest_sha256": "c750569d08a54474f821c45f484ea110c846e5f2262d4ec2aacf39c9b78ce91c",
+    "render_feature_payload_sha256": [
+      {"inputs": "d6d84a5ef8950a8edbdfd5698be1f89ba1a2d0cce602da1be13f610e6db28875", "manifest": "9c95da2e933bd3502548692f10fe7351aeb981e25ff774c87f770ed83b774da8", "render_bank": "39d9ccbd92fd02c64158ead228e9f3038f2e32ce36b1212af7fdbc3e4df9c90b"},
+      {"inputs": "177f76e16c4b2c31e8976c61729f7d3649a50d1ef24e72210af7d0dc6959b9dd", "manifest": "67f7543c039d29c53a2d5d7aaf7480901393f91465ba887c67000c740b5a7cb4", "render_bank": "469d5ec6219fb489672ad965a736a9c7cfab45e5fed7d43bfad0dc1d46df4949"},
+      {"inputs": "01aad99cacf9cc3ac2e4f809cc236d83b4ab9101cf865d262b78f170728583e1", "manifest": "07c0569947f69ada2d7ef54e066ebc5da38a14a4c5561a9e46a2756d76a0641f", "render_bank": "9a32c729b25ba57b7f58cad084b45da0786afc8c59b6159aa4c40557751eba05"},
+      {"inputs": "31b6b5e4c6038ec65ebe5ecc1e9e225f545db81e025bc1e1d398931cdbdc7894", "manifest": "e3abd737feac4a4bff0ece57f417004399c6d3f9555dcf236e484f52b51daae5", "render_bank": "0160e0e317f4dd128c899a64080b2b397927034c0846b672669ef829228307cf"}
+    ],
+    "render_log_sha256": ["f55625bcc3cd64bb44ad1c8068af6823e5e1cea2059f2c907667133cf04cc7f2", "2efab422d86f0507bbea97517b8acb47ffa68fc0eefc93b2c472b5f3f4e04e69", "559bce38db7e52bb09c396c5d318a0087b5ba9489bc7d2fef5d2f608937464a8", "be5487ba82b68ab72551338ca78139ece3d1799c99635c2c62ac86fbadd38367"],
+    "object_list_hashes": {
+      "articraft_train": "c3b0d6633dee69058a5b290d5c54eb04e50d4f6e07570aacf1acbdf7c4d4cbed",
+      "articraft_held": "891d7ba880613712eb9ac5e1322633621a36e5d66d2edf94384e433ddc858c83",
+      "njc_train": "d82a5d0de16fe18e8ec5a2f1325d04ae8d9092d34004c52cebfcff53faa59154",
+      "njc_held": "c44b40aa400c033077abc6c4aee9a73de3b9c965060df473fe447e682ccd26be"
+    }
+  },
+  "source_labels_opened": false,
+  "source_labels_hashed": false,
+  "source_scores_computed": false,
+  "training_started": false,
+  "remote_execution_started": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}
