@@ -280,6 +280,11 @@ Conflicts: Nodes 3.1/6/8.1/8.2 show geometry-only terminal transitions are absen
 #### 8.8: Mechanism: Calipered Semantic-Gated Range Completion (C-SMARC) couples frozen DINO part semantics to bias-free mechanical residual experts, predicts an authored revolute range inside [|d|,2pi], and exactly projects the two terminal extensions; its causal null uses same-domain partial permutations with hard 0.5 robust-z calipers and leaves unmatched tails unchanged.
 Hypothesis: Functional appearance carries authored hard-stop information absent from two-state geometry/displacement, while conservative partial permutations, black-image/mechanical-only controls, and family-disjoint refits prevent category lookup or deliberately weak nulls from explaining gains.
 Observable: Before Box access, one frozen 1200-step configuration must beat the stronger of historical and hierarchy-weighted global/displacement/category controls plus mechanical-only by at least 15% on both Articraft and NJC; matched shuffles must worsen at least 20%, each-domain perturbation coverage must be at least 90%, Articraft LOFO aggregate must pass 15%, and measured state-swap error must be at most 1e-6.
-Conflicts: Unlike CARC's failed geometry-only range cue, DEKP's averaging-only gain, and node 8.7's infeasible full derangement, semantics only selects mechanical laws and the null preserves close-domain covariates while keeping unmatched outliers unperturbed. [RUNNING]
+Conflicts: Unlike CARC's failed geometry-only range cue, DEKP's averaging-only gain, and node 8.7's infeasible full derangement, semantics only selects mechanical laws and the null preserves close-domain covariates while keeping unmatched outliers unperturbed. [PRUNED] (score: 90)
 
-**Branch**: arbor/node-8-8-csmarc
+**Insight**: Hard-caliper partial permutations preserve donor marginals but are infeasible for NJC n=11: semantic/mechanical train coverage 9/11 and 8/11 below frozen 90%, while Articraft and all held splits pass. This is a null-construction feasibility failure before any model score; next null must avoid cross-object distance/cycle feasibility, e.g. train-only conditional residual randomization.
+[Pruned: Frozen v1.3 per-domain 90% matched-null coverage failed on NJC train (9/11 semantic, 8/11 mechanical); no smoke, formal model score, or Box access.]
+
+**Result**: PRUNE_BEFORE_TRAINING; formal_training=false; box_labels_read=[]; protected_splits_read=[]
+
+**Branch**: 037cf42
