@@ -250,7 +250,8 @@
         "8.4",
         "8.5",
         "8.6",
-        "8.7"
+        "8.7",
+        "8.8"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -340,6 +341,14 @@
       "score": null,
       "insight": "Strict source representation passed 32-gauge, provenance, and baseline recovery preflight, but the preregistered one-to-one matched null was unavailable: mechanical-shuffle maximum robust-z donor distance 1.562085 exceeded 1.5. This is a protocol-executability failure before formal training, not a SMARC performance result; partial calipered permutation is required.\n[Pruned: Frozen v1.2 required matched mechanical-shuffle null is unavailable (train donor max robust-z 1.562085 > 1.5); no formal model score or Box access.]",
       "result": "PRUNE_BEFORE_TRAINING; formal_training=false; box_labels_read=[]; protected_splits_read=[]"
+    },
+    "8.8": {
+      "id": "8.8",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Calipered Semantic-Gated Range Completion (C-SMARC) couples frozen DINO part semantics to bias-free mechanical residual experts, predicts an authored revolute range inside [|d|,2pi], and exactly projects the two terminal extensions; its causal null uses same-domain partial permutations with hard 0.5 robust-z calipers and leaves unmatched tails unchanged.\nHypothesis: Functional appearance carries authored hard-stop information absent from two-state geometry/displacement, while conservative partial permutations, black-image/mechanical-only controls, and family-disjoint refits prevent category lookup or deliberately weak nulls from explaining gains.\nObservable: Before Box access, one frozen 1200-step configuration must beat the stronger of historical and hierarchy-weighted global/displacement/category controls plus mechanical-only by at least 15% on both Articraft and NJC; matched shuffles must worsen at least 20%, each-domain perturbation coverage must be at least 90%, Articraft LOFO aggregate must pass 15%, and measured state-swap error must be at most 1e-6.\nConflicts: Unlike CARC's failed geometry-only range cue, DEKP's averaging-only gain, and node 8.7's infeasible full derangement, semantics only selects mechanical laws and the null preserves close-domain covariates while keeping unmatched outliers unperturbed.",
+      "status": "pending"
     }
   }
 }

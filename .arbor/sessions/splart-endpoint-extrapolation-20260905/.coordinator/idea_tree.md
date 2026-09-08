@@ -276,3 +276,8 @@ Conflicts: Nodes 3.1/6/8.1/8.2 show geometry-only terminal transitions are absen
 **Result**: PRUNE_BEFORE_TRAINING; formal_training=false; box_labels_read=[]; protected_splits_read=[]
 
 **Branch**: da7bd9b
+
+#### 8.8: Mechanism: Calipered Semantic-Gated Range Completion (C-SMARC) couples frozen DINO part semantics to bias-free mechanical residual experts, predicts an authored revolute range inside [|d|,2pi], and exactly projects the two terminal extensions; its causal null uses same-domain partial permutations with hard 0.5 robust-z calipers and leaves unmatched tails unchanged.
+Hypothesis: Functional appearance carries authored hard-stop information absent from two-state geometry/displacement, while conservative partial permutations, black-image/mechanical-only controls, and family-disjoint refits prevent category lookup or deliberately weak nulls from explaining gains.
+Observable: Before Box access, one frozen 1200-step configuration must beat the stronger of historical and hierarchy-weighted global/displacement/category controls plus mechanical-only by at least 15% on both Articraft and NJC; matched shuffles must worsen at least 20%, each-domain perturbation coverage must be at least 90%, Articraft LOFO aggregate must pass 15%, and measured state-swap error must be at most 1e-6.
+Conflicts: Unlike CARC's failed geometry-only range cue, DEKP's averaging-only gain, and node 8.7's infeasible full derangement, semantics only selects mechanical laws and the null preserves close-domain covariates while keeping unmatched outliers unperturbed. [PENDING]
