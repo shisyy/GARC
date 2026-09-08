@@ -99,7 +99,9 @@ def combine(meshes: list[tuple[torch.Tensor, torch.Tensor]]) -> tuple[torch.Tens
 
 def parse_formal(root: Path):
     urdfs=list(root.rglob("model.urdf"))
-    if len(urdfs)!=1: raise ValueError("archive must contain one model.urdf")
+    if not urdfs:
+        urdfs=list(root.rglob("object.urdf"))
+    if len(urdfs)!=1: raise ValueError("asset must contain one model.urdf or object.urdf")
     robot=ET.parse(urdfs[0]).getroot(); links={x.attrib["name"]:x for x in robot.findall("link")}; joints=robot.findall("joint")
     records=[]; children={name:[] for name in links}; child_names=set()
     for joint in joints:
