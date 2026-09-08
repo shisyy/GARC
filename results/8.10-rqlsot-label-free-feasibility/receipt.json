@@ -1,0 +1,14 @@
+{
+  "box_labels_read": [],
+  "code_sha256": "70049c08e8dce527be157959ca6488cd4da05e11c9b228efaca9a73dba6a51fb",
+  "config_sha256": "e3d6c1b3d59e2fd4c155fcff7e818cce0af95343da81c9d2f01bb2990c0a5acc",
+  "decision": "PRUNE_LABEL_FREE",
+  "feasibility_sha256": "86ec72ef6d814cc06eedf78cbdc4541b42254958e7a3758b6a91123ed4523ef1",
+  "feature_provenance_sha256": "cbf5bae9888d46ef3f820daa26ebd3d6a2718842974f3365064f0a79d558fb3b",
+  "protected_splits_read": [],
+  "schema": "splart-rqlsot-feasibility-receipt/v1",
+  "source_labels_hashed": false,
+  "source_labels_opened": false,
+  "source_scores_computed": false,
+  "training_started": false
+}

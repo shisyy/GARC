@@ -1,0 +1,35 @@
+{
+  "schema": "splart-rqlsot-label-free-summary/v1",
+  "decision": "PRUNE_LABEL_FREE",
+  "commit": "f7bdfa1a4a112c96c0067db19ead8c1fe1716a2e",
+  "config_sha256": "e3d6c1b3d59e2fd4c155fcff7e818cce0af95343da81c9d2f01bb2990c0a5acc",
+  "thresholds": {
+    "normalized_residual_mean_max": 1e-10,
+    "normalized_residual_raw_z_correlation_max": 1e-10,
+    "oof_absolute_spearman_max": 0.35,
+    "oof_distance_correlation_max": 0.5,
+    "recipient_u_max_error": 1e-12
+  },
+  "cells": {
+    "semantic/articraft": {"normalized_mean": 4.589661062389746e-16, "raw_z_correlation": 0.08133789646766659, "oof_spearman": 0.06790459864110704, "oof_distance_correlation": 0.31495808340408743, "recipient_u_max_error": 1.6653345369377348e-16, "pass": false},
+    "semantic/njc": {"normalized_mean": 1.7923414861329699e-16, "raw_z_correlation": 0.164753993428853, "oof_spearman": 0.15489789617658978, "oof_distance_correlation": 0.5846678821303452, "recipient_u_max_error": 1.1102230246251565e-16, "pass": false},
+    "mechanical/articraft": {"normalized_mean": 4.301050288665804e-16, "raw_z_correlation": 0.08317663345792957, "oof_spearman": 0.01836997685672207, "oof_distance_correlation": 0.2607070582752589, "recipient_u_max_error": 2.7200464103316335e-15, "pass": false},
+    "mechanical/njc": {"normalized_mean": 1.3753678670024825e-15, "raw_z_correlation": 0.10252757560563196, "oof_spearman": 0.12727272727272726, "oof_distance_correlation": 0.6335606954682327, "recipient_u_max_error": 6.661338147750939e-16, "pass": false}
+  },
+  "runtime_audits": {
+    "semantic": {"repeat_bit_identical": true, "row_order_invariant": false},
+    "mechanical": {"repeat_bit_identical": true, "row_order_invariant": true, "recipient_displacement_bitwise_unchanged": true}
+  },
+  "artifact_sha256": {
+    "remote_feasibility_json": "86ec72ef6d814cc06eedf78cbdc4541b42254958e7a3758b6a91123ed4523ef1",
+    "remote_receipt_json": "ac53cf8f4594438be15b2abaa968b54602cc2fdd5d9f62342d548003b68583e2",
+    "remote_log": "9e5893f43571b20ec31fcec7d0b169e309151124f37d88e0c072bfadc03980d0"
+  },
+  "source_labels_opened": false,
+  "source_labels_hashed": false,
+  "source_scores_computed": false,
+  "training_started": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}
+
