@@ -17,13 +17,11 @@ Conflicts: CARC [8.5] showed geometry-only span evidence is harmful, DEKP [8.6] 
 
 ## Evaluation Info
 
-- **Evaluation command (B_dev)**: `cd D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\worktrees\node89_ocrsmarc && python evaluate_public_endpoint_profiles.py --split public_box_af --run-name 8.9`
-- **Evaluation command (B_test, do not use for routine experiments)**: `UNAVAILABLE_PROTECTED_B_TEST`
-- **Dataset info**: Public Box a-f development episodes plus target-free first36 profiles; old sealed 18/9/9, B_test, and Full22 prohibited
-- **Baseline score**: 0.154877
-- **Current trunk score**: 0.154877
-
-Use B_dev for final experiment scoring. Do NOT use B_test.
+- **Phase A only**: Articraft and NJC object-disjoint source validation, final fit plus three frozen LOFO folds.
+- **Primary metric**: source object-macro worst-side endpoint NMAE; lower is better.
+- **Controls**: stronger of historical row-uniform and hierarchy-weighted analytic controls, mechanical-only, semantic conditional-residual ablation, and mechanical conditional-residual ablation.
+- **Forbidden until Phase A passes**: every Box label/metric, old sealed 18/9/9, B_test, and Full22.
+- **After a passing source gate only**: evaluate the exact frozen candidate on public Box a-d. Box e/f remain untouched.
 
 ## Insights From Prior Experiments
 
@@ -36,16 +34,16 @@ Implement node 8.9 as a fresh, result-free successor to C-SMARC infrastructure c
 P0 preflight gates: train-only/domain-specific fit/preprocessing; no Box/protected/target reads; all finite; exact residual reconstruction; per-dimension normalized weighted mean and z-correlation errors <=1e-10; train/held coverage 1; train self rate 0, donor marginal exactly 1; held donors all train, load <=ceil(nheld/ntrain), effective donors/held=1; mechanical d bitwise unchanged; true raw state-swap invariance <=1e-10. Add target-free nondegeneracy gates: residual energy ratio >=0.05; shuffle RMS/original field SD >=0.1; shuffled latent norm p99 <=1.25x original train p99. Freeze a 5-fold opaque-hash cross-fit diagnostic and report residual-vs-z Spearman plus distance correlation with preregistered finite thresholds; failure makes the null unavailable, never tune after results.
 Fix prior runner P0/P1 before any formal run: aggregate output directory exactly once and atomically; bind receipt task/steps/source provenance/config/code hash to each partial and current checked-out code; revalidate exact family IDs, all six frozen LOFO hashes, 109-object union and disjointness, null gates, and render-log content hashes; add end-to-end four-partial aggregate tests, permutation-order invariance, and mutation rejection tests. Require two commits before execution: protocol/null/tests first, hardened runner/tests second. Run local tests and source-only preflight. Only if preflight passes, launch 2-step smoke. Only then launch exactly 1200 steps final plus three LOFO tasks across free server98 A6000s, with immutable partial directories and separate logs. No seed sweep or selection. Source gate: full beats stronger analytic and mechanical-only controls by >=15% on both Articraft and NJC; semantic and mechanical conditional-residual ablations each worsen >=20%; each LOFO fold stable at >=15%; exact swap. Box a-d only after this gate; e/f and B_test untouched.
 
-## Smoke Mode
+## Execution Mode
 
-This is a forward-test of Arbor orchestration only. Do not edit source code, create a real worktree, commit, run training, run GPU jobs, or execute minute-scale eval commands. If an eval command above invokes training or an expensive benchmark, treat it as metadata and replace it with a cheap cached-score parser or an explicitly marked mocked score.
+This is a real executor run, not an orchestration mock. Implement and commit the result-free protocol, run its source-only preflight, then use the remote A6000s for smoke/formal work only when the preceding gates pass. Never fabricate or mock a score.
 
 ## Instructions
 
-1. Read only concise context needed to validate the dispatch.
-2. Use `arbor_state.py parse-log` or a small parser for cached metrics. If using shell tools on training logs, normalize carriage returns first, for example `tr '\r' '\n' < run.log | grep ...`. Do not `cat`, raw `rg`, raw `grep`, or `tail` long training logs unless debugging a failure, and then cap output to 20 lines.
-3. Do not implement the idea in smoke mode.
-4. Record a smoke-only report with Changes, Baseline vs Result, Score, Analysis, and Insight.
-5. Make the score an absolute metric from a cached/cheap source or clearly label it as mocked evidence for plumbing only.
+1. Make a first commit containing only the frozen OCR-SMARC config, conditional-residual implementation, and focused tests; do not score before this commit.
+2. Make a second commit fixing and testing the parallel producer/aggregator/provenance protocol. Aggregate must reject stale code, mutated receipts, wrong task/steps, wrong provenance, incomplete or overlapping LOFO partitions, weakened null gates, and partial-order changes.
+3. Run local tests and a source-only remote preflight. Preserve its JSON, receipt, hashes, and logs in a new immutable result directory.
+4. If and only if preflight passes, run a two-step smoke in a separate immutable directory. If and only if smoke passes, launch the four 1200-step source tasks across free GPUs.
+5. Report actual metrics and all gate outcomes. A protocol/nondegeneracy failure is a prune-before-training result, not a method score.
 
-Save smoke artifacts under `.arbor/sessions/<run>/experiments/8.9/`.
+Save local reports under `.arbor/sessions/splart-endpoint-extrapolation-20260905/experiments/8.9/` and remote artifacts under a new `/data1/public/yptang/splart-node89-ocrsmarc/` root.
