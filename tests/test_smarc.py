@@ -1,6 +1,7 @@
 import torch
 
-from splart.smarc import SMARC, opaque_object_group, opaque_row_key, project_extensions_to_range, swap_invariant_pair
+from splart.smarc import (SMARC, extensions_to_endpoints, model_tensors, opaque_object_group,
+                          opaque_row_key, project_extensions_to_range, swap_invariant_pair)
 from splart.frozen_visual import encode_state_pair
 from scripts.build_smarc_articraft_shard import obj_mesh, parse_formal
 
@@ -37,6 +38,17 @@ def test_swap_invariant_pair_and_exact_range_projection():
     assert torch.allclose(projected.sum(-1), ranges / displacement - 1, atol=1e-12, rtol=0)
     swapped = project_extensions_to_range(base.flip(-1), ranges, displacement)
     assert torch.equal(swapped, projected.flip(-1))
+    endpoint = extensions_to_endpoints(projected)
+    swapped_endpoint = extensions_to_endpoints(swapped)
+    assert torch.equal(swapped_endpoint, torch.stack((1-endpoint[:, 1], 1-endpoint[:, 0]), -1))
+
+
+def test_model_batch_strips_all_identity_and_audit_metadata():
+    row = {"mechanical": torch.ones(3), "semantic": torch.ones(4), "observed_displacement": .5,
+           "joint_id": "x", "object_group_id": "y", "key": "z", "split": "train", "family_audit_id": "f"}
+    batch = model_tensors([row])
+    assert set(batch) == {"mechanical", "semantic", "observed_displacement"}
+    assert all(token not in batch for token in ("joint_id", "object_group_id", "key", "split", "family_audit_id"))
 
 
 def test_frozen_pair_encoder_is_state_swap_invariant():

@@ -1,5 +1,6 @@
 {
   "schema": "splart-smarc-source-preregister/v1",
+  "clarification_version": "v1.1 before any DINO source score",
   "created_before_any_dino_source_score": true,
   "phase": "source-only feasibility",
   "encoder": {
@@ -29,7 +30,20 @@
     "mechanical": "swap-invariant mean/abs-difference surface features plus absolute observed displacement; remove train-constant columns",
     "labels": "physical authored range only",
     "family_policy": "Articraft three-family leave-one-family-out with every fold and aggregate reported (USB fold flagged small); NJC family audit NOT_APPLICABLE_BY_NO_TAXONOMY",
-    "domain_policy": "one joint Articraft+NJC model trained on Articraft97 plus NJC11; Articraft12 and NJC4 remain validation-only; after source gate the same single frozen joint model is the only Box candidate"
+    "domain_policy": "one joint Articraft+NJC model trained on Articraft97 plus NJC11; Articraft12 and NJC4 remain validation-only; after source gate the same single frozen joint model is the only Box candidate",
+    "object_list_hashes": {
+      "final_articraft97": "c3b0d6633dee69058a5b290d5c54eb04e50d4f6e07570aacf1acbdf7c4d4cbed",
+      "final_njc11": "d82a5d0de16fe18e8ec5a2f1325d04ae8d9092d34004c52cebfcff53faa59154",
+      "final_joint108": "0544e98829703a14394d26d96ca50d830415641052081dcd7aa49773a2b1ad3e",
+      "articraft_validation12": "891d7ba880613712eb9ac5e1322633621a36e5d66d2edf94384e433ddc858c83",
+      "njc_validation4": "c44b40aa400c033077abc6c4aee9a73de3b9c965060df473fe447e682ccd26be",
+      "lofo_window_train72": "05e83f6b1a57715dbf13e3a4a061c09b0999e24ca7fad9dc0327a72913da3dc2",
+      "lofo_window_test37": "c72b7191981973a49c9c365273ac4ab00807b5458cec6e0a2c50412502cb4c9f",
+      "lofo_sewing_train58": "5a9fd79906dd7b994c165a5b2e47bac5a568341cf31260102a7be41cd304e7d1",
+      "lofo_sewing_test51": "e00c028736f4915943cc765954fd1f29b4f12d89974043895156720a5a56aa67",
+      "lofo_usb_train88": "e765208cfb51ab20817c6957540d173ecdd0101e0b1c715b56c5a79db95de236",
+      "lofo_usb_test21_small": "f4e37644b6aaa0027169db86d6f04f5bedb0e81f6c695dd26dc45f8d305d816a"
+    }
   },
   "model": {
     "experts": 4,
@@ -45,10 +59,19 @@
     "steps": 1200,
     "learning_rate": 0.01,
     "weight_decay": 0.001,
-    "loss": "object-macro relative authored-range error plus 0.01 gate-load-balance",
+    "loss": "mean joints/gauges within object, then equal mean objects within domain, then equal mean Articraft/NJC domains; plus 0.01 gate-load-balance",
+    "global_prior_and_pca": "fit on training objects with the same object-uniform and domain-balanced weighting; refit independently inside every LOFO audit replica",
     "selection": "single frozen configuration; no sweep"
   },
-  "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "zero_image_structurally_equal_mechanical_only", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
+  "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "bypassed_zero_semantic_structurally_equal_mechanical_only", "literal_black_image_through_frozen_dino", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
+  "shuffle_contract": {
+    "unit": "opaque object group; every joint/view follows its object's donor",
+    "mapping": "lexicographically next object in a cyclic derangement; donor must differ; fail closed when a bin has fewer than two objects",
+    "semantic_shuffle_mechanical_bin_edges_abs_displacement_radians": [0.0, 0.5, 1.0, 1.5, 6.283185307179586],
+    "mechanical_shuffle_semantic_bin_edges_cosine_distance_to_train_mean": [0.0, 0.1, 0.25, 0.5, 2.0],
+    "fit_scope": "training objects only; validation receives frozen bin edges and deterministic training donor",
+    "joint_or_row_shuffle": "forbidden"
+  },
   "gate": {
     "full_relative_gain_over_global_displacement_category_mechanical_each_domain": 0.15,
     "each_shuffle_relative_worsening": 0.20,
