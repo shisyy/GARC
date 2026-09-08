@@ -1,9 +1,9 @@
 {
-  "schema": "splart-csmarc-source-preregister/v1.3",
-  "clarification_version": "node 8.8 result-free preregistration before any C-SMARC method score",
+  "schema": "splart-ocrsmarc-source-preregister/v1",
+  "clarification_version": "node 8.9 result-free preregistration before any OCR-SMARC method score",
   "created_before_any_dino_source_score": true,
-  "predecessor_node_8_7_remote_config_sha256": "90027389e4548931538f654011ba9fcd3ba3d1d2e98b9cf877a4a1588c355121",
-  "node_8_8_reason": "replace infeasible forced full derangements with hard-caliper partial permutations; unmatched tails remain identity and perturbation coverage is explicitly gated",
+  "predecessor_node_8_8_config_sha256": "c46852b019012d68d6413c2fe15f6938948dac34e6a1ea71360cec84560ea1bc",
+  "node_8_9_reason": "replace infeasible cross-object proximity matching with train-only conditional-residual swaps that cover every object while preserving fitted conditional means and within-object structure",
   "phase": "source-only feasibility",
   "encoder": {
     "name": "DINO ViT-B/16",
@@ -79,19 +79,17 @@
     "global_prior_and_pca": "fit on training objects with the same object-uniform and domain-balanced weighting; refit independently inside every LOFO audit replica",
     "selection": "single frozen configuration; no sweep"
   },
-  "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "bypassed_zero_semantic_structurally_equal_mechanical_only", "literal_black_image_through_frozen_dino", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
-  "shuffle_contract": {
-    "unit": "opaque object group; every joint/view follows its object's donor",
-    "mapping": "within each domain solve a permutation with nonself edges allowed only at robust-z distance <=0.5 and self edges allowed as unchanged; lexicographic objective first maximizes nonself coverage then minimizes total distance; opaque IDs define canonical row/column order. Held objects use nearest same-domain training donor within 0.5, otherwise retain their own field",
-    "robust_z": "m=median(train-domain object scalar), scale=1.4826*median(abs(x-m)); scale<=1e-12 or nonfinite fails closed; held never affects m or scale",
-    "matching_caliper": 0.5,
-    "minimum_perturbed_object_coverage_each_domain": 0.9,
-    "held_donor_diversity": {"effective_donors_per_perturbed_at_least": 0.5, "maximum_donor_load": 2},
-    "matching_receipt": "per-domain train/held perturbation coverage, actual nonself distance median/p90/max, unmatched opaque IDs, donor marginal/permutation proof, held donor load/effective count, scipy version and mapping hash",
-    "semantic_shuffle_covariate": "object-mean absolute observed displacement",
-    "mechanical_shuffle_covariate": "cosine distance from object-mean semantic embedding to the train-only domain mean",
-    "fit_scope": "training objects only; validation uses the frozen train-domain robust center/scale and independently nearest same-domain training donor",
-    "joint_or_row_shuffle": "forbidden"
+  "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "semantic_conditional_residual", "mechanical_conditional_residual"],
+  "conditional_residual_contract": {
+    "unit": "opaque object group; every joint/gauge retains its recipient within-object offset",
+    "fit": "per-domain train-only object-equal unregularized float64 SVD OLS of object-mean field on [1,z]; fail if Var(z)<=1e-12 or rank<2",
+    "semantic_field": "frozen train-only PCA16 DINO pair latent; z is object-mean absolute observed displacement",
+    "mechanical_field": "train-domain standardized nonconstant geometry only; z is semantic cosine distance to the train-domain mean; recipient displacement is bit-identical",
+    "reconstruction": "f'_ok=beta0+beta1*z_o+r_donor+u_ok",
+    "train_mapping": "within each domain opaque-ID sorted cyclic shift one; self rate zero and donor marginal exactly one",
+    "held_mapping": "within each domain opaque-ID sorted held objects receive opaque-ID sorted train residual donors in balanced round-robin",
+    "crossfit": {"folds": 5, "assignment": "uint64 prefix of sha256('splart-ocrsmarc-crossfit-v1:'+opaque_object_id) modulo 5", "diagnostic": "absolute Spearman between residual-vector norm and z plus distance correlation between residual vector and z", "absolute_spearman_at_most": 0.35, "distance_correlation_at_most": 0.5},
+    "gates": {"reconstruction_max_error": 1e-10, "normalized_residual_mean_max": 1e-10, "normalized_residual_z_correlation_max": 1e-10, "coverage": 1.0, "train_self_rate": 0.0, "residual_energy_ratio_at_least": 0.05, "shuffle_rms_over_original_sd_at_least": 0.1, "shuffled_norm_p99_ratio_at_most": 1.25, "held_effective_donors_per_object": 1.0}
   },
   "gate": {
     "full_relative_gain_over_global_displacement_category_mechanical_each_domain": 0.15,
@@ -101,7 +99,6 @@
     "articraft_each_family_fold_reported": true,
     "njc_family_audit": "NOT_APPLICABLE_BY_NO_TAXONOMY",
     "state_swap_max_error": 0.000001,
-    "matched_shuffle_coverage_each_domain_at_least": 0.9,
     "analytic_control_rule": "for each domain/control compare against min(historical row-uniform MARE, hierarchy-weighted MARE)"
   },
   "parallel_execution": {"tasks": ["final", "lofo_0", "lofo_1", "lofo_2"], "immutable_partial_outputs": true, "aggregator": "deterministic config-hash and task-set validation"},
