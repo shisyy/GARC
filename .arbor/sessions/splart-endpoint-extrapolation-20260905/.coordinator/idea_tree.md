@@ -1,6 +1,6 @@
 # Idea Tree
 
-**Baseline**: 0.3109 | **Trunk**: 0.3109
+**Baseline**: 0.1549 | **Trunk**: 0.1549
 
 ## ROOT: Given two interior articulation states relabelled 0 and 1, predict the fully closed endpoint and the opposite physical joint limit, and reconstruct held-out endpoint views without access to absolute interior fractions or true limits. [DONE]
 
