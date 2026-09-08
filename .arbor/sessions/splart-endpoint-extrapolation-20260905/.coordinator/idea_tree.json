@@ -252,7 +252,8 @@
         "8.6",
         "8.7",
         "8.8",
-        "8.9"
+        "8.9",
+        "8.10"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -365,6 +366,14 @@
       "insight": "Exact conditional-residual mechanics passed on all domains: 100% train/held coverage, exact cyclic/balanced donors, reconstruction and linear orthogonality near machine precision, residual energy 0.665-0.934, and strong perturbation. However the preregistered nonlinear-dependence gate failed before labels: semantic NJC distance correlation 0.656616 > 0.5; mechanical NJC distance correlation 0.595438 > 0.5; mechanical Articraft residual-norm Spearman 0.358852 > 0.35. Linear conditional means are insufficient, so no source score/training/Box is admissible.",
       "result": "PRUNE_BEFORE_TRAINING; preflight_all_pass=false; source_labels_opened=false; source_scores_computed=false; formal_training=false; box_labels_read=[]; protected_splits_read=[]; remote_preflight_sha256=05e6e8fa6c40bbff49e6f7cc35cd225c6bf56ebcc8f7160cb57874aaf86fa6a3; remote_receipt_sha256=bb32098ee59d833c9194e1ffd34a13a5428e3f737d18e6333b582cee5f45bca9",
       "code_ref": "1c3d1c974a350de79d561bd21501539354a9ab74"
+    },
+    "8.10": {
+      "id": "8.10",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Rank-Quadratic Location-Scale Orthogonal Transport SMARC (RQ-LSOT-SMARC) replaces the failed linear residual null with a per-domain train-only empirical-rank quadratic location model and linear log-radial-scale model, then transports standardized object residuals through the same exact opaque-ID shift-one/balanced donor maps while preserving recipient joint/gauge offsets and mechanical displacement.\nHypothesis: Node 8.9 failed only the frozen nonlinear-dependence diagnostics while passing coverage, exact reconstruction, linear orthogonality, energy, perturbation and norm gates; a fixed three-term rank-quadratic mean plus two-term log-scale correction should remove the remaining nonlinear location and heteroscedastic dependence without changing thresholds, seeds, the predictor, or target data.\nObservable: Before any label read, freeze QR sign/rank/condition rules, ECDF held clipping, cross-fit-local preprocessing, exact hashes and the unchanged Spearman<=0.35/dCor<=0.5 and prior gates; require all four domain-by-null cells to pass twice bit-identically with row-order invariance, boundary-clipped held fraction<=25%, exact quadratic-basis orthogonality, 100% donor coverage, and no regression on any 8.9 gate.\nConflicts: Unlike 8.7/8.8 donor-distance matching and 8.9 linear OLS residualization, RQ-LSOT changes the conditional nuisance model rather than relaxing feasibility thresholds; it remains a deterministic falsification ablation rather than a permutation p-value, and if label-free feasibility fails the node is pruned without source labels, training, Box, degree search, or threshold adjustment.",
+      "status": "pending"
     }
   }
 }
