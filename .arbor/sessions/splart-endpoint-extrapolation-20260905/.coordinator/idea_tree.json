@@ -309,7 +309,7 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Closure-Anchored Range Completion (CARC) factorizes the two extrapolated endpoints into one geometry-supported closed-contact coordinate and one learned physical motion span; an exactly swap-equivariant kinematic layer places the opposite hard stop from the predicted span and the observed relative screw displacement.\nHypothesis: Surface evidence can identify closure but not an authored open stop, while source supervision can estimate mechanism span; separating these evidence types avoids forcing both endpoints through the same corrupted contact minimum and prevents independent-extension range collapse.\nObservable: With object-disjoint Articraft/NJC source validation, the full factorized model beats range-only, zero/shuffled-geometry, and the old independent PILC endpoint head by at least 15% worst-side NMAE; after target-free freeze it lowers public Box a-d macro worst-side NMAE at least 10% versus frozen D2 and wins at least 3/4 objects before any e/f access.\nConflicts: Node 5.1 found that 47D geometry harmed transfer and node 8.4 proved URDF hard stops are not contact minima; CARC counters them by using geometry only for closure/evidence gating, supervising only physical span in the range head, enforcing span closure algebraically, and pruning if a range-only or geometry-shuffled null ties.",
-      "status": "pending"
+      "status": "running"
     }
   }
 }
