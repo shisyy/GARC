@@ -166,7 +166,7 @@ def feature_crossfit_rqlsot(rows: list[dict],train_indices: list[int],field_kind
     assignment={d:{obj:value for obj,value in zip(domain_objects[d],_balanced_folds(domain_objects[d],folds))} for d in domains}
     raw_geometry_dim=int(rows[train_indices[0]]["mechanical"].numel())-1
     raw_semantic_dim=int(rows[train_indices[0]]["semantic"].numel())
-    outputs={d:{"standardized":torch.full((len(domain_objects[d]),raw_semantic_dim if field_kind=="semantic" else raw_geometry_dim),float("nan"),dtype=torch.float64),
+    outputs={d:{"standardized":torch.full((len(domain_objects[d]),raw_semantic_dim),float("nan"),dtype=torch.float64) if field_kind=="semantic" else torch.zeros((len(domain_objects[d]),raw_geometry_dim),dtype=torch.float64),
                 "rank_x":torch.full((len(domain_objects[d]),),float("nan"),dtype=torch.float64),"folds":[]} for d in domains}
     canonical=lambda selected:sorted([i for i in train_indices if rows[i]["object_group_id"] in selected],key=lambda i:(rows[i]["domain"],rows[i]["object_group_id"],_row_key(rows[i])))
     for fold in range(folds):
@@ -183,6 +183,9 @@ def feature_crossfit_rqlsot(rows: list[dict],train_indices: list[int],field_kind
         prep_common={"fold":fold,"fit_object_hash":_sha_ids(sorted(fit_set)),"held_object_hash":_sha_ids(sorted(held_set)),
                      "preprocessor_sha256":_preprocessor_sha(preprocessor),"preprocessor_train_object_hash":preprocessor.train_object_hash,
                      "preprocessor_provenance":_preprocessor_parts(preprocessor),
+                     "raw_mechanical_dim":len(preprocessor.mechanical_keep),
+                     "mechanical_kept_indices":torch.nonzero(preprocessor.mechanical_keep).flatten().tolist(),
+                     "mechanical_keep_mask":[bool(v) for v in preprocessor.mechanical_keep.tolist()],
                      "mechanical_keep_sha256":hashlib.sha256(preprocessor.mechanical_keep.cpu().numpy().tobytes()).hexdigest()}
         for domain in domains:
             fit_objects=[obj for obj in domain_objects[domain] if assignment[domain][obj]!=fold]
@@ -215,6 +218,8 @@ def feature_crossfit_rqlsot(rows: list[dict],train_indices: list[int],field_kind
         payload={"object_ids":objects,"fold_assignment":assign,"standardized":standardized.tolist(),"raw_z":unified_z.tolist(),"rank_x":x_oof.tolist()}
         result[domain]={"schema":CROSSFIT_SCHEMA,"field_kind":field_kind,"fold_counts":[list(assign.values()).count(f) for f in range(folds)],
             "fold_assignment_sha256":assignment_hash,"folds":outputs[domain]["folds"],
+            "raw_z_diagnostic_scope":"one unified original raw-z per domain across all OOF objects",
+            "fold_fit_z_scope":"fold-train raw-z is independently ECDF-ranked; held uses that fold train ECDF",
             "residual_norm_raw_z_absolute_spearman":_spearman(norm,unified_z),"residual_raw_z_distance_correlation":_distance_correlation(unified_z,standardized),
             "residual_norm_rank_x_absolute_spearman_extra":_spearman(norm,x_oof),"residual_rank_x_distance_correlation_extra":_distance_correlation(x_oof,standardized),
             "standardized_sha256":_sha_tensor(standardized),"raw_z_sha256":_sha_tensor(unified_z),"rank_x_sha256":_sha_tensor(x_oof),"audit_payload":payload}
@@ -299,10 +304,11 @@ def _qr_valid(value: dict,rank: int,contract: dict) -> bool:
 
 
 def _crossfit_valid(value: dict,contract: dict,expected_field_kind: str) -> bool:
-    expected={"schema","field_kind","fold_counts","fold_assignment_sha256","folds","residual_norm_raw_z_absolute_spearman",
+    expected={"schema","field_kind","fold_counts","fold_assignment_sha256","folds","raw_z_diagnostic_scope","fold_fit_z_scope","residual_norm_raw_z_absolute_spearman",
               "residual_raw_z_distance_correlation","residual_norm_rank_x_absolute_spearman_extra",
               "residual_rank_x_distance_correlation_extra","standardized_sha256","raw_z_sha256","rank_x_sha256","audit_payload"}
     if set(value)!=expected or value.get("schema")!=CROSSFIT_SCHEMA or value.get("field_kind")!=expected_field_kind: return False
+    if value.get("raw_z_diagnostic_scope")!="one unified original raw-z per domain across all OOF objects" or value.get("fold_fit_z_scope")!="fold-train raw-z is independently ECDF-ranked; held uses that fold train ECDF": return False
     payload=value.get("audit_payload",{})
     if set(payload)!={"object_ids","fold_assignment","standardized","raw_z","rank_x"}: return False
     ids=payload["object_ids"]
@@ -326,6 +332,7 @@ def _crossfit_valid(value: dict,contract: dict,expected_field_kind: str) -> bool
     if any(not math.isfinite(float(value[k])) or abs(float(value[k])-float(v))>1e-12 for k,v in recomputed.items()): return False
     folds=value["folds"]
     fold_keys={"fold","fit_object_hash","held_object_hash","preprocessor_sha256","preprocessor_train_object_hash","preprocessor_provenance",
+               "raw_mechanical_dim","mechanical_kept_indices","mechanical_keep_mask",
                "mechanical_keep_sha256","domain_fit_object_hash","domain_held_object_hash","boundary_clipped_fraction","mean_qr","scale_qr"}
     if not isinstance(folds,list) or len(folds)!=int(contract["crossfit_folds"]): return False
     for fold_record in folds:
@@ -333,6 +340,11 @@ def _crossfit_valid(value: dict,contract: dict,expected_field_kind: str) -> bool
         fold=int(fold_record["fold"]); fit=[obj for obj in ids if expected_assignment[obj]!=fold]; held=[obj for obj in ids if expected_assignment[obj]==fold]
         if fold_record["domain_fit_object_hash"]!=_sha_ids(fit) or fold_record["domain_held_object_hash"]!=_sha_ids(held): return False
         if fold_record["preprocessor_train_object_hash"]!=fold_record["fit_object_hash"]: return False
+        raw_dim=fold_record["raw_mechanical_dim"]; mask=fold_record["mechanical_keep_mask"]; kept=fold_record["mechanical_kept_indices"]
+        if not isinstance(raw_dim,int) or raw_dim<2 or not isinstance(mask,list) or len(mask)!=raw_dim or any(type(v) is not bool for v in mask): return False
+        if kept!=[i for i,v in enumerate(mask) if v] or not kept or kept[-1]!=raw_dim-1: return False
+        mask_tensor=torch.tensor(mask,dtype=torch.bool)
+        if fold_record["mechanical_keep_sha256"]!=hashlib.sha256(mask_tensor.numpy().tobytes()).hexdigest(): return False
         parts=fold_record["preprocessor_provenance"]
         if set(parts)!={"mechanical_mean","mechanical_scale","mechanical_keep","semantic_mean","semantic_components","train_object_hash","global_prior_logit"}: return False
         if parts["train_object_hash"]!=fold_record["fit_object_hash"] or parts["global_prior_logit"]!=0. or fold_record["preprocessor_sha256"]!=_canonical_sha(parts): return False
@@ -344,7 +356,10 @@ def _crossfit_valid(value: dict,contract: dict,expected_field_kind: str) -> bool
     return True
 
 
-def receipt_passes(receipt: dict,contract: dict,expected_context: str,expected_domains: set[str]) -> bool:
+def _receipt_passes_checked(receipt: dict,expected_receipt: dict,contract: dict,expected_context: str,expected_domains: set[str]) -> bool:
+    # The expected receipt must come from an independent deterministic recomputation.
+    # This binding rejects coordinated edits of a numeric payload and its self-hash.
+    if receipt is expected_receipt or _canonical_sha(receipt)!=_canonical_sha(expected_receipt): return False
     if set(receipt)!={"schema","context","contract_sha256","domains"}: return False
     if receipt.get("schema")!=SCHEMA or receipt.get("context")!=expected_context or receipt.get("contract_sha256")!=_canonical_sha(contract): return False
     if set(receipt.get("domains",{}))!=expected_domains: return False
@@ -357,6 +372,21 @@ def receipt_passes(receipt: dict,contract: dict,expected_context: str,expected_d
         "crossfit","audit_payload"}
     expected_field_kind="semantic" if expected_context.startswith("semantic_rqlsot/") else "mechanical" if expected_context.startswith("mechanical_rqlsot/") else None
     if expected_field_kind is None: return False
+    # Cross-domain folds share one joint Articraft+NJC preprocessor.  Validate
+    # that its union split and every preprocessing artifact are identical.
+    if len(expected_domains)>1:
+        ordered=sorted(expected_domains); reference=receipt["domains"][ordered[0]].get("crossfit",{}).get("folds",[])
+        if sorted(f.get("fold") for f in reference)!=list(range(int(contract["crossfit_folds"]))): return False
+        reference={f["fold"]:f for f in reference}
+        common=("fit_object_hash","held_object_hash","preprocessor_sha256","preprocessor_train_object_hash","preprocessor_provenance",
+                "raw_mechanical_dim","mechanical_kept_indices","mechanical_keep_mask","mechanical_keep_sha256")
+        for domain in ordered:
+            folds=receipt["domains"][domain].get("crossfit",{}).get("folds",[])
+            if sorted(f.get("fold") for f in folds)!=list(range(int(contract["crossfit_folds"]))): return False
+            by_fold={f["fold"]:f for f in folds}
+            if len(by_fold)!=int(contract["crossfit_folds"]): return False
+            for fold in range(int(contract["crossfit_folds"])):
+                if any(by_fold[fold].get(key)!=reference[fold].get(key) for key in common): return False
     for domain,value in receipt["domains"].items():
         if set(value)!=domain_keys: return False
         payload=value.get("audit_payload",{})
@@ -393,6 +423,14 @@ def receipt_passes(receipt: dict,contract: dict,expected_context: str,expected_d
             cf["residual_norm_raw_z_absolute_spearman"]>contract["crossfit_absolute_spearman_at_most"] or cf["residual_raw_z_distance_correlation"]>contract["crossfit_distance_correlation_at_most"]): return False
         if not _crossfit_valid(cf,contract,expected_field_kind): return False
     return True
+
+
+def receipt_passes(receipt: dict,expected_receipt: dict,contract: dict,expected_context: str,expected_domains: set[str]) -> bool:
+    """Fail-closed validation against an independent canonical recomputation."""
+    try:
+        return _receipt_passes_checked(receipt,expected_receipt,contract,expected_context,expected_domains)
+    except (KeyError,TypeError,ValueError,IndexError,RuntimeError):
+        return False
 
 
 def preserve_recipient_displacement(shuffled_geometry: Tensor,recipient_mechanical: Tensor) -> Tensor:

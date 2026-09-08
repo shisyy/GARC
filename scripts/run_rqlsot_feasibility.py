@@ -81,7 +81,7 @@ def run_cell(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,f
     reverse=rqlsot_ablation(rows,reverse_train,reverse_held,train_field.flip(0),held_field.flip(0),train_z,held_z,cfg,context,reverse_crossfit)
     invariant=(_bit_equal_mapping(_remap(rows,train,first[0]),_remap(rows,reverse_train,reverse[0])) and
                _bit_equal_mapping(_remap(rows,held,first[1]),_remap(rows,reverse_held,reverse[1])) and first[2]==reverse[2])
-    return first[0],first[1],first[2],{"repeat_bit_identical":repeat,"row_order_invariant":invariant}
+    return first[0],first[1],first[2],second[2],{"repeat_bit_identical":repeat,"row_order_invariant":invariant}
 
 
 def main():
@@ -116,12 +116,16 @@ def main():
     mechanical_train=preserve_recipient_displacement(mechanical[0],train_mech); mechanical_held=preserve_recipient_displacement(mechanical[1],held_mech)
     d_equal=torch.equal(mechanical_train[:,-1],train_mech[:,-1]) and torch.equal(mechanical_held[:,-1],held_mech[:,-1])
     domains={"articraft","njc"}
-    cell_pass={}
+    cell_pass={}; full_receipt_pass={}; domain_receipt_pass={}
     for name,result in (("semantic",semantic[2]),("mechanical",mechanical[2])):
-        receipt=result; audit=semantic[3] if name=="semantic" else mechanical[3]; cell_pass[name]={}
+        cell=semantic if name=="semantic" else mechanical; receipt=result; expected_receipt=cell[3]; audit=cell[4]; cell_pass[name]={}; domain_receipt_pass[name]={}
+        full_receipt_pass[name]=receipt_passes(receipt,expected_receipt,cfg,CONTEXTS[name],domains)
         for domain in sorted(domains):
             single={"schema":receipt["schema"],"context":receipt["context"],"contract_sha256":receipt["contract_sha256"],"domains":{domain:receipt["domains"][domain]}}
-            cell_pass[name][domain]=(receipt_passes(single,cfg,CONTEXTS[name],{domain}) and audit["repeat_bit_identical"] and
+            expected_single={"schema":expected_receipt["schema"],"context":expected_receipt["context"],"contract_sha256":expected_receipt["contract_sha256"],"domains":{domain:expected_receipt["domains"][domain]}}
+            domain_gate=receipt_passes(single,expected_single,cfg,CONTEXTS[name],{domain})
+            domain_receipt_pass[name][domain]=domain_gate
+            cell_pass[name][domain]=(domain_gate and audit["repeat_bit_identical"] and
                                      audit["row_order_invariant"] and (name!="mechanical" or d_equal))
     code_root=Path(__file__).resolve().parents[1]
     code_files=(Path(__file__).resolve(),code_root/"src"/"splart"/"rqlsot.py",code_root/"src"/"splart"/"conditional_residual.py",
@@ -131,8 +135,9 @@ def main():
     code_sha256=canonical_sha256(code_hashes); feature_sha256=canonical_sha256(provenance)
     result={"schema":"splart-rqlsot-feasibility/v1","config_sha256":FROZEN_CONFIG_SHA256,
             "source_config_sha256":SOURCE_CONFIG_SHA256,"feature_provenance":provenance,"feature_provenance_sha256":feature_sha256,
-            "node89_linear_historical":linear_history,"rqlsot":{"semantic":semantic[2],"mechanical":mechanical[2]},"runtime_audits":{"semantic":semantic[3],"mechanical":{**mechanical[3],"recipient_displacement_bitwise_unchanged":d_equal}},
-            "cell_pass":cell_pass,"all_pass":all(value for part in cell_pass.values() for value in part.values()),"object_list_hashes":observed,
+            "node89_linear_historical":linear_history,"rqlsot":{"semantic":semantic[2],"mechanical":mechanical[2]},"independent_recomputation_sha256":{"semantic":canonical_sha256(semantic[3]),"mechanical":canonical_sha256(mechanical[3])},
+            "runtime_audits":{"semantic":semantic[4],"mechanical":{**mechanical[4],"recipient_displacement_bitwise_unchanged":d_equal}},"full_receipt_pass":full_receipt_pass,"domain_receipt_pass":domain_receipt_pass,
+            "cell_pass":cell_pass,"all_pass":all(full_receipt_pass.values()) and all(value for part in cell_pass.values() for value in part.values()),"object_list_hashes":observed,
             "code_files_sha256":code_hashes,"code_sha256":code_sha256,
             "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,
             "box_labels_read":[],"protected_splits_read":[]}

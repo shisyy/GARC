@@ -8,7 +8,8 @@ import pytest
 
 from splart.rqlsot import (empirical_rank, feature_crossfit_rqlsot,
                             preserve_recipient_displacement, receipt_passes,
-                            rqlsot_ablation)
+                            rqlsot_ablation, _canonical_sha, _sha_tensor)
+from splart.conditional_residual import _distance_correlation, _spearman
 from scripts.run_smarc_source_gate import merge_features
 from scripts.run_rqlsot_feasibility import (FROZEN_CONFIG_SHA256,
                                              canonical_sha256,
@@ -82,11 +83,12 @@ def test_rqlsot_exact_reconstruction_repeat_and_row_order_invariance():
 
 
 def test_receipt_mapping_mutation_and_rank_failure_are_rejected():
-    args=fixture(); context="semantic_rqlsot/final-source-features"; result=run_fixture(args,context)
-    assert receipt_passes(result[2],contract(),context,{"art","njc"})
+    args=fixture(); context="semantic_rqlsot/final-source-features"; result=run_fixture(args,context); expected=run_fixture(args,context)
+    assert receipt_passes(result[2],expected[2],contract(),context,{"art","njc"})
+    assert not receipt_passes(result[2],result[2],contract(),context,{"art","njc"})
     bad=copy.deepcopy(result[2]); ids=sorted(bad["domains"]["art"]["train_mapping"])
     bad["domains"]["art"]["train_mapping"]={obj:ids[(i+2)%len(ids)] for i,obj in enumerate(ids)}
-    assert not receipt_passes(bad,contract(),context,{"art","njc"})
+    assert not receipt_passes(bad,expected[2],contract(),context,{"art","njc"})
     rows,train,held,train_field,held_field,train_z,held_z=args
     train_z={key:1. for key in train_z}
     try: rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,contract(),context,feature_crossfit_rqlsot(rows,train,"semantic",contract()))
@@ -167,19 +169,19 @@ def _set_path(value,path,replacement):
     (("domains","art","recipient_u_train_max_error"),1e-2),
 ])
 def test_receipt_mutation(path,replacement):
-    context="semantic_rqlsot/final-source-features"; receipt=run_fixture()[2]
+    context="semantic_rqlsot/final-source-features"; receipt=run_fixture()[2]; expected=run_fixture()[2]
     bad=copy.deepcopy(receipt); _set_path(bad,path,replacement)
-    assert not receipt_passes(bad,contract(),context,{"art","njc"})
+    assert not receipt_passes(bad,expected,contract(),context,{"art","njc"})
 
 
 def test_receipt_rejects_unknown_missing_payload_crosswire_and_u_destruction():
-    context="semantic_rqlsot/final-source-features"; result=run_fixture(); receipt=result[2]
+    context="semantic_rqlsot/final-source-features"; result=run_fixture(); receipt=result[2]; expected=run_fixture()[2]
     bad=copy.deepcopy(receipt); bad["unknown"]=1
-    assert not receipt_passes(bad,contract(),context,{"art","njc"})
+    assert not receipt_passes(bad,expected,contract(),context,{"art","njc"})
     bad=copy.deepcopy(receipt); del bad["domains"]["art"]["audit_payload"]["z"]
-    assert not receipt_passes(bad,contract(),context,{"art","njc"})
+    assert not receipt_passes(bad,expected,contract(),context,{"art","njc"})
     bad=copy.deepcopy(receipt); bad["domains"]["art"]["crossfit"]["field_kind"]="mechanical"
-    assert not receipt_passes(bad,contract(),context,{"art","njc"})
+    assert not receipt_passes(bad,expected,contract(),context,{"art","njc"})
     # Recipient within-object offsets are preserved; a one-row perturbation destroys it.
     rows,train,_,train_field,*_=fixture(); output=result[0].clone(); obj=rows[train[0]]["object_group_id"]
     loc=[k for k,i in enumerate(train) if rows[i]["object_group_id"]==obj]
@@ -187,6 +189,53 @@ def test_receipt_rejects_unknown_missing_payload_crosswire_and_u_destruction():
     assert float((before-after).abs().max())<=1e-12
     output[loc[0],0]+=.1; destroyed=output[loc]-output[loc].mean(0)
     assert float((before-destroyed).abs().max())>1e-3
+
+
+def test_independent_recomputation_rejects_coherent_numeric_and_hash_rewrites():
+    context="semantic_rqlsot/final-source-features"; candidate=run_fixture()[2]; expected=run_fixture()[2]
+    assert receipt_passes(candidate,expected,contract(),context,{"art","njc"})
+    mutations=[]
+    bad=copy.deepcopy(candidate); bad["domains"]["art"]["epsilon"]="1e-6"; mutations.append(bad)
+    bad=copy.deepcopy(candidate); bad["domains"]["art"]["residual_energy_ratio"]=0.; mutations.append(bad)
+    bad=copy.deepcopy(candidate); bad["domains"]["art"]["mean_qr"]["condition"]=0.; mutations.append(bad)
+    bad=copy.deepcopy(candidate); bad["domains"]["art"]["held_max_donor_load"]=2; bad["domains"]["art"]["held_load_bound"]=2; mutations.append(bad)
+    bad=copy.deepcopy(candidate); fold=copy.deepcopy(bad["domains"]["art"]["crossfit"]["folds"][0]); fold["fold"]=1; bad["domains"]["art"]["crossfit"]["folds"][1]=fold; mutations.append(bad)
+    bad=copy.deepcopy(candidate); cf=bad["domains"]["art"]["crossfit"]; standardized=torch.zeros_like(torch.tensor(cf["audit_payload"]["standardized"],dtype=torch.float64))
+    cf["audit_payload"]["standardized"]=standardized.tolist(); cf["standardized_sha256"]=_sha_tensor(standardized)
+    raw_z=torch.tensor(cf["audit_payload"]["raw_z"],dtype=torch.float64); rank_x=torch.tensor(cf["audit_payload"]["rank_x"],dtype=torch.float64)
+    cf["residual_norm_raw_z_absolute_spearman"]=_spearman(standardized.norm(dim=-1),raw_z); cf["residual_raw_z_distance_correlation"]=_distance_correlation(raw_z,standardized)
+    cf["residual_norm_rank_x_absolute_spearman_extra"]=_spearman(standardized.norm(dim=-1),rank_x); cf["residual_rank_x_distance_correlation_extra"]=_distance_correlation(rank_x,standardized); mutations.append(bad)
+    bad=copy.deepcopy(candidate); payload=bad["domains"]["art"]["audit_payload"]; beta=torch.zeros_like(torch.tensor(payload["mean_beta"],dtype=torch.float64))
+    payload["mean_beta"]=beta.tolist(); bad["domains"]["art"]["mean_beta_sha256"]=_sha_tensor(beta); mutations.append(bad)
+    assert all(not receipt_passes(bad,expected,contract(),context,{"art","njc"}) for bad in mutations)
+
+
+def test_mechanical_crossfit_constant_columns_are_zero_filled_and_fold_masks_vary():
+    rows,train,*_=fixture(); initial=feature_crossfit_rqlsot(rows,train,"mechanical",contract())
+    assignments={d:initial[d]["audit_payload"]["fold_assignment"] for d in initial}
+    for row in rows:
+        if row["object_group_id"] not in assignments[row["domain"]]: continue
+        fold=assignments[row["domain"]][row["object_group_id"]]
+        row["mechanical"][0]=float(int(row["object_group_id"].split("-")[-1])+1) if fold==0 else 0.
+        row["mechanical"][1]=1.  # Always constant and therefore always unkept.
+    result=feature_crossfit_rqlsot(rows,train,"mechanical",contract())
+    for domain,value in result.items():
+        standardized=torch.tensor(value["audit_payload"]["standardized"],dtype=torch.float64)
+        assert torch.isfinite(standardized).all()
+        masks=[fold["mechanical_keep_mask"] for fold in value["folds"]]
+        assert masks[0][0] is False and any(mask[0] for mask in masks[1:])
+        assert all(mask[1] is False and mask[-1] is True for mask in masks)
+        for index,obj in enumerate(value["audit_payload"]["object_ids"]):
+            if value["audit_payload"]["fold_assignment"][obj]==0: assert standardized[index,0]==0
+
+
+def test_cross_domain_joint_fold_preprocessor_mutation_is_rejected_even_if_expected_matches():
+    context="semantic_rqlsot/final-source-features"; candidate=run_fixture()[2]; expected=copy.deepcopy(candidate)
+    for receipt in (candidate,expected):
+        fold=receipt["domains"]["njc"]["crossfit"]["folds"][0]
+        fold["preprocessor_provenance"]["semantic_mean"]="f"*64
+        fold["preprocessor_sha256"]=_canonical_sha(fold["preprocessor_provenance"])
+    assert not receipt_passes(candidate,expected,contract(),context,{"art","njc"})
 
 
 def test_runner_binds_complete_code_and_feature_provenance():
