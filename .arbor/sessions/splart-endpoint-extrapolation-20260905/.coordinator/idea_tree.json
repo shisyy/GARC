@@ -397,7 +397,7 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Joint-domain Shared-Axis Energy-Conserving Transport (JSA-ECT) learns one pooled rank-one conditional axis and shared anisotropy from Articraft+NJC, while retaining domain-specific exact raw-z anchors and constant block-scale intercepts.\nHypothesis: NJC failures arise from estimating a conditional axis and free scale curve with only 11 objects; common-principal-component pooling raises the axis effective sample size to 108, and fixed-energy anisotropy prevents the tail inflation seen on Articraft semantic.\nObservable: With the frozen five folds and unchanged gates, all four label-free cells pass, full-fit raw-z mean/correlation remain <=1e-10, Articraft semantic p99<=1.25, and NJC semantic/mechanical dCor<=0.5 without loss of recipient-u or bitwise mechanical-d preservation.\nConflicts: Pruned node8.11 showed per-domain rank-one anisotropic transport overfits NJC; this node shares only identifiable conditional structure across domains while preserving domain nuisance anchors and scales, and is pruned without changing rank, basis, folds or thresholds if any cell fails.",
-      "status": "pending"
+      "status": "running"
     }
   }
 }
