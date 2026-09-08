@@ -54,7 +54,8 @@ def verify_provenance_binding(result: dict, receipt: dict) -> bool:
     keys = {"schema", "config_sha256", "feasibility_sha256", "decision", "code_sha256",
             "feature_provenance_sha256", "source_labels_opened",
             "source_labels_hashed", "source_scores_computed", "training_started",
-            "remote_execution_started", "box_labels_read", "protected_splits_read"}
+            "remote_execution_started", "execution_environment", "execution_phase",
+            "box_labels_read", "protected_splits_read"}
     if set(receipt) != keys or receipt.get("schema") != "splart-rza-acwt-feasibility-receipt/v1":
         return False
     if receipt.get("config_sha256") != FROZEN_CONFIG_SHA256:
@@ -71,9 +72,13 @@ def verify_provenance_binding(result: dict, receipt: dict) -> bool:
         return False
     if result.get("code_sha256") != receipt["code_sha256"] or result.get("feature_provenance_sha256") != receipt["feature_provenance_sha256"]:
         return False
-    flags = ("source_labels_opened", "source_labels_hashed", "source_scores_computed",
-             "training_started", "remote_execution_started")
-    return (all(result.get(key) is False and receipt.get(key) is False for key in flags)
+    false_flags = ("source_labels_opened", "source_labels_hashed", "source_scores_computed",
+                   "training_started")
+    return (all(result.get(key) is False and receipt.get(key) is False for key in false_flags)
+            and result.get("remote_execution_started") is True
+            and receipt.get("remote_execution_started") is True
+            and result.get("execution_environment") == receipt.get("execution_environment") == "CASIA_98"
+            and result.get("execution_phase") == receipt.get("execution_phase") == "label_free_feasibility"
             and result.get("box_labels_read") == receipt.get("box_labels_read") == []
             and result.get("protected_splits_read") == receipt.get("protected_splits_read") == [])
 
@@ -185,7 +190,7 @@ def main() -> None:
     forbidden_names = {"labels", "scores", "targets"}
     if (forbidden_names & set(config) or config.get("source_labels_opened")
             or config.get("source_labels_hashed") or config.get("source_scores_computed")
-            or config.get("training_started")):
+            or config.get("training_started") or config.get("remote_execution_started") is not False):
         raise RuntimeError("score-free boundary violated")
     rows, provenance = merge_features(args, source_config)
     if provenance.get("target_payloads_read") != [] or provenance.get("labels_opened") is not False:
@@ -273,7 +278,9 @@ def main() -> None:
               "code_files_sha256": code_hashes, "code_sha256": code_sha,
               "source_labels_opened": False, "source_labels_hashed": False,
               "source_scores_computed": False, "training_started": False,
-              "remote_execution_started": False, "box_labels_read": [], "protected_splits_read": []}
+              "remote_execution_started": True, "execution_environment": "CASIA_98",
+              "execution_phase": "label_free_feasibility",
+              "box_labels_read": [], "protected_splits_read": []}
     if canonical_sha256(result["feature_provenance"]) != feature_sha or canonical_sha256(result["code_files_sha256"]) != code_sha:
         raise RuntimeError("provenance self-check failed")
     temporary = _begin_atomic_directory(args.output)
@@ -285,7 +292,9 @@ def main() -> None:
         "code_sha256": code_sha, "feature_provenance_sha256": feature_sha,
         "source_labels_opened": False, "source_labels_hashed": False,
         "source_scores_computed": False, "training_started": False,
-        "remote_execution_started": False, "box_labels_read": [], "protected_splits_read": []}
+        "remote_execution_started": True, "execution_environment": "CASIA_98",
+        "execution_phase": "label_free_feasibility",
+        "box_labels_read": [], "protected_splits_read": []}
     if not verify_provenance_binding(result, output_receipt):
         raise RuntimeError("output receipt provenance binding failed")
     _atomic_json(temporary / "receipt.json", output_receipt)

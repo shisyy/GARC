@@ -222,6 +222,7 @@ def test_score_free_config_runner_and_provenance_contract():
     assert config["model"]["axis_rank"] == 1 and config["model"]["candidate_search"] is False
     assert not config["source_labels_opened"] and not config["source_labels_hashed"]
     assert not config["source_scores_computed"] and not config["training_started"]
+    assert config["remote_execution_started"] is False
     source = inspect.getsource(__import__("scripts.run_rza_acwt_label_free", fromlist=["main"]))
     assert "labels.pt" not in source and "--labels" not in source and "--score" not in source
     assert "run_rqlsot_feasibility.py" in source and "rqlsot.py" in source
@@ -229,7 +230,9 @@ def test_score_free_config_runner_and_provenance_contract():
               "feature_provenance": {"source": "opaque"}, "code_files_sha256": {"runner": "a"},
               "source_labels_opened": False, "source_labels_hashed": False,
               "source_scores_computed": False, "training_started": False,
-              "remote_execution_started": False, "box_labels_read": [], "protected_splits_read": []}
+              "remote_execution_started": True, "execution_environment": "CASIA_98",
+              "execution_phase": "label_free_feasibility",
+              "box_labels_read": [], "protected_splits_read": []}
     result["feature_provenance_sha256"] = canonical_sha256(result["feature_provenance"])
     result["code_sha256"] = canonical_sha256(result["code_files_sha256"])
     receipt = {"schema": "splart-rza-acwt-feasibility-receipt/v1",
@@ -238,8 +241,26 @@ def test_score_free_config_runner_and_provenance_contract():
                "feature_provenance_sha256": result["feature_provenance_sha256"],
                "source_labels_opened": False, "source_labels_hashed": False,
                "source_scores_computed": False, "training_started": False,
-               "remote_execution_started": False, "box_labels_read": [], "protected_splits_read": []}
+               "remote_execution_started": True, "execution_environment": "CASIA_98",
+               "execution_phase": "label_free_feasibility",
+               "box_labels_read": [], "protected_splits_read": []}
     assert verify_provenance_binding(result, receipt)
+    for target in ("result", "receipt", "both"):
+        bad_result, bad_receipt = copy.deepcopy(result), copy.deepcopy(receipt)
+        if target in ("result", "both"):
+            bad_result["remote_execution_started"] = False
+        if target in ("receipt", "both"):
+            bad_receipt["remote_execution_started"] = False
+        assert not verify_provenance_binding(bad_result, bad_receipt)
+    for key, bad_value in (("execution_environment", "CASIA_102"),
+                           ("execution_phase", "source_scoring")):
+        for target in ("result", "receipt", "both"):
+            bad_result, bad_receipt = copy.deepcopy(result), copy.deepcopy(receipt)
+            if target in ("result", "both"):
+                bad_result[key] = bad_value
+            if target in ("receipt", "both"):
+                bad_receipt[key] = bad_value
+            assert not verify_provenance_binding(bad_result, bad_receipt)
 
 
 def test_config_hash_is_frozen():
