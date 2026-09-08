@@ -1,0 +1,15 @@
+{
+  "schema": "splart-ocrsmarc-node89-local-receipt/v1",
+  "decision": "PRUNE_BEFORE_TRAINING",
+  "report_sha256": "bb02217c4d47d9821e7e68b6bc51cb6c5e580084580cb85759cc873bf21351d6",
+  "metrics_sha256": "4070af232605a5665cae0df46501d210300af8a6d72c891849cf3c6a209a7ce1",
+  "remote_preflight_sha256": "05e6e8fa6c40bbff49e6f7cc35cd225c6bf56ebcc8f7160cb57874aaf86fa6a3",
+  "remote_receipt_sha256": "bb32098ee59d833c9194e1ffd34a13a5428e3f737d18e6333b582cee5f45bca9",
+  "config_sha256": "454f4e16af01e4986b9e4534168b6be7bc96eb4617a63bcc988dfdb7841aaca8",
+  "implementation_commit": "1c3d1c974a350de79d561bd21501539354a9ab74",
+  "training_started": false,
+  "source_labels_opened": false,
+  "source_scores_computed": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "splart-ocrsmarc-node89-prune-summary/v1",
+  "decision": "PRUNE_BEFORE_TRAINING",
+  "remote_decision": "PRUNE_NULL_PREFLIGHT",
+  "config_sha256": "454f4e16af01e4986b9e4534168b6be7bc96eb4617a63bcc988dfdb7841aaca8",
+  "code_commit": "1c3d1c974a350de79d561bd21501539354a9ab74",
+  "remote_preflight_sha256": "05e6e8fa6c40bbff49e6f7cc35cd225c6bf56ebcc8f7160cb57874aaf86fa6a3",
+  "remote_receipt_sha256": "bb32098ee59d833c9194e1ffd34a13a5428e3f737d18e6333b582cee5f45bca9",
+  "feature_provenance_sha256": "b600bc9469579832ef7d09d1ffa586c4d4d565c302cab1ca1d0109e5db5664d9",
+  "null_preflight_sha256": "2bdff7b18bbc414a05c8136ca2db2dae2a430b7beb15b2728a7f5963fe9c676f",
+  "thresholds": {
+    "crossfit_absolute_spearman_at_most": 0.35,
+    "crossfit_distance_correlation_at_most": 0.5,
+    "residual_energy_ratio_at_least": 0.05,
+    "shuffle_rms_over_original_sd_at_least": 0.1,
+    "shuffled_norm_p99_ratio_at_most": 1.25
+  },
+  "nulls": {
+    "semantic_conditional_residual": {
+      "articraft": {"reconstruction_max_error": 2.7755575615628914e-17, "residual_energy_ratio": 0.8686251655484675, "shuffle_rms_over_original_sd": 1.1591444952721297, "shuffled_norm_p99_ratio": 1.1600781297781857, "crossfit_absolute_spearman": 0.13384047091804352, "crossfit_distance_correlation": 0.37922774962158734, "pass": true},
+      "njc": {"reconstruction_max_error": 2.7755575615628914e-17, "residual_energy_ratio": 0.8904588628399074, "shuffle_rms_over_original_sd": 1.2933935337331828, "shuffled_norm_p99_ratio": 1.083963856439037, "crossfit_absolute_spearman": 0.02277910237891026, "crossfit_distance_correlation": 0.6566158481870459, "pass": false, "failed_gate": "crossfit_distance_correlation"}
+    },
+    "mechanical_conditional_residual": {
+      "articraft": {"reconstruction_max_error": 1.7763568394002505e-15, "residual_energy_ratio": 0.9342162691848444, "shuffle_rms_over_original_sd": 1.0733990251274275, "shuffled_norm_p99_ratio": 1.034508544470132, "crossfit_absolute_spearman": 0.35885230380812116, "crossfit_distance_correlation": 0.30357480906487055, "pass": false, "failed_gate": "crossfit_absolute_spearman"},
+      "njc": {"reconstruction_max_error": 4.440892098500626e-16, "residual_energy_ratio": 0.6652856959939337, "shuffle_rms_over_original_sd": 0.9296813958230037, "shuffled_norm_p99_ratio": 0.9795652023852511, "crossfit_absolute_spearman": 0.05454545454545454, "crossfit_distance_correlation": 0.5954382714661519, "pass": false, "failed_gate": "crossfit_distance_correlation"}
+    }
+  },
+  "source_labels_opened": false,
+  "source_scores_computed": false,
+  "training_started": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}
