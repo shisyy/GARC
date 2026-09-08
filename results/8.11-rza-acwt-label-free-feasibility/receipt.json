@@ -1,0 +1,59 @@
+{
+  "schema": "splart-arbor-node811-label-free-closure-receipt/v1",
+  "decision": "PRUNE_LABEL_FREE",
+  "method_commit": "00c8cbd9e5dc6c07927f40fb2a77bb273cff7a50e",
+  "config_sha256": "779874c52dc3c64b3e6606ad11c4b0a2e3d07fe5b814054b7d2ce8a0ff852be5",
+  "remote_artifacts": {
+    "output_directory": "/data1/public/yptang/splart-node811-rzaacwt/results/label-free-feasibility-v1",
+    "feasibility_json": {
+      "size_bytes": 10336078,
+      "sha256": "67181bee2c9785a5a5349dcc832312de14e07ff494f528ef9e108e6e9aa023e1",
+      "committed_locally": false
+    },
+    "receipt_json": {
+      "size_bytes": 762,
+      "sha256": "8870bfd6c6bdb3ff37c770bd266a9dea68df8e7f9aa5506a2431be5705cc23d1"
+    },
+    "log": {
+      "path": "/data1/public/yptang/splart-node811-rzaacwt/feasibility-v1.log",
+      "size_bytes": 223,
+      "sha256": "694e69b7872fb5111f9956352a48d848628770c1cea7a6f32e0be2a671f12fd8"
+    },
+    "frozen_code_bundle_sha256": "32e0764af25b7755c95a4edd1556322b2582baa29f17d935320b0ac03e5d58d5",
+    "frozen_source_bundle_sha256": "2f53fd0f2aa7d3154faa79d139ed5d487fd7a3ede6ba268bd3904ab1fbf06af1"
+  },
+  "remote_receipt": {
+    "schema": "splart-rza-acwt-feasibility-receipt/v1",
+    "decision": "PRUNE_LABEL_FREE",
+    "config_sha256": "779874c52dc3c64b3e6606ad11c4b0a2e3d07fe5b814054b7d2ce8a0ff852be5",
+    "feasibility_sha256": "67181bee2c9785a5a5349dcc832312de14e07ff494f528ef9e108e6e9aa023e1",
+    "code_sha256": "023d6545f3000b46c0e4017be37e6fa54ce6cf02659ec365ee3f8d958880cf62",
+    "feature_provenance_sha256": "cbf5bae9888d46ef3f820daa26ebd3d6a2718842974f3365064f0a79d558fb3b",
+    "source_labels_opened": false,
+    "source_labels_hashed": false,
+    "source_scores_computed": false,
+    "training_started": false,
+    "remote_execution_started": true,
+    "execution_environment": "CASIA_98",
+    "execution_phase": "label_free_feasibility",
+    "box_labels_read": [],
+    "protected_splits_read": []
+  },
+  "cell_pass": {
+    "semantic": {"articraft": false, "njc": false},
+    "mechanical": {"articraft": true, "njc": false}
+  },
+  "runtime_receipts": {
+    "independent_double_recompute": true,
+    "candidate_gate_prediction_bit_identical": true,
+    "repeat_bit_identical": true,
+    "row_order_invariant": true,
+    "recipient_displacement_bitwise_unchanged": true
+  },
+  "read_boundary": {
+    "read_only_remote_audit": true,
+    "labels_or_label_hashes_read": false,
+    "scores_read_or_computed": false,
+    "box_or_protected_splits_read": false
+  }
+}
