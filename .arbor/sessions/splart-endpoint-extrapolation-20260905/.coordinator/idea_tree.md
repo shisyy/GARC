@@ -314,4 +314,10 @@ Conflicts: Unlike 8.7/8.8 donor-distance matching and 8.9 linear OLS residualiza
 #### 8.11: Mechanism: Raw-z Anchored Anisotropic Conditional Whitening Transport (RZA-ACWT) uses a raw-z-anchored minimal nonlinear location basis and a single learned conditional covariance direction with separate rank-quadratic axial and orthogonal-bulk scales.
 Hypothesis: Node 8.10's low Spearman but high NJC distance correlation indicates direction-dependent heteroscedasticity rather than a remaining radial trend; exact raw-z anchoring removes the full-fit failure while rank-one whitening is the smallest identifiable covariance correction for NJC n=11.
 Observable: Before any labels are read, all four domain-by-null cells meet the unchanged gates, including full-fit raw-z correlation <=1e-10 and OOF Spearman <=0.35 / dCor <=0.5, while exact reconstruction, energy, shuffle, coverage, recipient-u/d, repeatability and row-order gates do not regress.
-Conflicts: Nodes 8.9 and 8.10 assumed linear or isotropic conditional residual structure; this node keeps every threshold and donor contract fixed and targets the observed anisotropic covariance failure with exactly one preregistered rank-one model, pruning without rank/degree/threshold changes if any label-free cell fails. [RUNNING]
+Conflicts: Nodes 8.9 and 8.10 assumed linear or isotropic conditional residual structure; this node keeps every threshold and donor contract fixed and targets the observed anisotropic covariance failure with exactly one preregistered rank-one model, pruning without rank/degree/threshold changes if any label-free cell fails. [PRUNED]
+
+**Insight**: Raw-z anchoring worked exactly and fixed row-order provenance, but domain-local rank-one anisotropic scales overfit NJC n=11 and inflated the Art semantic tail. Shared conditional structure with domain fixed effects is required; adding per-domain covariance freedom is the wrong direction.
+
+**Result**: PRUNE_LABEL_FREE: mechanical/Art pass; semantic/Art OOF Spearman=0.104549 dCor=0.289016 but p99=1.506940>1.25; semantic/NJC=0.031891/0.635188; mechanical/NJC=0.5/0.711675; four-cell raw-z correlation 2.76e-16..4.12e-16; repeat/row-order true; labels/scores/training/Box untouched.
+
+**Branch**: 00c8cbd396546c0750a7b3987ba4d0ea4f858a61
