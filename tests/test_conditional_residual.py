@@ -51,10 +51,13 @@ def test_conditional_fit_is_deterministic_and_degenerate_z_fails():
 
 
 def test_crossfit_is_opaque_hash_deterministic():
-    ids=[f"object-{i:03d}" for i in range(100)]; z=torch.arange(100,dtype=torch.float64)
+    ids=[f"object-{i:03d}" for i in range(11)]; z=torch.arange(11,dtype=torch.float64)
     field=torch.stack((z.sin(),z.cos()),-1)
     first=crossfit_diagnostics(ids,z,field); second=crossfit_diagnostics(ids,z,field)
-    assert first==second and sum(first["fold_counts"])==100 and min(first["fold_counts"])>0
+    assert first==second and sum(first["fold_counts"])==11 and sorted(first["fold_counts"])==[2,2,2,2,3]
+    try: crossfit_diagnostics(ids[:9],z[:9],field[:9])
+    except ValueError as error: assert "two objects" in str(error)
+    else: raise AssertionError("undersized cross-fit was accepted")
 
 
 def test_average_rank_ties_are_equal():

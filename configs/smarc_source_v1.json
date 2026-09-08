@@ -84,13 +84,18 @@
     "unit": "opaque object group; every joint/gauge retains its recipient within-object offset",
     "fit": "per-domain train-only object-equal unregularized float64 SVD OLS of object-mean field on [1,z]; fail if Var(z)<=1e-12 or rank<2",
     "semantic_field": "frozen train-only PCA16 DINO pair latent; z is object-mean absolute observed displacement",
-    "mechanical_field": "train-domain standardized nonconstant geometry only; z is semantic cosine distance to the train-domain mean; recipient displacement is bit-identical",
+    "mechanical_field": "joint-training-set domain-balanced standardized nonconstant geometry only; z is semantic cosine distance to the train-domain mean; recipient displacement is bit-identical",
     "reconstruction": "f'_ok=beta0+beta1*z_o+r_donor+u_ok",
     "train_mapping": "within each domain opaque-ID sorted cyclic shift one; self rate zero and donor marginal exactly one",
     "held_mapping": "within each domain opaque-ID sorted held objects receive opaque-ID sorted train residual donors in balanced round-robin",
-    "crossfit": {"folds": 5, "assignment": "uint64 prefix of sha256('splart-ocrsmarc-crossfit-v1:'+opaque_object_id) modulo 5", "diagnostic": "absolute Spearman between residual-vector norm and z plus distance correlation between residual vector and z", "absolute_spearman_at_most": 0.35, "distance_correlation_at_most": 0.5},
+    "crossfit": {"folds": 5, "assignment": "sort by sha256('splart-ocrsmarc-crossfit-v1:'+opaque_object_id), then balanced round-robin modulo 5", "minimum_fold_count": "floor(train_domain_objects/5)", "diagnostic": "absolute Spearman between residual-vector norm and z plus distance correlation between residual vector and z", "absolute_spearman_at_most": 0.35, "distance_correlation_at_most": 0.5},
     "gates": {"reconstruction_max_error": 1e-10, "normalized_residual_mean_max": 1e-10, "normalized_residual_z_correlation_max": 1e-10, "coverage": 1.0, "train_self_rate": 0.0, "residual_energy_ratio_at_least": 0.05, "shuffle_rms_over_original_sd_at_least": 0.1, "shuffled_norm_p99_ratio_at_most": 1.25, "held_effective_donors_per_object": 1.0}
   },
+  "lofo_fold_contract": [
+    {"family_audit_id": "802901e144c036ab216179dde19e4de7aa06fc72b538af668b85c51520f79c0d", "train_hash_key": "lofo_window_train72", "held_hash_key": "lofo_window_test37", "held_objects": 37},
+    {"family_audit_id": "543bd0cf10ade6cfed3876fa9b14bf7b01d08f56056ea834d251cb6cedc99fee", "train_hash_key": "lofo_sewing_train58", "held_hash_key": "lofo_sewing_test51", "held_objects": 51},
+    {"family_audit_id": "896f2972fd40738e39a662a24b640eb2538743651d23375cc73743fae076d59f", "train_hash_key": "lofo_usb_train88", "held_hash_key": "lofo_usb_test21_small", "held_objects": 21}
+  ],
   "gate": {
     "full_relative_gain_over_global_displacement_category_mechanical_each_domain": 0.15,
     "each_shuffle_relative_worsening": 0.20,

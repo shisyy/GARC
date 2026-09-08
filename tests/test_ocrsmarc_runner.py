@@ -18,14 +18,14 @@ def mapping_hash(context,domain,train,held):
 def null_receipt(context):
     result={"context":context,"domains":{}}
     for domain in ("articraft","njc"):
-        ids=[f"{domain}-train-{i}" for i in range(5)]; held_ids=[f"{domain}-held-{i}" for i in range(2)]
-        train={obj:ids[(i+1)%5] for i,obj in enumerate(ids)}; held={obj:ids[i] for i,obj in enumerate(held_ids)}
-        result["domains"][domain]={"train_objects":5,"held_objects":2,"train_object_hash":"x","held_object_hash":"y","z_sha256":"z","ols_beta_sha256":"b",
+        ids=[f"{domain}-train-{i}" for i in range(10)]; held_ids=[f"{domain}-held-{i}" for i in range(2)]
+        train={obj:ids[(i+1)%10] for i,obj in enumerate(ids)}; held={obj:ids[i] for i,obj in enumerate(held_ids)}
+        result["domains"][domain]={"train_objects":10,"held_objects":2,"train_object_hash":"x","held_object_hash":"y","z_sha256":"z","ols_beta_sha256":"b",
             "train_mapping":train,"held_mapping":held,"train_coverage":1.,"held_coverage":1.,"train_self_rate":0.,"train_donor_marginal_exact":True,
             "held_effective_donors":2,"held_effective_donors_per_object":1.,"held_max_donor_load":1,"held_load_bound":1,
             "reconstruction_max_error":0.,"normalized_residual_mean_max":0.,"normalized_residual_z_correlation_max":0.,
             "residual_energy_ratio":1.,"shuffle_rms_over_original_sd":1.,"shuffled_norm_p99_ratio":1.,
-            "crossfit":{"fold_counts":[1]*5,"residual_norm_z_absolute_spearman":0.,"residual_z_distance_correlation":0.},
+            "crossfit":{"fold_counts":[2]*5,"residual_norm_z_absolute_spearman":0.,"residual_z_distance_correlation":0.},
             "mapping_sha256":mapping_hash(context,domain,train,held)}
     return result
 
@@ -51,8 +51,8 @@ def write_partial(root,task,record,config_sha,code):
 
 def fixture(tmp_path):
     config=json.loads(Path("configs/smarc_source_v1.json").read_text()); config_sha="synthetic-config"; code={"runner":"code"}
-    config["data"]["articraft"].update(train_objects=5,validation_objects=2)
-    config["data"]["njc"].update(train_objects=5,validation_objects=2)
+    config["data"]["articraft"].update(train_objects=10,validation_objects=2)
+    config["data"]["njc"].update(train_objects=10,validation_objects=2)
     null,null_sha=make_bundle(); analytics={"stronger_lower_mare":{key:{"articraft":.2,"njc":.2} for key in ("global","displacement","category")}}
     swap={key:{"range_max":0.,"projection_max":0.,"endpoint_max":0.} for key in ("full","mechanical_only","semantic_conditional_residual","mechanical_conditional_residual")}
     final={"schema":"splart-ocrsmarc-source-partial/v1","task":"final","config_sha256":config_sha,"steps":1200,"source_provenance_sha256":"source",
@@ -61,8 +61,12 @@ def fixture(tmp_path):
     records=[final]
     counts=(37,51,21)
     keys=("lofo_window_test37","lofo_sewing_test51","lofo_usb_test21_small")
-    for index,(count,key) in enumerate(zip(counts,keys)):
+    train_keys=("lofo_window_train72","lofo_sewing_train58","lofo_usb_train88")
+    config["lofo_fold_contract"]=[]
+    for index,(count,key,train_key) in enumerate(zip(counts,keys,train_keys)):
         ids=[f"held-{index}-{j}" for j in range(count)]; config["data"]["object_list_hashes"][key]=hash_ids(ids)
+        config["data"]["object_list_hashes"][train_key]=f"train-{index}"
+        config["lofo_fold_contract"].append({"family_audit_id":f"family-{index}","train_hash_key":train_key,"held_hash_key":key,"held_objects":count})
         records.append({"schema":"splart-ocrsmarc-source-partial/v1","task":f"lofo_{index}","config_sha256":config_sha,"steps":1200,
             "source_provenance_sha256":"source","null_preflight":null,"null_preflight_sha256":null_sha,"held_object_ids":ids,
             "family_audit_id":f"family-{index}","train_object_hash":f"train-{index}","held_object_hash":hash_ids(ids),"held_objects":count,
@@ -113,3 +117,32 @@ def test_aggregate_rejects_stale_code_and_overlapping_lofo(tmp_path):
     try: aggregate_partials(dirs,tmp_path/"overlap",config,config_sha,code)
     except RuntimeError as error: assert "overlapping" in str(error)
     else: raise AssertionError("overlapping LOFO folds were accepted")
+
+
+def test_aggregate_binds_receipt_provenance_and_all_six_lofo_hashes(tmp_path):
+    for field,bad_value in (("steps",2),("source_provenance_sha256","other"),("null_preflight_sha256","other")):
+        dirs,config,config_sha,code=fixture(tmp_path/field)
+        receipt=json.loads((dirs[0]/"receipt.json").read_text()); receipt[field]=bad_value
+        (dirs[0]/"receipt.json").write_text(json.dumps(receipt,sort_keys=True)+"\n")
+        try: aggregate_partials(dirs,tmp_path/(field+"-out"),config,config_sha,code)
+        except RuntimeError as error: assert "bound" in str(error)
+        else: raise AssertionError(f"unbound {field} was accepted")
+    dirs,config,config_sha,code=fixture(tmp_path/"family")
+    record=json.loads((dirs[1]/"partial.json").read_text()); record["train_object_hash"]="tampered"
+    (dirs[1]/"partial.json").write_text(json.dumps(record,sort_keys=True)+"\n")
+    receipt=json.loads((dirs[1]/"receipt.json").read_text()); receipt["partial_sha256"]=sha256_file(dirs[1]/"partial.json")
+    (dirs[1]/"receipt.json").write_text(json.dumps(receipt,sort_keys=True)+"\n")
+    try: aggregate_partials(dirs,tmp_path/"family-out",config,config_sha,code)
+    except RuntimeError as error: assert "family/train/held" in str(error)
+    else: raise AssertionError("tampered LOFO train hash was accepted")
+
+
+def test_each_lofo_fold_is_a_required_gate(tmp_path):
+    dirs,config,config_sha,code=fixture(tmp_path/"fold-gate")
+    record=json.loads((dirs[1]/"partial.json").read_text()); record["full"]=.19
+    (dirs[1]/"partial.json").write_text(json.dumps(record,sort_keys=True)+"\n")
+    receipt=json.loads((dirs[1]/"receipt.json").read_text()); receipt["partial_sha256"]=sha256_file(dirs[1]/"partial.json")
+    (dirs[1]/"receipt.json").write_text(json.dumps(receipt,sort_keys=True)+"\n")
+    result=aggregate_partials(dirs,tmp_path/"fold-gate-out",config,config_sha,code)
+    assert not result["gates"]["lofo_each_fold_pass_15pct"]
+    assert result["gates"]["decision"]=="PRUNE_BEFORE_BOX"

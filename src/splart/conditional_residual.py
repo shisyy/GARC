@@ -56,15 +56,19 @@ def _distance_correlation(z: Tensor,residual: Tensor) -> float:
 
 
 def crossfit_diagnostics(object_ids: list[str],z: Tensor,field: Tensor,folds: int=5) -> dict:
-    assignments=[int(hashlib.sha256(("splart-ocrsmarc-crossfit-v1:"+obj).encode()).hexdigest()[:16],16)%folds for obj in object_ids]
-    if set(assignments)!=set(range(folds)): raise ValueError("cross-fit fold is empty")
+    if len(set(object_ids))!=len(object_ids) or len(object_ids)<2*folds: raise ValueError("cross-fit needs unique IDs and at least two objects per fold")
+    ordered=sorted(range(len(object_ids)),key=lambda i:(hashlib.sha256(("splart-ocrsmarc-crossfit-v1:"+object_ids[i]).encode()).hexdigest(),object_ids[i]))
+    assignments=[-1]*len(object_ids)
+    for rank,index in enumerate(ordered): assignments[index]=rank%folds
+    counts=[assignments.count(fold) for fold in range(folds)]
+    if min(counts)<len(object_ids)//folds: raise ValueError("cross-fit balance contract failed")
     residual=torch.empty_like(field,dtype=torch.float64)
     for fold in range(folds):
         train=[i for i,value in enumerate(assignments) if value!=fold]; held=[i for i,value in enumerate(assignments) if value==fold]
         beta,_,_=_fit_ols(z[train],field[train]); design=torch.stack((torch.ones_like(z[held]),z[held]),-1).double()
         residual[held]=field[held]-design@beta
     norm=residual.norm(dim=-1)
-    return {"fold_counts":[assignments.count(fold) for fold in range(folds)],
+    return {"fold_counts":counts,
             "residual_norm_z_absolute_spearman":_spearman(norm,z),
             "residual_z_distance_correlation":_distance_correlation(z,residual)}
 
@@ -165,7 +169,8 @@ def receipt_passes(receipt: dict,contract: dict,expected_domains: set[str] | Non
                  value["crossfit"]["residual_z_distance_correlation"])
         if not all(math.isfinite(float(item)) for item in numeric): return False
         counts=value["crossfit"].get("fold_counts",[])
-        if len(counts)!=int(cross["folds"]) or min(counts,default=0)<=0 or sum(counts)!=value["train_objects"]: return False
+        if (len(counts)!=int(cross["folds"]) or min(counts,default=0)<value["train_objects"]//int(cross["folds"]) or
+                sum(counts)!=value["train_objects"]): return False
         if not (value["reconstruction_max_error"]<=gate["reconstruction_max_error"] and
                 value["normalized_residual_mean_max"]<=gate["normalized_residual_mean_max"] and
                 value["normalized_residual_z_correlation_max"]<=gate["normalized_residual_z_correlation_max"] and

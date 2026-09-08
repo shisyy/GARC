@@ -60,7 +60,8 @@ def _fix_svd_sign(components: Tensor) -> Tensor:
     return result
 
 
-def fit_preprocessor(rows: list[dict], targets: Tensor, indices: list[int], pca_dim: int = 16) -> Preprocessor:
+def fit_feature_preprocessor(rows: list[dict], indices: list[int], pca_dim: int = 16) -> Preprocessor:
+    """Fit target-free feature transforms; the prior is an inert placeholder."""
     weights = object_domain_weights(rows, indices)
     mechanical = torch.stack([rows[i]["mechanical"].double() for i in indices])
     semantic = torch.stack([rows[i]["semantic"].double() for i in indices])
@@ -76,6 +77,13 @@ def fit_preprocessor(rows: list[dict], targets: Tensor, indices: list[int], pca_
     if vh.shape[0] < pca_dim or float(singular[pca_dim-1]) <= 1e-10:
         raise ValueError("not enough source rank for frozen PCA dimension")
     components = _fix_svd_sign(vh[:pca_dim])
+    objects=sorted({rows[i]["object_group_id"] for i in indices})
+    return Preprocessor(mean_m, scale, keep, mean_s, components, 0.,hash_ids(objects))
+
+
+def fit_preprocessor(rows: list[dict], targets: Tensor, indices: list[int], pca_dim: int = 16) -> Preprocessor:
+    result=fit_feature_preprocessor(rows,indices,pca_dim)
+    weights = object_domain_weights(rows, indices)
     d = torch.tensor([abs(float(rows[i]["observed_displacement"])) for i in indices], dtype=torch.float64)
     y = targets[indices].double()
     if torch.any(d<=0) or torch.any(d>=2*math.pi) or torch.any(y<d-1e-8) or torch.any(y>2*math.pi+1e-8):
@@ -83,8 +91,8 @@ def fit_preprocessor(rows: list[dict], targets: Tensor, indices: list[int], pca_
     fraction = ((y - d) / (2 * math.pi - d)).clamp(1e-6, 1 - 1e-6)
     mean_fraction = float((weights * fraction).sum())
     prior = math.log(mean_fraction / (1 - mean_fraction))
-    objects=sorted({rows[i]["object_group_id"] for i in indices})
-    return Preprocessor(mean_m, scale, keep, mean_s, components, prior,hash_ids(objects))
+    result.global_prior_logit=prior
+    return result
 
 
 def transform(preprocessor: Preprocessor, rows: list[dict], indices: list[int],
@@ -286,5 +294,5 @@ def swap_audit(rows: list[dict], indices: list[int], prediction: Tensor) -> dict
 
 
 __all__ = ["Preprocessor", "analytic_linear_baseline", "apply_object_donors",
-           "deterministic_object_donors", "fit_preprocessor", "hash_ids", "object_domain_weights",
+           "deterministic_object_donors", "fit_feature_preprocessor", "fit_preprocessor", "hash_ids", "object_domain_weights",
            "object_macro_mare", "predict", "swap_audit", "train_model", "transform", "validate_raw_swap_pair"]
