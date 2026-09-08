@@ -36,7 +36,7 @@
       "depth": 0,
       "hypothesis": "Given two interior articulation states relabelled 0 and 1, predict the fully closed endpoint and the opposite physical joint limit, and reconstruct held-out endpoint views without access to absolute interior fractions or true limits.",
       "status": "done",
-      "insight": "Children findings: [1, done, score=0.3109] Original scratch SplArt accurately recovers axis and pivot but treats interior observations as endpoints: endpoint NMAE 0.310881, closed coverage 0, terminal validity 0. | [2, done, score=0.08573] D2-CEA reduced endpoint NMAE 72.42%, raised PSNR 3.72 dB and mobile IoU 46.74% with the base model hash unchanged. However all RMS/PCFG/OEC posthoc contact certificates abstained: closed coverage and terminal validity remain zero, showing the bottleneck is contact-surface representation rather than scalar search. | [3, done, score=0.08573] Children findings: [3.1, done, score=0.08573] View-balanced voxel fusion removed order/view-density bias, but observable surface contact and closure topology vote opposite sides; posthoc frozen-geometry terminal certification remains unidentifiable on Box. | [4, done, score=0.09515] Children findings: [4.1, done, score=0.1027] Deterministic visibility-censored Gaussianization slightly improved endpoint transfer but did not beat the NJC statistical prior; mesh-to-Gaussian appearance shift is not the sole bottleneck, and semantic/domain range priors remain dominant. | [5, done, score=0.1576] Children findings:..."
+      "insight": "Children findings: [1, done, score=0.3109] Original scratch SplArt accurately recovers axis and pivot but treats interior observations as endpoints: endpoint NMAE 0.310881, closed coverage 0, terminal validity 0. | [2, done, score=0.08573] D2-CEA reduced endpoint NMAE 72.42%, raised PSNR 3.72 dB and mobile IoU 46.74% with the base model hash unchanged. However all RMS/PCFG/OEC posthoc contact certificates abstained: closed coverage and terminal validity remain zero, showing the bottleneck is contact-surface representation rather than scalar search. | [3, done, score=0.08573] Children findings: [3.1, done, score=0.08573] View-balanced voxel fusion removed order/view-density bias, but observable surface contact and closure topology vote opposite sides; posthoc frozen-geometry terminal certification remains unidentifiable on Box. | [4, done, score=0.09515] Children findings: [4.1, done, score=0.1027] Deterministic visibility-censored Gaussianization slightly improved endpoint transfer but did not beat the NJC statistical prior; mesh-to-Gaussian appearance shift is not the sole bottleneck, and semantic/domain range priors remain dominant. | [5, pruned, score=0.1576] FECF only establ..."
     },
     "1": {
       "id": "1",
@@ -250,7 +250,8 @@
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
-      "status": "pending"
+      "status": "pending",
+      "insight": "Children findings: [8.2, done, score=0.343] The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise."
     },
     "8.1": {
       "id": "8.1",
@@ -266,7 +267,11 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Monotone Endpoint Hazard converts penetration, contact mass, support rise, and energy curvature along each outward scan into a constrained survival/change-point model whose first stable hazard transition is the endpoint.\nHypothesis: Softargmin selects low-energy points even when no physical boundary exists, whereas monotone hazard accumulates ordered evidence for the free-to-terminal transition and should be less sensitive to absolute range priors.\nObservable: On public Box a-f leave-two-episode-out evaluation, improve worst-side NMAE over frozen D2 and an energy-only changepoint while retaining gains after scalar-coordinate removal and failing under channel shuffle.\nConflicts: Pruned [6] showed naive mesh collision is penetrated everywhere; this uses relative transitions in learned Gaussian trajectory channels rather than absolute proxy collision labels.",
-      "status": "running"
+      "status": "pruned",
+      "score": 0.342953532934189,
+      "insight": "The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise.\n[Pruned: Representative public Box-a falsified the mechanism: all 12 curves lack a free/contact crossing and the channel-shuffle null beats the proposed hazard.]",
+      "result": "Public Box-a worst-side NMAE 0.342954 vs frozen D2 0.283389; channel-shuffle 0.265199; e/f and protected splits unread.",
+      "code_ref": "arbor/node-8-2-hazard@951d9bf"
     },
     "8.3": {
       "id": "8.3",

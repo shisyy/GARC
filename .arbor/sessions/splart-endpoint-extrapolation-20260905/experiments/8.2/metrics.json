@@ -1,0 +1,8 @@
+{
+  "node_id": "8.2",
+  "hypothesis": "Mechanism: Monotone Endpoint Hazard converts penetration, contact mass, support rise, and energy curvature along each outward scan into a constrained survival/change-point model whose first stable hazard transition is the endpoint.\nHypothesis: Softargmin selects low-energy points even when no physical boundary exists, whereas monotone hazard accumulates ordered evidence for the free-to-terminal transition and should be less sensitive to absolute range priors.\nObservable: On public Box a-f leave-two-episode-out evaluation, improve worst-side NMAE over frozen D2 and an energy-only changepoint while retaining gains after scalar-coordinate removal and failing under channel shuffle.\nConflicts: Pruned [6] showed naive mesh collision is penetrated everywhere; this uses relative transitions in learned Gaussian trajectory channels rather than absolute proxy collision labels.",
+  "score": 0.342953532934189,
+  "insight": "The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise.",
+  "result": "Public Box-a worst-side NMAE 0.342954 vs frozen D2 0.283389; channel-shuffle 0.265199; e/f and protected splits unread.",
+  "branch": "arbor/node-8-2-hazard@951d9bf"
+}
