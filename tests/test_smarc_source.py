@@ -66,19 +66,40 @@ def test_shuffle_is_object_level_derangement_and_singletons_fail():
         deterministic_object_donors(rows,train,train,values)
     except ValueError as error:
         assert "degenerate" in str(error)
-    values={"a":.1,"b":.2,"c":.3,"d":.4}
-    donors,receipt=deterministic_object_donors(rows,train,train,values)
+    rows=[]; values={}
+    for domain,prefix in (("art","a"),("njc","n")):
+        for index,value in enumerate((0.,.01,1.,1.01)):
+            obj=f"{prefix}{index}"; values[obj]=value
+            rows.append({"domain":domain,"object_group_id":obj,"joint_id":obj,"mechanical":torch.tensor([value,9.]),"semantic":torch.tensor([value,1.]),"observed_displacement":.5})
+    train=list(range(len(rows))); donors,receipt=deterministic_object_donors(rows,train,train,values)
     donors2,receipt2=deterministic_object_donors(rows,train,train,values)
-    assert all(k != v for k,v in donors.items()) and donors["a"] in {"a","b"} and donors["c"] in {"c","d"}
-    assert receipt["train_distance"]["max"]>0 and receipt["mapping_sha256"]
+    assert all(k != v for k,v in donors.items())
+    assert all(part["coverage"]==1 for part in receipt["domains"].values())
     assert donors==donors2 and receipt["mapping_sha256"]==receipt2["mapping_sha256"]
 
 
 def test_matching_never_crosses_domains_when_other_domain_changes():
-    rows=rows_fixture(); train=list(range(len(rows)))
-    values={"a":.1,"b":.2,"c":.3,"d":.4}
+    rows=[]; values={}
+    for domain,prefix in (("art","a"),("njc","n")):
+        for index,value in enumerate((0.,.01,1.,1.01)):
+            obj=f"{prefix}{index}"; values[obj]=value
+            rows.append({"domain":domain,"object_group_id":obj,"joint_id":obj})
+    train=list(range(len(rows)))
     first,_=deterministic_object_donors(rows,train,train,values)
-    values["c"],values["d"]=100.,200.
+    for key in [key for key in values if key.startswith("n")]: values[key]+=100
     second,_=deterministic_object_donors(rows,train,train,values)
-    assert first["a"]==second["a"] and first["b"]==second["b"]
+    assert all(first[key]==second[key] for key in values if key.startswith("a"))
     assert all(next(r["domain"] for r in rows if r["object_group_id"]==k)==next(r["domain"] for r in rows if r["object_group_id"]==v) for k,v in second.items())
+
+
+def test_partial_permutation_keeps_unmatched_tail_and_preserves_recipient_d():
+    rows=[]; values={}
+    for index,value in enumerate((0.,.001,1.,1.001,10.)):
+        obj=f"a{index}"; values[obj]=value
+        rows.append({"domain":"art","object_group_id":obj,"joint_id":obj,
+                     "mechanical":torch.tensor([float(index),.5+index]),"semantic":torch.tensor([value,1.]),"observed_displacement":.5+index})
+    train=list(range(5)); donors,receipt=deterministic_object_donors(rows,train,train,values)
+    assert donors["a4"]=="a4" and receipt["domains"]["art"]["coverage"]==.8
+    from splart.smarc_source import apply_object_donors
+    shuffled=apply_object_donors(rows,train,"mechanical",donors,train,preserve_last=True)
+    assert torch.equal(shuffled[:,-1],torch.tensor([.5,1.5,2.5,3.5,4.5]))

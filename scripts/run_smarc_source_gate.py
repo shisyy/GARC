@@ -16,6 +16,7 @@ from splart.smarc import (extensions_to_endpoints, opaque_row_key, project_exten
 from splart.smarc_source import (analytic_linear_baseline, apply_object_donors,
                                  deterministic_object_donors, fit_preprocessor, hash_ids,
                                  object_domain_weights, object_macro_mare, predict, swap_audit, train_model)
+from scripts.build_smarc_articraft_shard import VIEWS
 
 
 def load_cache(path: Path, domain: str, config: dict) -> tuple[list[dict], dict[str, float], dict]:
@@ -42,7 +43,8 @@ def load_cache(path: Path, domain: str, config: dict) -> tuple[list[dict], dict[
         raise RuntimeError("cache view count/resolution contract mismatch")
     if domain=="articraft" and (manifest.get("empty_views")!=0 or manifest.get("render_repeat_bit_identical") is not True or "full-child-subtree/static-complement" not in manifest["renderer"]):
         raise RuntimeError("Articraft topology/determinism manifest mismatch")
-    if len(config["render"]["elevation_azimuth_degrees"])!=config["render"]["views_per_state"]:
+    configured_views=tuple(tuple(float(x) for x in pair) for pair in config["render"]["elevation_azimuth_degrees"])
+    if configured_views!=VIEWS or len(configured_views)!=config["render"]["views_per_state"]:
         raise RuntimeError("frozen camera contract mismatch")
     for row in rows:
         row["domain"]=domain
@@ -62,6 +64,10 @@ def expand_gauges(canonical: list[dict], art_pilc: Path, njc_pilc: Path) -> tupl
     canonical_by_joint={row["joint_id"]:row for row in canonical}; expanded=[]; truth=[]; seen=set()
     for domain,path in (("articraft",art_pilc),("njc",njc_pilc)):
         manifest=json.loads((path/"manifest.json").read_text())
+        expected_schema="splart-pilc-articraft-features-v1" if domain=="articraft" else "splart-pilc-njc-features-v1"
+        if manifest.get("schema")!=expected_schema: raise RuntimeError("PILC source manifest schema mismatch")
+        for key in ("box_extra_scores_read","protected_splits_read","box_labels_read"):
+            if manifest.get(key,[]) not in (None,[]): raise RuntimeError(f"PILC source reports protected read: {key}")
         source={row["key"]:row for row in torch.load(path/"inputs.pt",map_location="cpu",weights_only=False)}
         labels={row["key"]:row for row in torch.load(path/"labels.pt",map_location="cpu",weights_only=False)}
         if set(source)!=set(labels): raise RuntimeError(f"{domain} sidecar key mismatch")
@@ -83,7 +89,7 @@ def expand_gauges(canonical: list[dict], art_pilc: Path, njc_pilc: Path) -> tupl
                                     if key not in source or source[key]["split"]!=split: raise RuntimeError("Articraft gauge join failed")
                                     x,y=source[key],labels[key]
                                     pair_raw=f"{name}:joint{joint}:{f0}:{f1}:{orientation}"
-                                    row=dict(base); row["mechanical"]=torch.cat((swap_invariant_pair(x["state0_features"],x["state1_features"]),torch.tensor([abs(float(x["observed_displacement"]))]))); row["observed_displacement"]=abs(float(x["observed_displacement"])); row["gauge_id"]=key; row["swap_pair_id"]=hashlib.sha256(("splart-smarc-swap-v1:"+pair_raw).encode()).hexdigest(); row["order"]=order; row["base_extension"]=torch.tensor([float(y["extension0"]),float(y["extension1"])],dtype=torch.float64)
+                                    row=dict(base); row["mechanical"]=torch.cat((swap_invariant_pair(x["state0_features"],x["state1_features"]),torch.tensor([abs(float(x["observed_displacement"]))]))); row["observed_displacement"]=abs(float(x["observed_displacement"])); row["signed_observed_displacement"]=float(x["observed_displacement"]); row["raw_state0"]=x["state0_features"]; row["raw_state1"]=x["state1_features"]; row["gauge_id"]=key; row["swap_pair_id"]=hashlib.sha256(("splart-smarc-swap-v1:"+pair_raw).encode()).hexdigest(); row["order"]=order; row["base_extension"]=torch.tensor([float(y["extension0"]),float(y["extension1"])],dtype=torch.float64)
                                     expanded.append(row); truth.append(float(y["physical_range"])); seen.add(key)
                     joint+=1
         else:
@@ -101,7 +107,7 @@ def expand_gauges(canonical: list[dict], art_pilc: Path, njc_pilc: Path) -> tupl
                                     if key not in source or source[key]["split"]!=split: raise RuntimeError("NJC gauge join failed")
                                     x,y=source[key],labels[key]
                                     pair_raw=f"{split}:{name}:{f0:.2f}:{f1:.2f}:axis{orientation:+d}"
-                                    row=dict(base); row["mechanical"]=torch.cat((swap_invariant_pair(x["state0_features"],x["state1_features"]),torch.tensor([abs(float(x["observed_displacement"]))]))); row["observed_displacement"]=abs(float(x["observed_displacement"])); row["gauge_id"]=key; row["swap_pair_id"]=hashlib.sha256(("splart-smarc-swap-v1:"+pair_raw).encode()).hexdigest(); row["order"]=order; row["base_extension"]=torch.tensor([float(y["extension0"]),float(y["extension1"])],dtype=torch.float64)
+                                    row=dict(base); row["mechanical"]=torch.cat((swap_invariant_pair(x["state0_features"],x["state1_features"]),torch.tensor([abs(float(x["observed_displacement"]))]))); row["observed_displacement"]=abs(float(x["observed_displacement"])); row["signed_observed_displacement"]=float(x["observed_displacement"]); row["raw_state0"]=x["state0_features"]; row["raw_state1"]=x["state1_features"]; row["gauge_id"]=key; row["swap_pair_id"]=hashlib.sha256(("splart-smarc-swap-v1:"+pair_raw).encode()).hexdigest(); row["order"]=order; row["base_extension"]=torch.tensor([float(y["extension0"]),float(y["extension1"])],dtype=torch.float64)
                                     expanded.append(row); truth.append(float(y["physical_range"])); seen.add(key)
     counts={jid:0 for jid in canonical_by_joint}
     for row in expanded: counts[row["joint_id"]]+=1
@@ -112,7 +118,12 @@ def expand_gauges(canonical: list[dict], art_pilc: Path, njc_pilc: Path) -> tupl
     if set(len(value) for value in pairs.values())!={2}: raise RuntimeError("swap pair coverage mismatch")
     for value in pairs.values():
         value=sorted(value,key=lambda row:row["order"])
-        if {row["order"] for row in value}!={"forward","reverse"} or not torch.equal(value[0]["base_extension"],value[1]["base_extension"].flip(0)):
+        forward=next(row for row in value if row["order"]=="forward"); reverse=next(row for row in value if row["order"]=="reverse")
+        if ({row["order"] for row in value}!={"forward","reverse"} or
+                not torch.equal(forward["base_extension"],reverse["base_extension"].flip(0)) or
+                not torch.equal(forward["raw_state0"],reverse["raw_state1"]) or
+                not torch.equal(forward["raw_state1"],reverse["raw_state0"]) or
+                forward["signed_observed_displacement"]!=-reverse["signed_observed_displacement"]):
             raise RuntimeError("source swap extension contract mismatch")
     return expanded,torch.tensor(truth,dtype=torch.float64)
 
@@ -149,6 +160,12 @@ def merge(args, config):
     rows,target=expand_gauges(rows,args.articraft_pilc_data,args.njc_pilc_data)
     if not torch.isfinite(target).all() or torch.any(target<=0): raise RuntimeError("invalid source truth")
     source_files.extend((str(path/name),sha256_file(path/name)) for path in (args.articraft_pilc_data,args.njc_pilc_data) for name in ("inputs.pt","labels.pt","manifest.json"))
+    expected_sources=config["data"]["frozen_source_sha256"]
+    checks={"articraft_inputs":args.articraft_pilc_data/"inputs.pt","articraft_labels":args.articraft_pilc_data/"labels.pt","articraft_manifest":args.articraft_pilc_data/"manifest.json",
+            "njc_inputs":args.njc_pilc_data/"inputs.pt","njc_labels":args.njc_pilc_data/"labels.pt","njc_manifest":args.njc_pilc_data/"manifest.json"}
+    if any(sha256_file(path)!=expected_sources[key] for key,path in checks.items()): raise RuntimeError("frozen PILC source hash mismatch")
+    render_hashes=[sha256_file(path/"manifest.json") for path in args.articraft_shards]+[sha256_file(args.njc_cache/"manifest.json")]
+    if render_hashes!=config["data"]["frozen_render_manifest_sha256"]: raise RuntimeError("frozen render manifest hash mismatch")
     return rows,target,{"source_file_sha256":dict(source_files),"manifests":manifests,
                         "object_counts":counts,"joint_counts":joint_counts,"object_list_hashes":observed}
 

@@ -1,9 +1,9 @@
 {
-  "schema": "splart-smarc-source-preregister/v1",
-  "clarification_version": "v1.2 after covariate-only occupancy smoke and before any completed DINO source score",
+  "schema": "splart-csmarc-source-preregister/v1.3",
+  "clarification_version": "node 8.8 result-free preregistration before any C-SMARC method score",
   "created_before_any_dino_source_score": true,
-  "superseded_v1_1_config_sha256": "2a7d541c8fb83cd33db081b33bde6e2c8019850cb23186fe7c4ad4933e72d9b1",
-  "v1_2_reason": "fixed absolute covariate bins contained singleton source objects, making the preregistered null undefined; no target or completed DINO source score was observed",
+  "predecessor_node_8_7_remote_config_sha256": "90027389e4548931538f654011ba9fcd3ba3d1d2e98b9cf877a4a1588c355121",
+  "node_8_8_reason": "replace infeasible forced full derangements with hard-caliper partial permutations; unmatched tails remain identity and perturbation coverage is explicitly gated",
   "phase": "source-only feasibility",
   "encoder": {
     "name": "DINO ViT-B/16",
@@ -45,7 +45,16 @@
       "lofo_sewing_test51": "e00c028736f4915943cc765954fd1f29b4f12d89974043895156720a5a56aa67",
       "lofo_usb_train88": "e765208cfb51ab20817c6957540d173ecdd0101e0b1c715b56c5a79db95de236",
       "lofo_usb_test21_small": "f4e37644b6aaa0027169db86d6f04f5bedb0e81f6c695dd26dc45f8d305d816a"
-    }
+    },
+    "frozen_source_sha256": {
+      "articraft_inputs": "27fab569c7cce6be1aaecee9e2292af7ef213abc7871aef6bb013a74df4da5e9",
+      "articraft_labels": "12a88dc5bedfeefdd85ee4385b37f7bcda13dc6141926565c61919d91da71ff3",
+      "articraft_manifest": "abcb3188479cf7f48e9707897dff3fb0811f4101278bc6c6aefaaf5832494949",
+      "njc_inputs": "dcfb65e548ea08b0d71af9f52ebc68b615b1b3dea459605bbefd554393005c9e",
+      "njc_labels": "5cf81ecfefcf408e77782c2d65119319f38540d680e9f89783c9f07a6cb7d706",
+      "njc_manifest": "c750569d08a54474f821c45f484ea110c846e5f2262d4ec2aacf39c9b78ce91c"
+    },
+    "frozen_render_manifest_sha256": ["9c95da2e933bd3502548692f10fe7351aeb981e25ff774c87f770ed83b774da8", "67f7543c039d29c53a2d5d7aaf7480901393f91465ba887c67000c740b5a7cb4", "07c0569947f69ada2d7ef54e066ebc5da38a14a4c5561a9e46a2756d76a0641f", "e3abd737feac4a4bff0ece57f417004399c6d3f9555dcf236e484f52b51daae5"]
   },
   "model": {
     "experts": 4,
@@ -68,10 +77,11 @@
   "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "bypassed_zero_semantic_structurally_equal_mechanical_only", "literal_black_image_through_frozen_dino", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
   "shuffle_contract": {
     "unit": "opaque object group; every joint/view follows its object's donor",
-    "mapping": "within each domain compute train-only robust-z scalar coordinates and solve a minimum absolute-distance Hungarian derangement with self cost infinity; opaque IDs define row/column order and the pinned scipy solver output is canonical; held objects independently take the nearest same-domain training scalar with opaque-ID tie-break",
+    "mapping": "within each domain solve a permutation with nonself edges allowed only at robust-z distance <=0.5 and self edges allowed as unchanged; lexicographic objective first maximizes nonself coverage then minimizes total distance; opaque IDs define canonical row/column order. Held objects use nearest same-domain training donor within 0.5, otherwise retain their own field",
     "robust_z": "m=median(train-domain object scalar), scale=1.4826*median(abs(x-m)); scale<=1e-12 or nonfinite fails closed; held never affects m or scale",
-    "matching_caliper": {"distance_p90_at_most": 0.5, "distance_max_at_most": 1.5, "nearest_other_regret_p90_at_most": 2.0},
-    "matching_receipt": "train/held robust-z distance median,p90,max; train nearest-other regret p90; held donor load/effective donor count; scipy version and mapping hash",
+    "matching_caliper": 0.5,
+    "minimum_perturbed_object_coverage_each_domain": 0.9,
+    "matching_receipt": "per-domain train/held perturbation coverage, actual nonself distance median/p90/max, unmatched opaque IDs, donor marginal/permutation proof, held donor load/effective count, scipy version and mapping hash",
     "semantic_shuffle_covariate": "object-mean absolute observed displacement",
     "mechanical_shuffle_covariate": "cosine distance from object-mean semantic embedding to the train-only domain mean",
     "fit_scope": "training objects only; validation uses the frozen train-domain robust center/scale and independently nearest same-domain training donor",
@@ -84,8 +94,11 @@
     "articraft_leave_one_family_out_aggregate_relative_gain_over_global_displacement_category_mechanical": 0.15,
     "articraft_each_family_fold_reported": true,
     "njc_family_audit": "NOT_APPLICABLE_BY_NO_TAXONOMY",
-    "state_swap_max_error": 0.000001
+    "state_swap_max_error": 0.000001,
+    "matched_shuffle_coverage_each_domain_at_least": 0.9,
+    "analytic_control_rule": "for each domain/control compare against min(historical row-uniform MARE, hierarchy-weighted MARE)"
   },
+  "parallel_execution": {"tasks": ["final", "lofo_0", "lofo_1", "lofo_2"], "immutable_partial_outputs": true, "aggregator": "deterministic config-hash and task-set validation"},
   "frozen_baselines": {
     "articraft": {"global": 0.375036, "displacement": 0.144754, "category_frequency_audit_only": 0.253942, "required_below": 0.123041},
     "njc": {"global": 0.240421, "displacement": 0.134170, "unseen_name_category_fallback": 0.240421, "required_below": 0.114045}

@@ -107,15 +107,15 @@ def analytic_linear_baseline(displacement: Tensor, targets: Tensor, train_weight
 
 
 def deterministic_object_donors(rows: list[dict], train_indices: list[int], recipient_indices: list[int],
-                                values: dict[str, float]) -> tuple[dict[str, str], dict]:
-    """Minimum-cost domain-preserving scalar matching with a train-only scale."""
+                                values: dict[str, float], caliper: float = .5) -> tuple[dict[str, str], dict]:
+    """Calipered domain-matched partial permutation; unmatched tails are identity."""
     import scipy
     from scipy.optimize import linear_sum_assignment
 
     train_objects = sorted({rows[i]["object_group_id"] for i in train_indices})
     recipient_objects = sorted({rows[i]["object_group_id"] for i in recipient_indices})
     domains={row["object_group_id"]:row["domain"] for row in rows}
-    donors={}; distances=[]; regrets=[]; held_distances=[]; held_load={}
+    donors={}; by_domain={}
     for domain in sorted(set(domains[obj] for obj in train_objects)):
         members=[obj for obj in train_objects if domains[obj]==domain]
         recipients=[obj for obj in recipient_objects if domains[obj]==domain]
@@ -125,31 +125,52 @@ def deterministic_object_donors(rows: list[dict], train_indices: list[int], reci
         median=torch.quantile(raw,.5); scale=1.4826*torch.quantile((raw-median).abs(),.5)
         if float(scale)<=1e-12: raise ValueError("matching robust scale is degenerate")
         z=(raw-median)/scale
-        cost=(z[:,None]-z[None,:]).abs().numpy(); cost[range(len(members)),range(len(members))]=1e12
+        distance=(z[:,None]-z[None,:]).abs()
+        # One additional self assignment costs more than the maximum total
+        # distance of every possible non-self edge, giving the exact
+        # lexicographic objective: maximize coverage, then minimize distance.
+        self_cost=len(members)*caliper+1.; cost=torch.full_like(distance,1e12)
+        allowed=(distance<=caliper)&(~torch.eye(len(members),dtype=torch.bool)); cost[allowed]=distance[allowed]
+        cost[torch.arange(len(members)),torch.arange(len(members))]=self_cost
         row_index,col_index=linear_sum_assignment(cost)
         if list(row_index)!=list(range(len(members))): raise RuntimeError("unexpected Hungarian row order")
         assigned={members[i]:members[int(col_index[i])] for i in row_index}
-        if set(assigned.values())!=set(members) or any(key==value for key,value in assigned.items()):
-            raise RuntimeError("Hungarian assignment is not a derangement")
+        if set(assigned.values())!=set(members): raise RuntimeError("training donors do not preserve the object marginal")
+        train_distances=[]; train_changed=[]
         for obj,donor in assigned.items():
-            if obj in recipients:
-                donors[obj]=donor; i=members.index(obj); j=members.index(donor); distances.append(float(abs(z[i]-z[j])))
-                nearest=min(float(abs(z[i]-z[k])) for k in range(len(members)) if k!=i)
-                regrets.append(float(abs(z[i]-z[j]))-nearest)
+            i=members.index(obj); j=members.index(donor)
+            if obj!=donor:
+                actual=float(abs(z[i]-z[j]));
+                if actual>caliper+1e-12: raise RuntimeError("non-self assignment exceeds caliper")
+                train_distances.append(actual); train_changed.append(obj)
+            if obj in recipients: donors[obj]=donor
+        held_distances=[]; held_changed=[]; held_load={}
         for obj in recipients:
             if obj in assigned: continue
             value=(float(values[obj])-float(median))/float(scale)
             donor=min(members,key=lambda candidate:(abs(value-float(z[members.index(candidate)])),candidate))
-            donors[obj]=donor; distance=abs(value-float(z[members.index(donor)])); held_distances.append(distance); held_load[donor]=held_load.get(donor,0)+1
+            actual=abs(value-float(z[members.index(donor)]))
+            if actual<=caliper:
+                donors[obj]=donor; held_distances.append(actual); held_changed.append(obj); held_load[donor]=held_load.get(donor,0)+1
+            else:
+                donors[obj]=obj
+        def stats(data):
+            value=torch.tensor(data or [0.],dtype=torch.float64)
+            return {"median":float(torch.quantile(value,.5)),"p90":float(torch.quantile(value,.9)),"max":float(value.max())}
+        train_recipient_count=sum(obj in assigned for obj in recipients)
+        is_train_recipient=train_recipient_count==len(recipients)
+        changed=train_changed if is_train_recipient else held_changed
+        distances=train_distances if is_train_recipient else held_distances
+        by_domain[domain]={"train_objects":len(members),"recipient_objects":len(recipients),
+                           "perturbed_objects":len(changed),"coverage":len(changed)/len(recipients),
+                           "nonself_distance":stats(distances),"unmatched_object_ids":sorted(set(recipients)-set(changed)),
+                           "held_donor_load":held_load,"held_effective_donor_count":len(held_load),
+                           "train_permutation_preserves_marginal":set(assigned.values())==set(members),
+                           "robust_center":float(median),"robust_scale":float(scale)}
     if set(donors)!=set(recipient_objects): raise RuntimeError("matching did not cover recipients")
-    def stats(data):
-        value=torch.tensor(data or [0.],dtype=torch.float64)
-        return {"median":float(value.median()),"p90":float(torch.quantile(value,.9)),"max":float(value.max())}
     payload="\n".join(f"{key}->{donors[key]}" for key in sorted(donors))+"\n"
     receipt={"solver":"scipy.optimize.linear_sum_assignment","scipy_version":scipy.__version__,
-             "mapping_sha256":hashlib.sha256(payload.encode()).hexdigest(),"train_distance":stats(distances),
-             "held_distance":stats(held_distances),"nearest_other_regret_p90":float(torch.quantile(torch.tensor(regrets or [0.]),.9)),
-             "held_donor_load":held_load,"held_effective_donor_count":len(held_load)}
+             "caliper":caliper,"mapping_sha256":hashlib.sha256(payload.encode()).hexdigest(),"domains":by_domain}
     return donors,receipt
 
 
@@ -164,8 +185,11 @@ def apply_object_donors(rows: list[dict], indices: list[int], field: str,
         obj = rows[i]["object_group_id"]
         donor = donors[obj]
         cursor = object_counter.get(obj, 0)
-        bank = by_object[donor]
-        donated=bank[cursor % len(bank)]
+        if donor==obj and donor not in by_object:
+            donated=rows[i][field]
+        else:
+            bank = by_object[donor]
+            donated=bank[cursor % len(bank)]
         if preserve_last:
             donated=torch.cat((donated[:-1],rows[i][field][-1:]))
         outputs.append(donated)
