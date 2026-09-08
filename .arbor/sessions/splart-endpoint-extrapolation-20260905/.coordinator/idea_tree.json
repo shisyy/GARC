@@ -296,7 +296,11 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Source-Supervised Projective Boundary Transfer learns a shared ordered boundary head from complete source meshes with true finite joint-limit trajectories, then adapts only its representation on 36 unlabeled target-domain 3DGS trajectories through virtual-subinterval projective consistency and rank-normalized physics channels.\nHypothesis: Posthoc Box failures arise because frozen Gaussian profiles never contain a calibrated free/contact phase, while complete source meshes do; supervised source transitions plus target-domain gauge consistency can transfer the physical boundary law without using Box endpoints or absolute range priors.\nObservable: On object-disjoint source validation the full model beats zero-geometry/range and coordinate-only controls, reduces target-free cross-gauge variance by at least 20%, and after freezing beats frozen D2 on public Box a-d worst-side NMAE before a single untouched e/f confirmation.\nConflicts: Node 4.1 showed generic mesh-to-Gaussian descriptor alignment is insufficient, node 5.1 showed 47D summaries collapse to range priors, and node 6 showed naive visual-mesh collision proxies are already penetrated; this node counters them with dense full-trajectory source supervision, per-channel rank normalization, and an explicit geometry-shuffle null, and must be pruned if the null ties or Box-a loses.",
-      "status": "running"
+      "status": "pruned",
+      "score": 1.088138,
+      "insight": "Dense complete-mesh contact profiles do not identify authored URDF hard limits: source-validation D2 anchor mean worst-side error is 1.088138q, 0/6 objects are reachable by the preregistered +/-0.10q residual, and posterior entropy remains low at 0.151998. The source projective-transfer mechanism is infeasible before any target adaptation.\n[Pruned: Source anchor feasibility gate failed: 0/6 validation objects lie within the bounded residual support; complete-mesh contact minima are confidently unrelated to authored hard stops, so exact36/Box evaluation was prohibited.]",
+      "result": "FAIL_SOURCE_ANCHOR_IDENTIFIABILITY",
+      "code_ref": "b77dbc2bcc073505b18dfd8aa2a0e1e2a0228ed2"
     }
   }
 }
