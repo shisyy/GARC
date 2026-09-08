@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
-from .smarc import SMARC
+from .smarc import SMARC, extensions_to_endpoints, project_extensions_to_range
 
 
 def hash_ids(values: list[str]) -> str:
@@ -107,40 +107,54 @@ def analytic_linear_baseline(displacement: Tensor, targets: Tensor, train_weight
 
 
 def deterministic_object_donors(rows: list[dict], train_indices: list[int], recipient_indices: list[int],
-                                values: dict[str, float], edges: list[float]) -> dict[str, str]:
-    """Frozen object-level donor mapping inside preregistered bins."""
+                                values: dict[str, float]) -> tuple[dict[str, str], dict]:
+    """Minimum-cost domain-preserving scalar matching with a train-only scale."""
+    import scipy
+    from scipy.optimize import linear_sum_assignment
+
     train_objects = sorted({rows[i]["object_group_id"] for i in train_indices})
     recipient_objects = sorted({rows[i]["object_group_id"] for i in recipient_indices})
-
-    def bucket(value: float) -> int:
-        for index in range(len(edges) - 1):
-            if edges[index] <= value < edges[index + 1] or (index == len(edges)-2 and value == edges[-1]):
-                return index
-        raise ValueError(f"shuffle value {value} outside frozen bins")
-
     domains={row["object_group_id"]:row["domain"] for row in rows}
-    bins: dict[tuple[str,int], list[str]] = {}
-    for obj in train_objects:
-        bins.setdefault((domains[obj],bucket(values[obj])), []).append(obj)
-    for members in bins.values():
-        if len(members) < 2:
-            raise ValueError("occupied training shuffle bin has fewer than two objects")
-    donors = {}
-    for obj in recipient_objects:
-        members = bins.get((domains[obj],bucket(values[obj])), [])
-        if not members:
-            raise ValueError("recipient shuffle bin has no training donor")
-        if obj in members:
-            donors[obj] = members[(members.index(obj) + 1) % len(members)]
-        else:
-            donors[obj] = members[0]
-        if donors[obj] == obj:
-            raise RuntimeError("shuffle donor is not a derangement")
-    return donors
+    donors={}; distances=[]; regrets=[]; held_distances=[]; held_load={}
+    for domain in sorted(set(domains[obj] for obj in train_objects)):
+        members=[obj for obj in train_objects if domains[obj]==domain]
+        recipients=[obj for obj in recipient_objects if domains[obj]==domain]
+        if len(members)<2: raise ValueError("matching domain has fewer than two train objects")
+        raw=torch.tensor([values[obj] for obj in members],dtype=torch.float64)
+        if not torch.isfinite(raw).all(): raise ValueError("nonfinite matching scalar")
+        median=torch.quantile(raw,.5); scale=1.4826*torch.quantile((raw-median).abs(),.5)
+        if float(scale)<=1e-12: raise ValueError("matching robust scale is degenerate")
+        z=(raw-median)/scale
+        cost=(z[:,None]-z[None,:]).abs().numpy(); cost[range(len(members)),range(len(members))]=1e12
+        row_index,col_index=linear_sum_assignment(cost)
+        if list(row_index)!=list(range(len(members))): raise RuntimeError("unexpected Hungarian row order")
+        assigned={members[i]:members[int(col_index[i])] for i in row_index}
+        if set(assigned.values())!=set(members) or any(key==value for key,value in assigned.items()):
+            raise RuntimeError("Hungarian assignment is not a derangement")
+        for obj,donor in assigned.items():
+            if obj in recipients:
+                donors[obj]=donor; i=members.index(obj); j=members.index(donor); distances.append(float(abs(z[i]-z[j])))
+                nearest=min(float(abs(z[i]-z[k])) for k in range(len(members)) if k!=i)
+                regrets.append(float(abs(z[i]-z[j]))-nearest)
+        for obj in recipients:
+            if obj in assigned: continue
+            value=(float(values[obj])-float(median))/float(scale)
+            donor=min(members,key=lambda candidate:(abs(value-float(z[members.index(candidate)])),candidate))
+            donors[obj]=donor; distance=abs(value-float(z[members.index(donor)])); held_distances.append(distance); held_load[donor]=held_load.get(donor,0)+1
+    if set(donors)!=set(recipient_objects): raise RuntimeError("matching did not cover recipients")
+    def stats(data):
+        value=torch.tensor(data or [0.],dtype=torch.float64)
+        return {"median":float(value.median()),"p90":float(torch.quantile(value,.9)),"max":float(value.max())}
+    payload="\n".join(f"{key}->{donors[key]}" for key in sorted(donors))+"\n"
+    receipt={"solver":"scipy.optimize.linear_sum_assignment","scipy_version":scipy.__version__,
+             "mapping_sha256":hashlib.sha256(payload.encode()).hexdigest(),"train_distance":stats(distances),
+             "held_distance":stats(held_distances),"nearest_other_regret_p90":float(torch.quantile(torch.tensor(regrets or [0.]),.9)),
+             "held_donor_load":held_load,"held_effective_donor_count":len(held_load)}
+    return donors,receipt
 
 
 def apply_object_donors(rows: list[dict], indices: list[int], field: str,
-                        donors: dict[str, str], train_indices: list[int]) -> Tensor:
+                        donors: dict[str, str], train_indices: list[int], preserve_last: bool = False) -> Tensor:
     by_object: dict[str, list[Tensor]] = {}
     for i in train_indices:
         by_object.setdefault(rows[i]["object_group_id"], []).append(rows[i][field])
@@ -151,7 +165,10 @@ def apply_object_donors(rows: list[dict], indices: list[int], field: str,
         donor = donors[obj]
         cursor = object_counter.get(obj, 0)
         bank = by_object[donor]
-        outputs.append(bank[cursor % len(bank)])
+        donated=bank[cursor % len(bank)]
+        if preserve_last:
+            donated=torch.cat((donated[:-1],rows[i][field][-1:]))
+        outputs.append(donated)
         object_counter[obj] = cursor + 1
     return torch.stack(outputs)
 
@@ -194,6 +211,27 @@ def object_macro_mare(rows: list[dict], indices: list[int], prediction: Tensor, 
     return float(torch.stack(values).mean())
 
 
+def swap_audit(rows: list[dict], indices: list[int], prediction: Tensor) -> dict[str, float]:
+    pairs: dict[str, list[int]]={}
+    for location,index in enumerate(indices): pairs.setdefault(rows[index]["swap_pair_id"],[]).append(location)
+    range_error=[]; projection_error=[]; endpoint_error=[]
+    for locations in pairs.values():
+        if len(locations)!=2: raise ValueError("held swap pair is incomplete")
+        forward=next(k for k in locations if rows[indices[k]]["order"]=="forward")
+        reverse=next(k for k in locations if rows[indices[k]]["order"]=="reverse")
+        fr,rr=rows[indices[forward]],rows[indices[reverse]]
+        range_error.append((prediction[forward]-prediction[reverse]).abs())
+        fext=project_extensions_to_range(fr["base_extension"][None],prediction[forward][None],torch.tensor([fr["observed_displacement"]],dtype=prediction.dtype))[0]
+        rext=project_extensions_to_range(rr["base_extension"][None],prediction[reverse][None],torch.tensor([rr["observed_displacement"]],dtype=prediction.dtype))[0]
+        projection_error.append((rext-fext.flip(0)).abs().max())
+        fpoint=extensions_to_endpoints(fext[None])[0]; rpoint=extensions_to_endpoints(rext[None])[0]
+        expected=torch.stack((1-fpoint[1],1-fpoint[0]))
+        endpoint_error.append((rpoint-expected).abs().max())
+    return {"range_max":float(torch.stack(range_error).max()),
+            "projection_max":float(torch.stack(projection_error).max()),
+            "endpoint_max":float(torch.stack(endpoint_error).max())}
+
+
 __all__ = ["Preprocessor", "analytic_linear_baseline", "apply_object_donors",
            "deterministic_object_donors", "fit_preprocessor", "hash_ids", "object_domain_weights",
-           "object_macro_mare", "predict", "train_model", "transform"]
+           "object_macro_mare", "predict", "swap_audit", "train_model", "transform"]

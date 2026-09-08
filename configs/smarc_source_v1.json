@@ -1,7 +1,9 @@
 {
   "schema": "splart-smarc-source-preregister/v1",
-  "clarification_version": "v1.1 before any DINO source score",
+  "clarification_version": "v1.2 after covariate-only occupancy smoke and before any completed DINO source score",
   "created_before_any_dino_source_score": true,
+  "superseded_v1_1_config_sha256": "2a7d541c8fb83cd33db081b33bde6e2c8019850cb23186fe7c4ad4933e72d9b1",
+  "v1_2_reason": "fixed absolute covariate bins contained singleton source objects, making the preregistered null undefined; no target or completed DINO source score was observed",
   "phase": "source-only feasibility",
   "encoder": {
     "name": "DINO ViT-B/16",
@@ -66,10 +68,13 @@
   "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "bypassed_zero_semantic_structurally_equal_mechanical_only", "literal_black_image_through_frozen_dino", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
   "shuffle_contract": {
     "unit": "opaque object group; every joint/view follows its object's donor",
-    "mapping": "lexicographically next object in a cyclic derangement; donor must differ; fail closed when a bin has fewer than two objects",
-    "semantic_shuffle_mechanical_bin_edges_abs_displacement_radians": [0.0, 0.5, 1.0, 1.5, 6.283185307179586],
-    "mechanical_shuffle_semantic_bin_edges_cosine_distance_to_train_mean": [0.0, 0.1, 0.25, 0.5, 2.0],
-    "fit_scope": "training objects only; validation receives frozen bin edges and deterministic training donor",
+    "mapping": "within each domain compute train-only robust-z scalar coordinates and solve a minimum absolute-distance Hungarian derangement with self cost infinity; opaque IDs define row/column order and the pinned scipy solver output is canonical; held objects independently take the nearest same-domain training scalar with opaque-ID tie-break",
+    "robust_z": "m=median(train-domain object scalar), scale=1.4826*median(abs(x-m)); scale<=1e-12 or nonfinite fails closed; held never affects m or scale",
+    "matching_caliper": {"distance_p90_at_most": 0.5, "distance_max_at_most": 1.5, "nearest_other_regret_p90_at_most": 2.0},
+    "matching_receipt": "train/held robust-z distance median,p90,max; train nearest-other regret p90; held donor load/effective donor count; scipy version and mapping hash",
+    "semantic_shuffle_covariate": "object-mean absolute observed displacement",
+    "mechanical_shuffle_covariate": "cosine distance from object-mean semantic embedding to the train-only domain mean",
+    "fit_scope": "training objects only; validation uses the frozen train-domain robust center/scale and independently nearest same-domain training donor",
     "joint_or_row_shuffle": "forbidden"
   },
   "gate": {

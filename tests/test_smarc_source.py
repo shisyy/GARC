@@ -1,7 +1,7 @@
 import torch
 
 from splart.smarc_source import (deterministic_object_donors, fit_preprocessor,
-                                 hash_ids, object_domain_weights, object_macro_mare, transform)
+                                 hash_ids, object_domain_weights, object_macro_mare, swap_audit, transform)
 
 
 def rows_fixture():
@@ -51,14 +51,34 @@ def test_mechanical_only_raw_mean_becomes_exact_zero_post_pca():
     assert torch.equal(semantic,torch.zeros_like(semantic))
 
 
+def test_swap_audit_executes_and_detects_broken_predictions():
+    base={"swap_pair_id":"p","observed_displacement":1.,"base_extension":torch.tensor([.2,.4],dtype=torch.float64)}
+    rows=[dict(base,order="forward"),dict(base,order="reverse",base_extension=torch.tensor([.4,.2],dtype=torch.float64))]
+    good=swap_audit(rows,[0,1],torch.tensor([2.,2.],dtype=torch.float64))
+    assert max(good.values())<1e-12
+    broken=swap_audit(rows,[0,1],torch.tensor([2.,2.1],dtype=torch.float64))
+    assert broken["range_max"]>.09 and broken["endpoint_max"]>0
+
+
 def test_shuffle_is_object_level_derangement_and_singletons_fail():
     rows=rows_fixture(); train=list(range(len(rows))); values={k:.25 for k in "abcd"}
-    donors=deterministic_object_donors(rows,train,train,values,[0.,.5,1.])
-    assert all(k != v for k,v in donors.items()) and donors["a"] in {"a","b"} and donors["c"] in {"c","d"}
-    values={"a":.25,"b":.75,"c":.75,"d":.75}
     try:
-        deterministic_object_donors(rows,train,train,values,[0.,.5,1.])
+        deterministic_object_donors(rows,train,train,values)
     except ValueError as error:
-        assert "fewer than two" in str(error)
-    else:
-        raise AssertionError("singleton shuffle bin must fail closed")
+        assert "degenerate" in str(error)
+    values={"a":.1,"b":.2,"c":.3,"d":.4}
+    donors,receipt=deterministic_object_donors(rows,train,train,values)
+    donors2,receipt2=deterministic_object_donors(rows,train,train,values)
+    assert all(k != v for k,v in donors.items()) and donors["a"] in {"a","b"} and donors["c"] in {"c","d"}
+    assert receipt["train_distance"]["max"]>0 and receipt["mapping_sha256"]
+    assert donors==donors2 and receipt["mapping_sha256"]==receipt2["mapping_sha256"]
+
+
+def test_matching_never_crosses_domains_when_other_domain_changes():
+    rows=rows_fixture(); train=list(range(len(rows)))
+    values={"a":.1,"b":.2,"c":.3,"d":.4}
+    first,_=deterministic_object_donors(rows,train,train,values)
+    values["c"],values["d"]=100.,200.
+    second,_=deterministic_object_donors(rows,train,train,values)
+    assert first["a"]==second["a"] and first["b"]==second["b"]
+    assert all(next(r["domain"] for r in rows if r["object_group_id"]==k)==next(r["domain"] for r in rows if r["object_group_id"]==v) for k,v in second.items())
