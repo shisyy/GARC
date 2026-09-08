@@ -147,7 +147,10 @@ def render_states(static_mesh,mobile_mesh,axis,pivot,angles,device):
     sv,sf=static_mesh; mv,mf=mobile_mesh; all_states=[torch.cat((sv,rotate(mv,axis,pivot,a))) for a in angles]; faces=torch.cat((sf,mf+len(sv)))
     all_vertices=torch.cat(all_states); center=(all_vertices.amin(0)+all_vertices.amax(0))*.5; scale=(all_vertices-center).abs().max().clamp_min(1e-6)
     colors=torch.cat((torch.full((len(sv),3),.45),torch.full((len(mv),3),.88))).to(device); faces=faces.to(device); images=[]
-    raster=RasterizationSettings(image_size=224,blur_radius=0.,faces_per_pixel=1,cull_backfaces=False)
+    # Naive rasterization avoids PyTorch3D's finite coarse-bin face capacity;
+    # an overflow warning would silently drop faces and invalidate semantics.
+    raster=RasterizationSettings(image_size=224,blur_radius=0.,faces_per_pixel=1,
+                                 cull_backfaces=False,bin_size=0)
     lights=AmbientLights(device=device,ambient_color=((1.,1.,1.),))
     for vertices in all_states:
         mesh=Meshes(verts=[((vertices-center)/scale).to(device)],faces=[faces],textures=TexturesVertex(verts_features=[colors]))
@@ -181,11 +184,17 @@ def main():
             if key not in source or key not in labels or source[key]["split"]!=split: raise ValueError("join/split mismatch")
             d=abs(float(source[key]["observed_displacement"])); target=float(labels[key]["physical_range"])
             if abs(target-(hi-lo))>1e-5 or not d<=target<=2*math.pi+1e-6: raise ValueError("invalid range")
-            images=render_states(static,mobile,axis,pivot,[lo+.25*target,lo+.75*target],device); semantic=encode_state_pair(encoder,images); semantic2=encode_state_pair(encoder,images)
+            images=render_states(static,mobile,axis,pivot,[lo+.25*target,lo+.75*target],device)
+            foreground=(images.float().mean(2)>20).float().mean(dim=(-2,-1))
+            if not torch.isfinite(foreground).all() or torch.any(foreground<=0): raise RuntimeError("empty/nonfinite formal render view")
+            if not rows:
+                repeated_render=render_states(static,mobile,axis,pivot,[lo+.25*target,lo+.75*target],device)
+                if not torch.equal(images,repeated_render): raise RuntimeError("formal render is not bit-identical")
+            semantic=encode_state_pair(encoder,images); semantic2=encode_state_pair(encoder,images)
             if not torch.equal(semantic,semantic2): raise RuntimeError("DINO non-deterministic")
-            mech=torch.cat((swap_invariant_pair(source[key]["state0_features"],source[key]["state1_features"]),torch.tensor([d]))); jid=hashlib.sha256(("splart-smarc-joint-v1:"+key).encode()).hexdigest(); rows.append({"joint_id":jid,"object_group_id":group,"family_audit_id":family_hash(name),"split":split,"joint_type":"revolute","mechanical":mech,"semantic":semantic,"observed_displacement":d}); targets[jid]=target; renders[jid]=images; coverage.append({"joint_id":jid,"visual_total":total,"static_visuals":ns,"moving_visuals":nm,"coverage":1.0})
+            mech=torch.cat((swap_invariant_pair(source[key]["state0_features"],source[key]["state1_features"]),torch.tensor([d]))); jid=hashlib.sha256(("splart-smarc-joint-v1:"+key).encode()).hexdigest(); rows.append({"joint_id":jid,"object_group_id":group,"family_audit_id":family_hash(name),"split":split,"joint_type":"revolute","mechanical":mech,"semantic":semantic,"observed_displacement":d}); targets[jid]=target; renders[jid]=images; coverage.append({"joint_id":jid,"visual_total":total,"static_visuals":ns,"moving_visuals":nm,"coverage":1.0,"state0_foreground_min":float(foreground[0].min()),"state0_foreground_mean":float(foreground[0].mean()),"state0_foreground_max":float(foreground[0].max()),"state1_foreground_min":float(foreground[1].min()),"state1_foreground_mean":float(foreground[1].mean()),"state1_foreground_max":float(foreground[1].max())})
     if len({a["object_group_id"] for a in assets})!=len(selected) or not rows: raise RuntimeError("object coverage/collision")
-    args.output.mkdir(parents=True); torch.save(rows,args.output/"inputs.pt"); torch.save(targets,args.output/"labels.pt"); torch.save(renders,args.output/"neutral_render_bank.pt"); out={"schema":"splart-smarc-articraft-dino-zbuffer-shard/v1","shard_index":args.shard_index,"shard_count":args.shard_count,"objects":len(selected),"joints":len(rows),"assets":assets,"coverage":coverage,"encoder":"DINO ViT-B/16","encoder_sha256":DINO_VITB16_SHA256,"embedding_dim":int(rows[0]["semantic"].numel()),"mechanical_dim_raw":int(rows[0]["mechanical"].numel()),"renderer":"PyTorch3D faces z-buffer full-child-subtree/static-complement","box_labels_read":[],"protected_splits_read":[]}; (args.output/"manifest.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"objects":len(selected),"joints":len(rows)}))
+    args.output.mkdir(parents=True); torch.save(rows,args.output/"inputs.pt"); torch.save(targets,args.output/"labels.pt"); torch.save(renders,args.output/"neutral_render_bank.pt"); out={"schema":"splart-smarc-articraft-dino-zbuffer-shard/v1","shard_index":args.shard_index,"shard_count":args.shard_count,"objects":len(selected),"joints":len(rows),"assets":assets,"coverage":coverage,"encoder":"DINO ViT-B/16","encoder_sha256":DINO_VITB16_SHA256,"embedding_dim":int(rows[0]["semantic"].numel()),"mechanical_dim_raw":int(rows[0]["mechanical"].numel()),"renderer":"PyTorch3D faces z-buffer full-child-subtree/static-complement bin_size=0","render_repeat_bit_identical":True,"empty_views":0,"box_labels_read":[],"protected_splits_read":[]}; (args.output/"manifest.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"objects":len(selected),"joints":len(rows)}))
 
 
 if __name__=="__main__": main()
