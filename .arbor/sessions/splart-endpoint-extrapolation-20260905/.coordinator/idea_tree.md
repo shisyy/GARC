@@ -252,3 +252,8 @@ Conflicts: Node 5.1 found that 47D geometry harmed transfer and node 8.4 proved 
 **Result**: FAIL_SOURCE_GEOMETRY_AND_NJC_E2E_GATES
 
 **Branch**: 1bca982299de4a7ae4b4e616d541f39d2c36d033
+
+#### 8.6: Mechanism: Dual-Expert Kinematic Projection (DEKP) fuses the frozen D2 analytic endpoint and frozen PILC learned-prior endpoint with per-side reliabilities computed from expert disagreement, D2 multi-gauge dispersion, and posterior entropy, then applies the exact span projection retained from CARC.
+Hypothesis: D2 is accurate when its counterfactual energy is well conditioned whereas PILC repairs missing-contact cases; their complementary failures on frozen Box development episodes can be selected by target-side evidence without transferring the failed source-geometry range head.
+Observable: Under leave-one-episode-out evaluation on public Box a-d, DEKP lowers macro worst-side NMAE by at least 10% versus both frozen D2 and frozen PILC, wins at least 3/4 episodes, and beats fixed averaging, coordinate-only, uncertainty-shuffled, D2-only, and PILC-only controls before a single untouched e/f confirmation.
+Conflicts: Node 8.3 showed projective variance alone can be confidently wrong and node 8.5 showed source geometry hurts range transfer; DEKP counters them with disagreement between independently derived experts, monotone low-capacity reliability calibration, exact kinematic projection, and mandatory shuffled-uncertainty/collapsed-weight nulls, and is pruned if weights collapse or the shuffle ties. [PENDING]
