@@ -1,0 +1,8 @@
+{
+  "node_id": "8.1",
+  "hypothesis": "Mechanism: Cross-State Radius-Consensus Boundary preserves each reconstructed state's three-radius trajectory fields and estimates endpoints by robust consensus over their free-to-penetrating change points.\nHypothesis: The current geometry-mean profile lets a biased state or radius move the soft minimum; state-wise change-point agreement should suppress reconstruction-specific artifacts and directly reduce the dominant upper-end error.\nObservable: On public Box a-f leave-two-episode-out evaluation, lower worst-side NMAE than frozen D2, single-radius, mean-profile, and geometry-shuffled controls, with exact observation-swap residual below 1e-10.\nConflicts: Pruned [3.1] found observable surface contact ambiguous after averaging; this counters by retaining intervention-indexed state/radius evidence and requiring consensus rather than claiming contact semantics.",
+  "score": 0.688222,
+  "insight": "Cross-state multi-radius consensus fails on representative Box-a: all 12 curves lack signed-gap zero crossings, consensus loses to D2 and a shuffled-geometry null, and uncertainty gating can only fall back to D2.",
+  "result": "Box-a worst-side NMAE 0.688222 vs D2 0.283389 and shuffle 0.333551; e/f and protected splits unread.",
+  "branch": "arbor/node-8-1-consensus@a2d18e713d9f2c8b896ec33c57c41d70d3e616d1"
+}

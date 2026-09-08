@@ -1,0 +1,8 @@
+{
+  "node_id": "8.3",
+  "hypothesis": "Mechanism: Virtual-Subinterval Projective Consistency reparameterizes one counterfactual trajectory under many synthetic interior observation intervals and trains a shared boundary functional whose physical endpoint predictions must agree after inverse gauge mapping.\nHypothesis: Range-prior heads exploit the fixed 0/1 observation gauge; projective consistency removes that shortcut and forces the model to use profile shape that survives changes of the observed interior interval.\nObservable: Pretraining on the 36 target-free profiles plus public Box a-d labels improves held-out Box e/f worst-side NMAE over frozen D2 and the same architecture without projective consistency, with low cross-gauge variance.\nConflicts: Pruned [2.2] used only state-swap equivariance and could still learn a fixed range prior; this adds a continuous family of observation-gauge interventions and a direct no-consistency ablation.",
+  "score": 0.41182,
+  "insight": "Projective consistency reduces exact36 target-domain cross-gauge variance by 37.34%, but fails domain transfer: on Box-a its worst-side NMAE and variance are worse than no-consistency, frozen D2, and coordinate controls.",
+  "result": "Exact36 variance 0.10857 to 0.06802; Box-a worst-side NMAE 0.41182 vs D2 0.28339, no-consistency 0.39766, coordinate-only 0.20747; e/f unread.",
+  "branch": "arbor/node-8-3-projective@2ef60cd66cc30ce01d4f3f61d77fbfdfec5d6a9f"
+}

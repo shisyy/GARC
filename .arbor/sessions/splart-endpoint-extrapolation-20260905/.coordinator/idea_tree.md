@@ -191,12 +191,19 @@ Hypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learn
 Observable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.
 Conflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression. [PENDING]
 
-**Insight**: Children findings: [8.2, done, score=0.343] The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise.
+**Insight**: Children findings: [8.1, pruned, score=0.6882] Cross-state multi-radius consensus fails on representative Box-a: all 12 curves lack signed-gap zero crossings, consensus loses to D2 and a shuffled-geometry null, and uncertainty gating can only fall back to D2. [Pruned: Representative Box-a disproved cross-state/radius consensus on frozen penetrated profiles; the geometry shuffle null was better and gating yielded no gain.] | [8.2, pruned, score=0.343] The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise. [Pruned: Representative public Box-a falsified the mechanism: all 12 curves lack a free/contact crossing and the channel-shuffle null beats the proposed hazard.] | [8.3, done, score=0.4118] Projective consistency reduces exact36 target-domain cross-gauge variance by 37.34%, but fails domain transfer: on Box-a its worst-side NMAE and variance are worse than no-consistency, frozen D2, and coordinate controls.
 
 #### 8.1: Mechanism: Cross-State Radius-Consensus Boundary preserves each reconstructed state's three-radius trajectory fields and estimates endpoints by robust consensus over their free-to-penetrating change points.
 Hypothesis: The current geometry-mean profile lets a biased state or radius move the soft minimum; state-wise change-point agreement should suppress reconstruction-specific artifacts and directly reduce the dominant upper-end error.
 Observable: On public Box a-f leave-two-episode-out evaluation, lower worst-side NMAE than frozen D2, single-radius, mean-profile, and geometry-shuffled controls, with exact observation-swap residual below 1e-10.
-Conflicts: Pruned [3.1] found observable surface contact ambiguous after averaging; this counters by retaining intervention-indexed state/radius evidence and requiring consensus rather than claiming contact semantics. [RUNNING]
+Conflicts: Pruned [3.1] found observable surface contact ambiguous after averaging; this counters by retaining intervention-indexed state/radius evidence and requiring consensus rather than claiming contact semantics. [PRUNED] (score: 0.6882)
+
+**Insight**: Cross-state multi-radius consensus fails on representative Box-a: all 12 curves lack signed-gap zero crossings, consensus loses to D2 and a shuffled-geometry null, and uncertainty gating can only fall back to D2.
+[Pruned: Representative Box-a disproved cross-state/radius consensus on frozen penetrated profiles; the geometry shuffle null was better and gating yielded no gain.]
+
+**Result**: Box-a worst-side NMAE 0.688222 vs D2 0.283389 and shuffle 0.333551; e/f and protected splits unread.
+
+**Branch**: arbor/node-8-1-consensus@a2d18e713d9f2c8b896ec33c57c41d70d3e616d1
 
 #### 8.2: Mechanism: Monotone Endpoint Hazard converts penetration, contact mass, support rise, and energy curvature along each outward scan into a constrained survival/change-point model whose first stable hazard transition is the endpoint.
 Hypothesis: Softargmin selects low-energy points even when no physical boundary exists, whereas monotone hazard accumulates ordered evidence for the free-to-terminal transition and should be less sensitive to absolute range priors.
@@ -213,4 +220,16 @@ Conflicts: Pruned [6] showed naive mesh collision is penetrated everywhere; this
 #### 8.3: Mechanism: Virtual-Subinterval Projective Consistency reparameterizes one counterfactual trajectory under many synthetic interior observation intervals and trains a shared boundary functional whose physical endpoint predictions must agree after inverse gauge mapping.
 Hypothesis: Range-prior heads exploit the fixed 0/1 observation gauge; projective consistency removes that shortcut and forces the model to use profile shape that survives changes of the observed interior interval.
 Observable: Pretraining on the 36 target-free profiles plus public Box a-d labels improves held-out Box e/f worst-side NMAE over frozen D2 and the same architecture without projective consistency, with low cross-gauge variance.
-Conflicts: Pruned [2.2] used only state-swap equivariance and could still learn a fixed range prior; this adds a continuous family of observation-gauge interventions and a direct no-consistency ablation. [RUNNING]
+Conflicts: Pruned [2.2] used only state-swap equivariance and could still learn a fixed range prior; this adds a continuous family of observation-gauge interventions and a direct no-consistency ablation. [PRUNED] (score: 0.4118)
+
+**Insight**: Projective consistency reduces exact36 target-domain cross-gauge variance by 37.34%, but fails domain transfer: on Box-a its worst-side NMAE and variance are worse than no-consistency, frozen D2, and coordinate controls.
+[Pruned: Target-free gauge stability improved in-domain but reversed under Box transfer and lost to D2/null controls; learned posthoc profile head is not the second innovation.]
+
+**Result**: Exact36 variance 0.10857 to 0.06802; Box-a worst-side NMAE 0.41182 vs D2 0.28339, no-consistency 0.39766, coordinate-only 0.20747; e/f unread.
+
+**Branch**: arbor/node-8-3-projective@2ef60cd66cc30ce01d4f3f61d77fbfdfec5d6a9f
+
+#### 8.4: Mechanism: Source-Supervised Projective Boundary Transfer learns a shared ordered boundary head from complete source meshes with true finite joint-limit trajectories, then adapts only its representation on 36 unlabeled target-domain 3DGS trajectories through virtual-subinterval projective consistency and rank-normalized physics channels.
+Hypothesis: Posthoc Box failures arise because frozen Gaussian profiles never contain a calibrated free/contact phase, while complete source meshes do; supervised source transitions plus target-domain gauge consistency can transfer the physical boundary law without using Box endpoints or absolute range priors.
+Observable: On object-disjoint source validation the full model beats zero-geometry/range and coordinate-only controls, reduces target-free cross-gauge variance by at least 20%, and after freezing beats frozen D2 on public Box a-d worst-side NMAE before a single untouched e/f confirmation.
+Conflicts: Node 4.1 showed generic mesh-to-Gaussian descriptor alignment is insufficient, node 5.1 showed 47D summaries collapse to range priors, and node 6 showed naive visual-mesh collision proxies are already penetrated; this node counters them with dense full-trajectory source supervision, per-channel rank normalization, and an explicit geometry-shuffle null, and must be pruned if the null ties or Box-a loses. [PENDING]
