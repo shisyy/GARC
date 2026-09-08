@@ -249,7 +249,8 @@
         "8.3",
         "8.4",
         "8.5",
-        "8.6"
+        "8.6",
+        "8.7"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -327,6 +328,14 @@
       "insight": "DEKP improves macro worst-side NMAE 47.2% vs D2 and 11.0% vs PILC, but shuffled uncertainty is better (0.105756) and only 2/4 episodes beat both experts; the gain is attributable to averaging/projection rather than uncertainty semantics.\n[Pruned: Preregistered mechanism gate failed: uncertainty shuffle outperforms DEKP and DEKP wins both experts on only 2/4 episodes; retain 0.109606 as stronger baseline but reject uncertainty-reliability innovation.]",
       "result": "PRUNE: full=0.109606, PILC=0.123151, D2=0.207662, shuffle=0.105756, wins=2/4, swap=4.44e-16, span=2.22e-16, protected=[]",
       "code_ref": "10e5eed4eecfccc36dc7ec2d0ee6f8fd771d1fd3"
+    },
+    "8.7": {
+      "id": "8.7",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Semantic-Gated Mechanical Authored-Range Completion (SMARC) uses a frozen part-aware visual encoder only to gate bias-free mechanical residual experts that predict object-level authored joint range, then exactly projects that swap-invariant range around a frozen closure-selected analytic endpoint.\nHypothesis: Invisible hard stops encode functional design intent absent from collision fields, while restricting semantics to gate mechanical residuals recovers that intent without permitting a semantic category-to-range lookup.\nObservable: On object- and family-disjoint Articraft/NJC validation SMARC beats displacement-only, category-frequency, global-range, mechanical-only, zero-image, and semantic/mechanical-shuffle controls by at least 15%; after freezing, it improves public Box a-d macro and worst-side NMAE by at least 10% versus both D2 and PILC, wins at least 3/4 episodes, and preserves state-swap error below 1e-6 before untouched e/f confirmation.\nConflicts: Nodes 3.1/6/8.1/8.2 show geometry-only terminal transitions are absent, nodes 4/4.1 show generic descriptor transfer is weak, and 8.5/8.6 show source geometry and uncertainty calibration collapse to priors; SMARC counters via authored-range supervision, token-level mechanical grounding, structural removal of semantic-only prediction, and mandatory shortcut nulls.",
+      "status": "pending"
     }
   }
 }

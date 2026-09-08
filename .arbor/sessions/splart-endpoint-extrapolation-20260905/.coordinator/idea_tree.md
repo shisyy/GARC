@@ -264,3 +264,8 @@ Conflicts: Node 8.3 showed projective variance alone can be confidently wrong an
 **Result**: PRUNE: full=0.109606, PILC=0.123151, D2=0.207662, shuffle=0.105756, wins=2/4, swap=4.44e-16, span=2.22e-16, protected=[]
 
 **Branch**: 10e5eed4eecfccc36dc7ec2d0ee6f8fd771d1fd3
+
+#### 8.7: Mechanism: Semantic-Gated Mechanical Authored-Range Completion (SMARC) uses a frozen part-aware visual encoder only to gate bias-free mechanical residual experts that predict object-level authored joint range, then exactly projects that swap-invariant range around a frozen closure-selected analytic endpoint.
+Hypothesis: Invisible hard stops encode functional design intent absent from collision fields, while restricting semantics to gate mechanical residuals recovers that intent without permitting a semantic category-to-range lookup.
+Observable: On object- and family-disjoint Articraft/NJC validation SMARC beats displacement-only, category-frequency, global-range, mechanical-only, zero-image, and semantic/mechanical-shuffle controls by at least 15%; after freezing, it improves public Box a-d macro and worst-side NMAE by at least 10% versus both D2 and PILC, wins at least 3/4 episodes, and preserves state-swap error below 1e-6 before untouched e/f confirmation.
+Conflicts: Nodes 3.1/6/8.1/8.2 show geometry-only terminal transitions are absent, nodes 4/4.1 show generic descriptor transfer is weak, and 8.5/8.6 show source geometry and uncertainty calibration collapse to priors; SMARC counters via authored-range supervision, token-level mechanical grounding, structural removal of semantic-only prediction, and mandatory shortcut nulls. [PENDING]
