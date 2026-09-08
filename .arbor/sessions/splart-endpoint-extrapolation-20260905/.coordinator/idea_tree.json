@@ -309,7 +309,11 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Closure-Anchored Range Completion (CARC) factorizes the two extrapolated endpoints into one geometry-supported closed-contact coordinate and one learned physical motion span; an exactly swap-equivariant kinematic layer places the opposite hard stop from the predicted span and the observed relative screw displacement.\nHypothesis: Surface evidence can identify closure but not an authored open stop, while source supervision can estimate mechanism span; separating these evidence types avoids forcing both endpoints through the same corrupted contact minimum and prevents independent-extension range collapse.\nObservable: With object-disjoint Articraft/NJC source validation, the full factorized model beats range-only, zero/shuffled-geometry, and the old independent PILC endpoint head by at least 15% worst-side NMAE; after target-free freeze it lowers public Box a-d macro worst-side NMAE at least 10% versus frozen D2 and wins at least 3/4 objects before any e/f access.\nConflicts: Node 5.1 found that 47D geometry harmed transfer and node 8.4 proved URDF hard stops are not contact minima; CARC counters them by using geometry only for closure/evidence gating, supervising only physical span in the range head, enforcing span closure algebraically, and pruning if a range-only or geometry-shuffled null ties.",
-      "status": "running"
+      "status": "pruned",
+      "score": 0.1996290684,
+      "insight": "Exact span projection and swap equivariance work, but source geometry is the wrong span signal: full range MARE 0.199629 is 39% worse than range-only 0.143619, and NJC evidence-weighted end-to-end worst-side 0.299933 loses to the independent head 0.188940 with 67.19% invalid anchor-span pairs. Retain the projection algebra, replace source geometry span estimation.\n[Pruned: Pre-registered source gate failed: geometry full loses to range-only and NJC end-to-end loses to the matched independent head, so Box evaluation is forbidden.]",
+      "result": "FAIL_SOURCE_GEOMETRY_AND_NJC_E2E_GATES",
+      "code_ref": "1bca982299de4a7ae4b4e616d541f39d2c36d033"
     }
   }
 }
