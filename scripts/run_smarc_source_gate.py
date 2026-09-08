@@ -10,27 +10,40 @@ from pathlib import Path
 
 import torch
 
-from splart.frozen_visual import encode_state_pair, load_dino_vitb16, sha256_file
+from splart.conditional_residual import conditional_residual_ablation, receipt_passes
+from splart.frozen_visual import sha256_file
 from splart.smarc import (extensions_to_endpoints, opaque_row_key, project_extensions_to_range,
                           swap_invariant_pair)
-from splart.smarc_source import (analytic_linear_baseline, apply_object_donors,
-                                 deterministic_object_donors, fit_preprocessor, hash_ids,
+from splart.smarc_source import (analytic_linear_baseline, fit_preprocessor, hash_ids,
                                  object_domain_weights, object_macro_mare, predict, swap_audit, train_model,
-                                 validate_raw_swap_pair)
+                                 transform, validate_raw_swap_pair)
 from scripts.build_smarc_articraft_shard import VIEWS
 
 
-FROZEN_CONFIG_SHA256="c46852b019012d68d6413c2fe15f6938948dac34e6a1ea71360cec84560ea1bc"
+FROZEN_CONFIG_SHA256="617e8456978f7a3322f07fdf96c6c86f40128a769e8fb0b6d3167ee5453183d0"
+FROZEN_RENDER_LOG_SHA256=(
+    "f55625bcc3cd64bb44ad1c8068af6823e5e1cea2059f2c907667133cf04cc7f2",
+    "2efab422d86f0507bbea97517b8acb47ffa68fc0eefc93b2c472b5f3f4e04e69",
+    "559bce38db7e52bb09c396c5d318a0087b5ba9489bc7d2fef5d2f608937464a8",
+    "be5487ba82b68ab72551338ca78139ece3d1799c99635c2c62ac86fbadd38367",
+)
 
 
 def canonical_sha256(value) -> str:
     return hashlib.sha256((json.dumps(value,sort_keys=True,separators=(",",":"))+"\n").encode()).hexdigest()
 
 
+def frozen_text_sha256(path: Path) -> str:
+    """Hash repository text bytes canonically so Windows checkout newlines cannot change the lock."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n",b"\n")).hexdigest()
+
+
 def code_sha256() -> dict[str,str]:
     root=Path(__file__).resolve().parents[1]
-    paths=(Path(__file__).resolve(),root/"src"/"splart"/"smarc_source.py",root/"src"/"splart"/"smarc.py",root/"src"/"splart"/"frozen_visual.py")
-    return {str(path):sha256_file(path) for path in paths}
+    paths=(Path(__file__).resolve(),root/"src"/"splart"/"smarc_source.py",
+           root/"src"/"splart"/"conditional_residual.py",root/"src"/"splart"/"smarc.py",
+           root/"src"/"splart"/"frozen_visual.py")
+    return {path.relative_to(root).as_posix():sha256_file(path) for path in paths}
 
 
 def load_cache(path: Path, domain: str, config: dict) -> tuple[list[dict], dict[str, float], dict]:
@@ -256,50 +269,73 @@ def object_scalar(rows,indices,kind,reference_indices=None):
     return result
 
 
-def overrides(rows,train,held,config,field,bin_kind):
-    all_indices=train+held; values=object_scalar(rows,all_indices,bin_kind,train)
-    caliper=float(config["shuffle_contract"]["matching_caliper"])
-    train_donor,train_receipt=deterministic_object_donors(rows,train,train,values,caliper)
-    held_donor,held_receipt=deterministic_object_donors(rows,train,held,values,caliper)
-    preserve_last=field=="mechanical"
-    return (apply_object_donors(rows,train,field,train_donor,train,preserve_last),
-            apply_object_donors(rows,held,field,held_donor,train,preserve_last),
-            {"train_mapping":train_donor,"held_mapping":held_donor,"train":train_receipt,"held":held_receipt})
+def conditional_overrides(rows,targets,train,held,prep,config):
+    """Construct both preregistered nulls wholly from train covariates."""
+    train_mech,train_sem,_=transform(prep,rows,train); held_mech,held_sem,_=transform(prep,rows,held)
+    train_disp=object_scalar(rows,train,"displacement")
+    held_disp=object_scalar(rows,held,"displacement")
+    semantic_train,semantic_held,semantic_receipt=conditional_residual_ablation(
+        rows,train,held,train_sem,held_sem,train_disp,held_disp,
+        folds=int(config["conditional_residual_contract"]["crossfit"]["folds"]),
+        context="semantic_conditional_residual/final-source")
+    if not bool(prep.mechanical_keep[-1]) or int(torch.nonzero(prep.mechanical_keep)[-1])!=len(prep.mechanical_keep)-1:
+        raise RuntimeError("recipient displacement was not retained as the last processed mechanical column")
+    semantic_distance_train=object_scalar(rows,train,"semantic_distance",train)
+    semantic_distance_held=object_scalar(rows,held,"semantic_distance",train)
+    geometry_train,geometry_held,mechanical_receipt=conditional_residual_ablation(
+        rows,train,held,train_mech[:,:-1],held_mech[:,:-1],semantic_distance_train,semantic_distance_held,
+        folds=int(config["conditional_residual_contract"]["crossfit"]["folds"]),
+        context="mechanical_conditional_residual/final-source")
+    mechanical_train=torch.cat((geometry_train,train_mech[:,-1:]),-1)
+    mechanical_held=torch.cat((geometry_held,held_mech[:,-1:]),-1)
+    d_bitwise=torch.equal(mechanical_train[:,-1],train_mech[:,-1]) and torch.equal(mechanical_held[:,-1],held_mech[:,-1])
+    mechanical_receipt["recipient_displacement_bitwise_unchanged"]=d_bitwise
+    contract=config["conditional_residual_contract"]
+    expected_domains={"articraft","njc"}
+    passes={"semantic_conditional_residual":receipt_passes(semantic_receipt,contract,expected_domains),
+            "mechanical_conditional_residual":receipt_passes(mechanical_receipt,contract,expected_domains) and d_bitwise}
+    receipt={"schema":"splart-ocrsmarc-null-preflight/v1","semantic_conditional_residual":semantic_receipt,
+             "mechanical_conditional_residual":mechanical_receipt,
+             "field_definitions":{"semantic":"train-only PCA16 of raw 1536D swap-invariant DINO pair; z=object-mean absolute observed displacement",
+                                  "mechanical":"standardized retained geometry excluding final displacement; z=cosine distance of raw 1536D swap-invariant DINO pair to train-domain raw mean; no PCA or cross-domain normalization"},
+             "passes":passes,"all_pass":all(passes.values())}
+    receipt["all_pass"]=_null_preflight_passes(receipt,config)
+    return {"semantic_conditional_residual":(semantic_train,semantic_held),
+            "mechanical_conditional_residual":(mechanical_train,mechanical_held)},receipt
 
 
-def train_variant(rows,targets,train,held,prep,variant,config,steps,device,black_raw=None):
-    train_sem=held_sem=train_mech=held_mech=None; donor_receipt=None
+def _null_preflight_passes(null: dict,config: dict) -> bool:
+    contract=config["conditional_residual_contract"]; domains={"articraft","njc"}
+    expected={"articraft":(config["data"]["articraft"]["train_objects"],config["data"]["articraft"]["validation_objects"]),
+              "njc":(config["data"]["njc"]["train_objects"],config["data"]["njc"]["validation_objects"])}
+    variants=("semantic_conditional_residual","mechanical_conditional_residual")
+    if set(null.get("passes",{}))!=set(variants): return False
+    for variant in variants:
+        receipt=null.get(variant,{})
+        if not receipt_passes(receipt,contract,domains): return False
+        for domain,(train_count,held_count) in expected.items():
+            part=receipt["domains"][domain]
+            if (part["train_objects"],part["held_objects"])!=(train_count,held_count): return False
+    if null["mechanical_conditional_residual"].get("recipient_displacement_bitwise_unchanged") is not True: return False
+    return all(null["passes"].values())
+
+
+def train_variant(rows,targets,train,held,prep,variant,config,steps,device,null_overrides=None):
+    train_sem=held_sem=train_mech=held_mech=None
     if variant=="mechanical_only":
-        train_sem=prep.semantic_mean[None].repeat(len(train),1); held_sem=prep.semantic_mean[None].repeat(len(held),1)
-    elif variant=="black_image":
-        train_sem=black_raw[None].repeat(len(train),1); held_sem=black_raw[None].repeat(len(held),1)
-    elif variant=="semantic_shuffle":
-        train_sem,held_sem,donor_receipt=overrides(rows,train,held,config,"semantic","displacement")
-    elif variant=="mechanical_shuffle":
-        train_mech,held_mech,donor_receipt=overrides(rows,train,held,config,"mechanical","semantic_distance")
-    model=train_model(rows,targets,train,prep,train_sem,train_mech,steps,device)
-    prediction=predict(model,prep,rows,held,held_sem,held_mech)
-    return model,prediction,donor_receipt
-
-
-def matching_preflight(rows,train,held,config):
-    receipts={}; available=True
-    for name,field,kind in (("semantic_shuffle","semantic","displacement"),("mechanical_shuffle","mechanical","semantic_distance")):
-        _,_,receipt=overrides(rows,train,held,config,field,kind); receipts[name]=receipt
-        minimum=float(config["shuffle_contract"]["minimum_perturbed_object_coverage_each_domain"])
-        passed=True
-        for split in ("train","held"):
-            for domain,part in receipt[split]["domains"].items():
-                part["coverage_pass"]=part["coverage"]>=minimum
-                passed &= part["coverage_pass"] and part["nonself_distance"]["max"]<=float(config["shuffle_contract"]["matching_caliper"])+1e-12
-                if split=="held":
-                    diversity=config["shuffle_contract"]["held_donor_diversity"]
-                    ratio=part["held_effective_donor_count"]/max(part["perturbed_objects"],1)
-                    part["effective_donor_ratio"]=ratio
-                    part["diversity_pass"]=ratio>=diversity["effective_donors_per_perturbed_at_least"] and part["maximum_held_donor_load"]<=diversity["maximum_donor_load"]
-                    passed &= part["diversity_pass"]
-        receipt["caliper_pass"]=passed; available &= passed
-    return receipts,available
+        _,raw_sem,_=transform(prep,rows,train); train_sem=torch.zeros_like(raw_sem)
+        _,raw_sem,_=transform(prep,rows,held); held_sem=torch.zeros_like(raw_sem)
+    elif variant=="semantic_conditional_residual":
+        if null_overrides is None: raise ValueError("semantic conditional override missing")
+        train_sem,held_sem=null_overrides[variant]
+    elif variant=="mechanical_conditional_residual":
+        if null_overrides is None: raise ValueError("mechanical conditional override missing")
+        train_mech,held_mech=null_overrides[variant]
+    model=train_model(rows,targets,train,prep,steps=steps,device=device,
+                      semantic_processed_override=train_sem,mechanical_processed_override=train_mech)
+    prediction=predict(model,prep,rows,held,semantic_processed_override=held_sem,
+                       mechanical_processed_override=held_mech)
+    return model,prediction
 
 
 def lofo_partitions(rows,config):
@@ -326,8 +362,8 @@ def lofo_partitions(rows,config):
 def run_lofo_fold(rows,targets,config,steps,device,fold_index):
     fold=lofo_partitions(rows,config)[fold_index]; train,held=fold["train"],fold["held"]
     prep=fit_preprocessor(rows,targets,train,16)
-    full,pred,_=train_variant(rows,targets,train,held,prep,"full",config,steps,device)
-    mech,mpred,_=train_variant(rows,targets,train,held,prep,"mechanical_only",config,steps,device)
+    full,pred=train_variant(rows,targets,train,held,prep,"full",config,steps,device)
+    mech,mpred=train_variant(rows,targets,train,held,prep,"mechanical_only",config,steps,device)
     return {"family_audit_id":fold["family_audit_id"],"train_object_hash":fold["train_object_hash"],
             "held_object_hash":fold["held_object_hash"],"held_objects":fold["held_objects"],
             "full":object_macro_mare(rows,held,pred,targets),"mechanical_only":object_macro_mare(rows,held,mpred,targets),
@@ -341,9 +377,8 @@ def gate_results(final,folds,config):
         full=final["metrics"]["full"][domain]
         comparisons={kind:full<=.85*analytic[kind][domain] for kind in ("global","displacement","category")}
         comparisons["mechanical_only"]=full<=.85*final["metrics"]["mechanical_only"][domain]
-        shuffle={kind:final["metrics"][kind][domain]>=1.2*full for kind in ("semantic_shuffle","mechanical_shuffle")}
-        coverage={kind:all(final["matching_receipts"][kind][split]["domains"][domain]["coverage"]>=.9 for split in ("train","held")) for kind in ("semantic_shuffle","mechanical_shuffle")}
-        gates[domain]={"full":full,"comparisons_15pct":comparisons,"shuffle_worsening_20pct":shuffle,"shuffle_coverage":coverage,"pass":all(comparisons.values()) and all(shuffle.values()) and all(coverage.values())}
+        shuffle={kind:final["metrics"][kind][domain]>=1.2*full for kind in ("semantic_conditional_residual","mechanical_conditional_residual")}
+        gates[domain]={"full":full,"comparisons_15pct":comparisons,"shuffle_worsening_20pct":shuffle,"null_preflight_pass":final["null_preflight"]["all_pass"],"pass":all(comparisons.values()) and all(shuffle.values()) and final["null_preflight"]["all_pass"]}
         passed &= gates[domain]["pass"]
     total=sum(fold["held_objects"] for fold in folds)
     aggregate={key:sum(fold["held_objects"]*fold[key] for fold in folds)/total for key in ("full","mechanical_only")}
@@ -357,74 +392,124 @@ def gate_results(final,folds,config):
     return gates
 
 
+def _atomic_json(path: Path,value: dict) -> None:
+    temporary=path.with_suffix(path.suffix+".tmp")
+    temporary.write_text(json.dumps(value,indent=2,sort_keys=True)+"\n")
+    temporary.replace(path)
+
+
+def aggregate_partials(partial_dirs: list[Path],output: Path,config: dict,config_sha: str,
+                       current_code: dict[str,str]) -> dict:
+    """Validate and deterministically aggregate four immutable task directories."""
+    if len(partial_dirs)!=4: raise ValueError("aggregate requires exactly four partial directories")
+    records={}; receipt_hashes={}; source_sha=None; null_sha=None
+    for path in partial_dirs:
+        record=json.loads((path/"partial.json").read_text()); receipt=json.loads((path/"receipt.json").read_text())
+        task=record.get("task")
+        if task in records: raise RuntimeError("duplicate partial task")
+        if (receipt.get("partial_sha256")!=sha256_file(path/"partial.json") or
+                receipt.get("models_sha256")!=sha256_file(path/"models.pt") or
+                receipt.get("config_sha256")!=config_sha or receipt.get("task")!=task):
+            raise RuntimeError("partial receipt hash mismatch")
+        if receipt.get("code_sha256")!=current_code: raise RuntimeError("partial code is stale or mutated")
+        if any(item.get("box_labels_read")!=[] or item.get("protected_splits_read")!=[] for item in (record,receipt)):
+            raise RuntimeError("partial reports protected read")
+        if record.get("config_sha256")!=config_sha or record.get("steps")!=int(config["optimization"]["steps"]):
+            raise RuntimeError("partial config/step mismatch")
+        if record.get("null_preflight_sha256")!=canonical_sha256(record.get("null_preflight")):
+            raise RuntimeError("conditional null receipt hash mismatch")
+        null=record["null_preflight"]
+        if not null.get("all_pass") or not _null_preflight_passes(null,config):
+            raise RuntimeError("conditional null gates weakened or failed")
+        source_sha=record["source_provenance_sha256"] if source_sha is None else source_sha
+        null_sha=record["null_preflight_sha256"] if null_sha is None else null_sha
+        if record["source_provenance_sha256"]!=source_sha or record["null_preflight_sha256"]!=null_sha:
+            raise RuntimeError("partial source/null provenance mismatch")
+        records[task]=record; receipt_hashes[task]=sha256_file(path/"receipt.json")
+    expected_tasks={"final","lofo_0","lofo_1","lofo_2"}
+    if set(records)!=expected_tasks: raise RuntimeError("partial task set mismatch")
+    folds=[records[f"lofo_{i}"] for i in range(3)]; frozen=config["data"]["object_list_hashes"]
+    expected_held={frozen["lofo_window_test37"],frozen["lofo_sewing_test51"],frozen["lofo_usb_test21_small"]}
+    if {fold.get("held_object_hash") for fold in folds}!=expected_held: raise RuntimeError("LOFO frozen hash set mismatch")
+    held_sets=[set(fold.get("held_object_ids",[])) for fold in folds]
+    if any(not value for value in held_sets) or sum(map(len,held_sets))!=109 or any(held_sets[i]&held_sets[j] for i in range(3) for j in range(i)):
+        raise RuntimeError("LOFO held sets are incomplete or overlapping")
+    for fold,ids in zip(folds,held_sets):
+        if hash_ids(sorted(ids))!=fold["held_object_hash"] or len(ids)!=fold["held_objects"]: raise RuntimeError("LOFO held object receipt mismatch")
+    gates=gate_results(records["final"],folds,config)
+    result={"schema":"splart-ocrsmarc-source-gate/v1","config_sha256":config_sha,
+            "task_receipt_sha256":[receipt_hashes[key] for key in sorted(receipt_hashes)],
+            "code_sha256":current_code,"source_provenance_sha256":source_sha,"null_preflight_sha256":null_sha,
+            "final":records["final"],"lofo":folds,"gates":gates,"box_labels_read":[],"protected_splits_read":[]}
+    output.mkdir(parents=True)
+    _atomic_json(output/"metrics.json",result)
+    aggregate_receipt={"schema":"splart-ocrsmarc-aggregate-receipt/v1","metrics_sha256":sha256_file(output/"metrics.json"),
+                       "task_receipt_sha256":result["task_receipt_sha256"],"decision":gates["decision"],
+                       "config_sha256":config_sha,"code_sha256":current_code,"source_provenance_sha256":source_sha,
+                       "box_labels_read":[],"protected_splits_read":[]}
+    _atomic_json(output/"receipt.json",aggregate_receipt)
+    return result
+
+
 def main():
     p=argparse.ArgumentParser(); p.add_argument("--articraft-shards",type=Path,nargs=3); p.add_argument("--njc-cache",type=Path); p.add_argument("--articraft-pilc-data",type=Path); p.add_argument("--njc-pilc-data",type=Path); p.add_argument("--render-logs",type=Path,nargs=4); p.add_argument("--config",type=Path,required=True); p.add_argument("--dino-checkpoint",type=Path); p.add_argument("--output",type=Path,required=True); p.add_argument("--device",default="cuda"); p.add_argument("--task",choices=("preflight","smoke","final","lofo_0","lofo_1","lofo_2","aggregate"),required=True); p.add_argument("--partials",type=Path,nargs="*"); args=p.parse_args()
     if args.output.exists(): raise FileExistsError(args.output)
-    config=json.loads(args.config.read_text()); config_sha=sha256_file(args.config)
+    config=json.loads(args.config.read_text()); config_sha=frozen_text_sha256(args.config)
     if config_sha!=FROZEN_CONFIG_SHA256: raise RuntimeError("formal v1.3 config SHA mismatch")
     if args.task=="aggregate":
-        if args.partials is None or len(args.partials)!=4: raise ValueError("aggregate requires exactly four partial directories")
-        records=[]; task_receipts=[]; code_receipts=[]
-        for path in args.partials:
-            record=json.loads((path/"partial.json").read_text()); receipt=json.loads((path/"receipt.json").read_text())
-            if receipt["partial_sha256"]!=sha256_file(path/"partial.json") or receipt["models_sha256"]!=sha256_file(path/"models.pt") or receipt["config_sha256"]!=config_sha:
-                raise RuntimeError("partial receipt hash mismatch")
-            if record.get("box_labels_read")!=[] or record.get("protected_splits_read")!=[]: raise RuntimeError("partial reports protected read")
-            records.append(record); task_receipts.append((record["task"],sha256_file(path/"receipt.json"))); code_receipts.append(receipt["code_sha256"])
-        if {record["task"] for record in records}!={"final","lofo_0","lofo_1","lofo_2"} or any(record["config_sha256"]!=config_sha or record["steps"]!=1200 for record in records): raise RuntimeError("partial task/config/step mismatch")
-        if any(value!=code_receipts[0] for value in code_receipts) or len({record["source_provenance_sha256"] for record in records})!=1: raise RuntimeError("partial code/source provenance mismatch")
-        final=next(record for record in records if record["task"]=="final"); folds=[next(record for record in records if record["task"]==f"lofo_{i}") for i in range(3)]
-        gates=gate_results(final,folds,config); args.output.mkdir(parents=True)
-        result={"schema":"splart-csmarc-source-gate/v1","config_sha256":config_sha,"task_receipt_sha256":[value for _,value in sorted(task_receipts)],"code_sha256":code_receipts[0],"source_provenance_sha256":records[0]["source_provenance_sha256"],"final":final,"lofo":folds,"gates":gates,"box_labels_read":[],"protected_splits_read":[]}
-        args.output.mkdir(parents=True); (args.output/"metrics.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n"); aggregate_receipt={"schema":"splart-csmarc-aggregate-receipt/v1","metrics_sha256":sha256_file(args.output/"metrics.json"),"task_receipt_sha256":result["task_receipt_sha256"],"decision":gates["decision"],"box_labels_read":[],"protected_splits_read":[]}; (args.output/"receipt.json").write_text(json.dumps(aggregate_receipt,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"decision":gates["decision"],"metrics":final["metrics"]})); return
+        result=aggregate_partials(args.partials or [],args.output,config,config_sha,code_sha256())
+        print(json.dumps({"output":str(args.output),"decision":result["gates"]["decision"],"metrics":result["final"]["metrics"]})); return
     if any(value is None for value in (args.articraft_shards,args.njc_cache,args.articraft_pilc_data,args.njc_pilc_data,args.render_logs,args.dino_checkpoint)): raise ValueError("source task missing required inputs")
     steps=2 if args.task=="smoke" else int(config["optimization"]["steps"])
     if args.task not in ("preflight","smoke") and steps!=1200: raise RuntimeError("formal steps must equal frozen config 1200")
     rows,targets,merge_receipt=merge(args,config)
+    log_hashes=[sha256_file(path) for path in args.render_logs]
+    if tuple(log_hashes)!=FROZEN_RENDER_LOG_SHA256: raise RuntimeError("frozen renderer log hash mismatch")
     overflow={str(path):path.read_text(errors="replace").lower().count("overflow") for path in args.render_logs}
     if any(overflow.values()): raise RuntimeError(f"renderer overflow log evidence {overflow}")
-    merge_receipt["render_log_overflow_count"]=overflow
+    merge_receipt["render_log_overflow_count"]=overflow; merge_receipt["render_log_sha256"]=log_hashes
+    if sha256_file(args.dino_checkpoint)!=config["encoder"]["checkpoint_sha256"]: raise RuntimeError("frozen DINO checkpoint hash mismatch")
     train=indices_for(rows,{"endpoint_pretrain","njc_train"}); held=indices_for(rows,{"endpoint_validation","njc_validation"})
     train_objects={rows[i]["object_group_id"] for i in train}; held_objects={rows[i]["object_group_id"] for i in held}
     if train_objects & held_objects: raise RuntimeError("train/held object leakage")
     analytic=analytic_control_set(rows,targets,train,held)
     assert_historical_controls(analytic,config)
     source_provenance_sha=canonical_sha256(merge_receipt); code_hash=code_sha256()
-    match_receipts,matching_available=matching_preflight(rows,train,held,config)
+    prep=fit_preprocessor(rows,targets,train,16)
+    null_overrides,null_preflight=conditional_overrides(rows,targets,train,held,prep,config)
+    null_preflight_sha=canonical_sha256(null_preflight)
     lofo=lofo_partitions(rows,config)
     if args.task=="preflight":
         args.output.mkdir(parents=True)
-        result={"schema":"splart-csmarc-source-preflight/v1","config_sha256":config_sha,"merge":merge_receipt,
-                "analytic_baselines":analytic,"matching_receipts":match_receipts,"matched_null_available":matching_available,"source_provenance_sha256":source_provenance_sha,"code_sha256":code_hash,
+        result={"schema":"splart-ocrsmarc-source-preflight/v1","config_sha256":config_sha,"merge":merge_receipt,
+                "analytic_baselines":analytic,"null_preflight":null_preflight,"null_preflight_sha256":null_preflight_sha,"source_provenance_sha256":source_provenance_sha,"code_sha256":code_hash,
                 "lofo_partitions":[{k:v for k,v in fold.items() if k not in ("train","held")} for fold in lofo],
                 "box_labels_read":[],"protected_splits_read":[]}
-        (args.output/"preflight.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n"); (args.output/"receipt.json").write_text(json.dumps({"schema":"splart-csmarc-preflight-receipt/v1","config_sha256":config_sha,"preflight_sha256":sha256_file(args.output/"preflight.json"),"code_sha256":code_hash,"box_labels_read":[],"protected_splits_read":[]},indent=2,sort_keys=True)+"\n")
-        print(json.dumps({"output":str(args.output),"analytic":analytic,"matched_null_available":matching_available})); return
-    if not matching_available: raise RuntimeError("matched null caliper failed; Phase A cannot advance")
-    prep=fit_preprocessor(rows,targets,train,16)
+        (args.output/"preflight.json").write_text(json.dumps(result,indent=2,sort_keys=True)+"\n"); (args.output/"receipt.json").write_text(json.dumps({"schema":"splart-ocrsmarc-preflight-receipt/v1","config_sha256":config_sha,"preflight_sha256":sha256_file(args.output/"preflight.json"),"code_sha256":code_hash,"box_labels_read":[],"protected_splits_read":[]},indent=2,sort_keys=True)+"\n")
+        print(json.dumps({"output":str(args.output),"analytic":analytic,"conditional_null_available":null_preflight["all_pass"]})); return
+    if not null_preflight["all_pass"]: raise RuntimeError("conditional-residual null preflight failed; Phase A cannot advance")
     if args.task.startswith("lofo_"):
         index=int(args.task[-1]); fold=run_lofo_fold(rows,targets,config,steps,args.device,index); checkpoint=fold.pop("checkpoint"); preprocessor=fold.pop("preprocessor")
         args.output.mkdir(parents=True); torch.save({"checkpoint":checkpoint,"preprocessor":preprocessor},args.output/"models.pt")
-        partial={"schema":"splart-csmarc-source-partial/v1","task":args.task,"config_sha256":config_sha,"steps":steps,"source_provenance_sha256":source_provenance_sha,**fold,"box_labels_read":[],"protected_splits_read":[]}
-        (args.output/"partial.json").write_text(json.dumps(partial,indent=2,sort_keys=True)+"\n"); receipt={"task":args.task,"config_sha256":config_sha,"steps":steps,"code_sha256":code_hash,"source_provenance_sha256":source_provenance_sha,"partial_sha256":sha256_file(args.output/"partial.json"),"models_sha256":sha256_file(args.output/"models.pt")}; (args.output/"receipt.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"task":args.task,"full":fold["full"]})); return
-    encoder=load_dino_vitb16(args.dino_checkpoint,torch.device(args.device)); black=torch.zeros(2,6,3,224,224,dtype=torch.uint8); black_raw=encode_state_pair(encoder,black).cpu(); del encoder
-    variants={}; checkpoints={}; donors={}; predictions={}
-    for variant in ("full","mechanical_only","black_image","semantic_shuffle","mechanical_shuffle"):
-        model,pred,receipt=train_variant(rows,targets,train,held,prep,variant,config,steps,args.device,black_raw)
-        variants[variant]=domain_metrics(rows,targets,held,pred); checkpoints[variant]=model.state_dict(); donors[variant]=receipt; predictions[variant]=pred
+        partial={"schema":"splart-ocrsmarc-source-partial/v1","task":args.task,"config_sha256":config_sha,"steps":steps,"source_provenance_sha256":source_provenance_sha,"null_preflight":null_preflight,"null_preflight_sha256":null_preflight_sha,"held_object_ids":sorted({rows[i]["object_group_id"] for i in lofo[index]["held"]}),**fold,"box_labels_read":[],"protected_splits_read":[]}
+        (args.output/"partial.json").write_text(json.dumps(partial,indent=2,sort_keys=True)+"\n"); receipt={"task":args.task,"config_sha256":config_sha,"steps":steps,"code_sha256":code_hash,"source_provenance_sha256":source_provenance_sha,"null_preflight_sha256":null_preflight_sha,"partial_sha256":sha256_file(args.output/"partial.json"),"models_sha256":sha256_file(args.output/"models.pt"),"box_labels_read":[],"protected_splits_read":[]}; (args.output/"receipt.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"task":args.task,"full":fold["full"]})); return
+    variants={}; checkpoints={}; predictions={}
+    for variant in ("full","mechanical_only","semantic_conditional_residual","mechanical_conditional_residual"):
+        model,pred=train_variant(rows,targets,train,held,prep,variant,config,steps,args.device,null_overrides)
+        variants[variant]=domain_metrics(rows,targets,held,pred); checkpoints[variant]=model.state_dict(); predictions[variant]=pred
     swap_metrics={}
     for variant,state in checkpoints.items():
         for key,value in state.items():
             if not torch.isfinite(value).all(): raise RuntimeError(f"nonfinite checkpoint {variant}:{key}")
         swap_metrics[variant]=swap_audit(rows,held,predictions[variant])
-    final={"schema":"splart-csmarc-source-partial/v1","task":"final","config_sha256":config_sha,"steps":steps,"source_provenance_sha256":source_provenance_sha,"merge":merge_receipt,"metrics":variants,"analytic_controls":analytic,"matching_receipts":match_receipts,"swap":swap_metrics,"box_labels_read":[],"protected_splits_read":[]}
+    final={"schema":"splart-ocrsmarc-source-partial/v1","task":"final","config_sha256":config_sha,"steps":steps,"source_provenance_sha256":source_provenance_sha,"null_preflight":null_preflight,"null_preflight_sha256":null_preflight_sha,"merge":merge_receipt,"metrics":variants,"analytic_controls":analytic,"swap":swap_metrics,"box_labels_read":[],"protected_splits_read":[]}
     if args.task=="smoke":
         folds=[]
         for index in range(3):
             fold=run_lofo_fold(rows,targets,config,steps,args.device,index); fold.pop("checkpoint"); fold.pop("preprocessor"); folds.append(fold)
         gates=gate_results(final,folds,config); args.output.mkdir(parents=True); (args.output/"metrics.json").write_text(json.dumps({"schema":"splart-csmarc-smoke/v1","final":final,"lofo":folds,"gates":gates,"smoke":True,"box_labels_read":[],"protected_splits_read":[]},indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"task":"smoke","metrics":variants})); return
-    args.output.mkdir(parents=True); torch.save({"checkpoints":checkpoints,"preprocessor":prep,"black_raw":black_raw},args.output/"models.pt")
-    (args.output/"partial.json").write_text(json.dumps(final,indent=2,sort_keys=True)+"\n"); receipt={"task":"final","config_sha256":config_sha,"steps":steps,"code_sha256":code_hash,"source_provenance_sha256":source_provenance_sha,"partial_sha256":sha256_file(args.output/"partial.json"),"models_sha256":sha256_file(args.output/"models.pt")}; (args.output/"receipt.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"task":"final","metrics":variants}))
+    args.output.mkdir(parents=True); torch.save({"checkpoints":checkpoints,"preprocessor":prep},args.output/"models.pt")
+    (args.output/"partial.json").write_text(json.dumps(final,indent=2,sort_keys=True)+"\n"); receipt={"task":"final","config_sha256":config_sha,"steps":steps,"code_sha256":code_hash,"source_provenance_sha256":source_provenance_sha,"null_preflight_sha256":null_preflight_sha,"partial_sha256":sha256_file(args.output/"partial.json"),"models_sha256":sha256_file(args.output/"models.pt"),"box_labels_read":[],"protected_splits_read":[]}; (args.output/"receipt.json").write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n"); print(json.dumps({"output":str(args.output),"task":"final","metrics":variants}))
 
 
 if __name__=="__main__": main()

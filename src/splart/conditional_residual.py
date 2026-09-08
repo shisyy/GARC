@@ -9,6 +9,11 @@ import torch
 from torch import Tensor
 
 
+def _tensor_sha256(value: Tensor) -> str:
+    value=value.detach().cpu().contiguous().double()
+    return hashlib.sha256(value.numpy().tobytes()).hexdigest()
+
+
 def _fit_ols(z: Tensor, field: Tensor) -> tuple[Tensor, Tensor, Tensor]:
     z,field=z.double(),field.double()
     if z.ndim!=1 or field.ndim!=2 or len(z)!=len(field) or len(z)<3:
@@ -24,8 +29,14 @@ def _fit_ols(z: Tensor, field: Tensor) -> tuple[Tensor, Tensor, Tensor]:
 
 
 def _rank(value: Tensor) -> Tensor:
-    order=torch.argsort(value,stable=True); result=torch.empty_like(value,dtype=torch.float64)
-    result[order]=torch.arange(len(value),dtype=torch.float64)
+    """Deterministic average ranks (ties receive the same mid-rank)."""
+    value=value.double(); order=torch.argsort(value,stable=True); result=torch.empty_like(value)
+    sorted_value=value[order]; start=0
+    while start<len(value):
+        stop=start+1
+        while stop<len(value) and sorted_value[stop]==sorted_value[start]: stop+=1
+        result[order[start:stop]]=(start+stop-1)/2
+        start=stop
     return result
 
 
@@ -59,13 +70,23 @@ def crossfit_diagnostics(object_ids: list[str],z: Tensor,field: Tensor,folds: in
 
 
 def conditional_residual_ablation(rows: list[dict],train_indices: list[int],held_indices: list[int],
-                                  train_field: Tensor,held_field: Tensor,train_z: dict[str,float],
-                                  held_z: dict[str,float],folds: int=5) -> tuple[Tensor,Tensor,dict]:
+                                   train_field: Tensor,held_field: Tensor,train_z: dict[str,float],
+                                   held_z: dict[str,float],folds: int=5,
+                                   context: str="unspecified") -> tuple[Tensor,Tensor,dict]:
     """Swap train residuals while preserving conditional means and offsets."""
     if train_field.shape[0]!=len(train_indices) or held_field.shape[0]!=len(held_indices) or train_field.shape[1:]!=held_field.shape[1:]:
         raise ValueError("conditional-residual field alignment mismatch")
-    train_out=torch.empty_like(train_field,dtype=torch.float64); held_out=torch.empty_like(held_field,dtype=torch.float64)
-    domains=sorted({rows[i]["domain"] for i in train_indices}); receipt={"domains":{}}
+    if not train_indices or not held_indices or not context: raise ValueError("nonempty split and context required")
+    train_out=torch.full_like(train_field,float("nan"),dtype=torch.float64); held_out=torch.full_like(held_field,float("nan"),dtype=torch.float64)
+    train_domains={rows[i]["domain"] for i in train_indices}; held_domains={rows[i]["domain"] for i in held_indices}
+    if train_domains!=held_domains: raise ValueError("held/train domain sets differ")
+    ownership={}
+    for split,indices in (("train",train_indices),("held",held_indices)):
+        for i in indices:
+            obj=rows[i]["object_group_id"]; pair=(rows[i]["domain"],split)
+            if obj in ownership and ownership[obj]!=pair: raise ValueError("object ID crosses domain or split")
+            ownership[obj]=pair
+    domains=sorted(train_domains); receipt={"context":context,"domains":{}}
     for domain in domains:
         train_objects=sorted({rows[i]["object_group_id"] for i in train_indices if rows[i]["domain"]==domain})
         held_objects=sorted({rows[i]["object_group_id"] for i in held_indices if rows[i]["domain"]==domain})
@@ -96,9 +117,15 @@ def conditional_residual_ablation(rows: list[dict],train_indices: list[int],held
         original_p99=float(torch.quantile(train_field[train_domain].double().norm(dim=-1),.99).clamp_min(1e-12))
         shuffled_p99=max(float(torch.quantile(train_out[train_domain].norm(dim=-1),.99)),float(torch.quantile(held_out[held_domain].norm(dim=-1),.99)))
         crossfit=crossfit_diagnostics(train_objects,z,means,folds)
-        mapping="\n".join(f"{obj}->{train_donor[obj]}" for obj in train_objects)+"\n"+"\n".join(f"{obj}->{held_donor[obj]}" for obj in held_objects)+"\n"
-        receipt["domains"][domain]={"train_objects":len(train_objects),"held_objects":len(held_objects),"train_coverage":1.0,"held_coverage":1.0,
-            "train_self_rate":0.0,"train_donor_marginal_exact":set(train_donor.values())==set(train_objects),
+        train_coverage=len(train_donor)/len(train_objects); held_coverage=len(held_donor)/len(held_objects)
+        self_rate=sum(obj==donor for obj,donor in train_donor.items())/len(train_objects)
+        marginal=(sorted(train_donor.values())==train_objects)
+        mapping=f"context={context}\ndomain={domain}\n"+"\n".join(f"train:{obj}->{train_donor[obj]}" for obj in train_objects)+"\n"+"\n".join(f"held:{obj}->{held_donor[obj]}" for obj in held_objects)+"\n"
+        receipt["domains"][domain]={"train_objects":len(train_objects),"held_objects":len(held_objects),"train_object_hash":hashlib.sha256(("\n".join(train_objects)+"\n").encode()).hexdigest(),
+            "held_object_hash":hashlib.sha256(("\n".join(held_objects)+"\n").encode()).hexdigest(),"z_sha256":_tensor_sha256(z),
+            "ols_beta_sha256":_tensor_sha256(beta),"train_mapping":train_donor,"held_mapping":held_donor,
+            "train_coverage":train_coverage,"held_coverage":held_coverage,
+            "train_self_rate":self_rate,"train_donor_marginal_exact":marginal,
             "held_effective_donors":len({*held_donor.values()}),"held_effective_donors_per_object":len({*held_donor.values()})/len(held_objects),
             "held_max_donor_load":max(held_load.values()),"held_load_bound":math.ceil(len(held_objects)/len(train_objects)),
             "reconstruction_max_error":reconstruction_error,"normalized_residual_mean_max":mean_error,
@@ -109,9 +136,36 @@ def conditional_residual_ablation(rows: list[dict],train_indices: list[int],held
     return train_out,held_out,receipt
 
 
-def receipt_passes(receipt: dict,contract: dict) -> bool:
+def receipt_passes(receipt: dict,contract: dict,expected_domains: set[str] | None=None) -> bool:
     gate=contract["gates"]; cross=contract["crossfit"]
-    for value in receipt["domains"].values():
+    if not receipt.get("context") or not receipt.get("domains"): return False
+    if expected_domains is not None and set(receipt["domains"])!=set(expected_domains): return False
+    for domain,value in receipt["domains"].items():
+        train_mapping=value.get("train_mapping",{}); held_mapping=value.get("held_mapping",{})
+        if len(train_mapping)!=value["train_objects"] or len(held_mapping)!=value["held_objects"]: return False
+        train_ids=sorted(train_mapping); held_ids=sorted(held_mapping)
+        if set(train_ids)&set(held_ids) or any(donor not in train_ids for donor in train_mapping.values()) or any(donor not in train_ids for donor in held_mapping.values()): return False
+        actual_self=sum(obj==donor for obj,donor in train_mapping.items())/len(train_ids)
+        actual_load={obj:sum(donor==obj for donor in held_mapping.values()) for obj in train_ids}
+        actual_effective=len({*held_mapping.values()})
+        mapping=f"context={receipt['context']}\ndomain={domain}\n"+"\n".join(f"train:{obj}->{train_mapping[obj]}" for obj in train_ids)+"\n"+"\n".join(f"held:{obj}->{held_mapping[obj]}" for obj in held_ids)+"\n"
+        if (value.get("mapping_sha256")!=hashlib.sha256(mapping.encode()).hexdigest() or
+                value["train_coverage"]!=len(train_mapping)/value["train_objects"] or
+                value["held_coverage"]!=len(held_mapping)/value["held_objects"] or
+                value["train_self_rate"]!=actual_self or
+                value["train_donor_marginal_exact"]!=(sorted(train_mapping.values())==train_ids) or
+                value["held_effective_donors"]!=actual_effective or
+                value["held_effective_donors_per_object"]!=actual_effective/len(held_ids) or
+                value["held_max_donor_load"]!=max(actual_load.values()) or
+                value["held_load_bound"]!=math.ceil(len(held_ids)/len(train_ids))): return False
+        numeric=(value["reconstruction_max_error"],value["normalized_residual_mean_max"],
+                 value["normalized_residual_z_correlation_max"],value["residual_energy_ratio"],
+                 value["shuffle_rms_over_original_sd"],value["shuffled_norm_p99_ratio"],
+                 value["crossfit"]["residual_norm_z_absolute_spearman"],
+                 value["crossfit"]["residual_z_distance_correlation"])
+        if not all(math.isfinite(float(item)) for item in numeric): return False
+        counts=value["crossfit"].get("fold_counts",[])
+        if len(counts)!=int(cross["folds"]) or min(counts,default=0)<=0 or sum(counts)!=value["train_objects"]: return False
         if not (value["reconstruction_max_error"]<=gate["reconstruction_max_error"] and
                 value["normalized_residual_mean_max"]<=gate["normalized_residual_mean_max"] and
                 value["normalized_residual_z_correlation_max"]<=gate["normalized_residual_z_correlation_max"] and

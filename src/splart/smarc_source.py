@@ -216,9 +216,15 @@ def apply_object_donors(rows: list[dict], indices: list[int], field: str,
 
 def train_model(rows: list[dict], targets: Tensor, train_indices: list[int], preprocessor: Preprocessor,
                 semantic_override: Tensor | None = None, mechanical_override: Tensor | None = None,
-                steps: int = 1200, device: str = "cuda") -> SMARC:
-    mechanical, semantic, displacement = transform(preprocessor, rows, train_indices,
-                                                    semantic_override, mechanical_override)
+                steps: int = 1200, device: str = "cuda", semantic_processed_override: Tensor | None = None,
+                mechanical_processed_override: Tensor | None = None) -> SMARC:
+    mechanical, semantic, displacement = transform(preprocessor, rows, train_indices,semantic_override,mechanical_override)
+    if semantic_processed_override is not None:
+        if semantic_override is not None or semantic_processed_override.shape!=semantic.shape: raise ValueError("invalid processed semantic override")
+        semantic=semantic_processed_override.double()
+    if mechanical_processed_override is not None:
+        if mechanical_override is not None or mechanical_processed_override.shape!=mechanical.shape: raise ValueError("invalid processed mechanical override")
+        mechanical=mechanical_processed_override.double()
     train_targets = targets[train_indices].double()
     weights = object_domain_weights(rows, train_indices)
     model = SMARC(mechanical.shape[-1], semantic.shape[-1], preprocessor.global_prior_logit).double().to(device)
@@ -236,9 +242,15 @@ def train_model(rows: list[dict], targets: Tensor, train_indices: list[int], pre
 
 
 def predict(model: SMARC, preprocessor: Preprocessor, rows: list[dict], indices: list[int],
-            semantic_override: Tensor | None = None, mechanical_override: Tensor | None = None) -> Tensor:
-    mechanical, semantic, displacement = transform(preprocessor, rows, indices,
-                                                    semantic_override, mechanical_override)
+            semantic_override: Tensor | None = None, mechanical_override: Tensor | None = None,
+            semantic_processed_override: Tensor | None = None, mechanical_processed_override: Tensor | None = None) -> Tensor:
+    mechanical, semantic, displacement = transform(preprocessor, rows, indices,semantic_override,mechanical_override)
+    if semantic_processed_override is not None:
+        if semantic_override is not None or semantic_processed_override.shape!=semantic.shape: raise ValueError("invalid processed semantic override")
+        semantic=semantic_processed_override.double()
+    if mechanical_processed_override is not None:
+        if mechanical_override is not None or mechanical_processed_override.shape!=mechanical.shape: raise ValueError("invalid processed mechanical override")
+        mechanical=mechanical_processed_override.double()
     with torch.no_grad():
         return model(mechanical, semantic, displacement)[0]
 
