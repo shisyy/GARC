@@ -54,7 +54,12 @@
       "njc_labels": "5cf81ecfefcf408e77782c2d65119319f38540d680e9f89783c9f07a6cb7d706",
       "njc_manifest": "c750569d08a54474f821c45f484ea110c846e5f2262d4ec2aacf39c9b78ce91c"
     },
-    "frozen_render_manifest_sha256": ["9c95da2e933bd3502548692f10fe7351aeb981e25ff774c87f770ed83b774da8", "67f7543c039d29c53a2d5d7aaf7480901393f91465ba887c67000c740b5a7cb4", "07c0569947f69ada2d7ef54e066ebc5da38a14a4c5561a9e46a2756d76a0641f", "e3abd737feac4a4bff0ece57f417004399c6d3f9555dcf236e484f52b51daae5"]
+    "frozen_render_payload_sha256": [
+      {"inputs": "d6d84a5ef8950a8edbdfd5698be1f89ba1a2d0cce602da1be13f610e6db28875", "labels": "0ed7d641acffed2a0f361e353b58ae564f68ec34958fe2dcf3ddd28777cfb7ee", "manifest": "9c95da2e933bd3502548692f10fe7351aeb981e25ff774c87f770ed83b774da8", "render_bank": "39d9ccbd92fd02c64158ead228e9f3038f2e32ce36b1212af7fdbc3e4df9c90b"},
+      {"inputs": "177f76e16c4b2c31e8976c61729f7d3649a50d1ef24e72210af7d0dc6959b9dd", "labels": "cf4b9b316ba36a89613254cbf8cc07db672b368566e43282fc622b2d28cec5ba", "manifest": "67f7543c039d29c53a2d5d7aaf7480901393f91465ba887c67000c740b5a7cb4", "render_bank": "469d5ec6219fb489672ad965a736a9c7cfab45e5fed7d43bfad0dc1d46df4949"},
+      {"inputs": "01aad99cacf9cc3ac2e4f809cc236d83b4ab9101cf865d262b78f170728583e1", "labels": "b243c6a22470da4bc8dd764821d9c4395a5ada855ae0f2851b95a22ee5041157", "manifest": "07c0569947f69ada2d7ef54e066ebc5da38a14a4c5561a9e46a2756d76a0641f", "render_bank": "9a32c729b25ba57b7f58cad084b45da0786afc8c59b6159aa4c40557751eba05"},
+      {"inputs": "31b6b5e4c6038ec65ebe5ecc1e9e225f545db81e025bc1e1d398931cdbdc7894", "labels": "2935df643a1d8b8677195c7bed118eb6b72df74f69a20cc66e096265a63d6cdb", "manifest": "e3abd737feac4a4bff0ece57f417004399c6d3f9555dcf236e484f52b51daae5", "render_bank": "0160e0e317f4dd128c899a64080b2b397927034c0846b672669ef829228307cf"}
+    ]
   },
   "model": {
     "experts": 4,
@@ -81,6 +86,7 @@
     "robust_z": "m=median(train-domain object scalar), scale=1.4826*median(abs(x-m)); scale<=1e-12 or nonfinite fails closed; held never affects m or scale",
     "matching_caliper": 0.5,
     "minimum_perturbed_object_coverage_each_domain": 0.9,
+    "held_donor_diversity": {"effective_donors_per_perturbed_at_least": 0.5, "maximum_donor_load": 2},
     "matching_receipt": "per-domain train/held perturbation coverage, actual nonself distance median/p90/max, unmatched opaque IDs, donor marginal/permutation proof, held donor load/effective count, scipy version and mapping hash",
     "semantic_shuffle_covariate": "object-mean absolute observed displacement",
     "mechanical_shuffle_covariate": "cosine distance from object-mean semantic embedding to the train-only domain mean",

@@ -1,7 +1,8 @@
 import torch
 
 from splart.smarc_source import (deterministic_object_donors, fit_preprocessor,
-                                 hash_ids, object_domain_weights, object_macro_mare, swap_audit, transform)
+                                 hash_ids, object_domain_weights, object_macro_mare, swap_audit, transform,
+                                 validate_raw_swap_pair)
 
 
 def rows_fixture():
@@ -103,3 +104,36 @@ def test_partial_permutation_keeps_unmatched_tail_and_preserves_recipient_d():
     from splart.smarc_source import apply_object_donors
     shuffled=apply_object_donors(rows,train,"mechanical",donors,train,preserve_last=True)
     assert torch.equal(shuffled[:,-1],torch.tensor([.5,1.5,2.5,3.5,4.5]))
+
+
+def test_held_outside_caliper_uses_own_field_identity_sentinel():
+    rows=[]; values={}
+    for index,value in enumerate((0.,.001,1.,1.001,10.)):
+        obj=f"a{index}"; values[obj]=value
+        rows.append({"domain":"art","object_group_id":obj,"joint_id":obj,"mechanical":torch.tensor([value,5.])})
+    train=list(range(4)); held=[4]
+    donors,receipt=deterministic_object_donors(rows,train,held,values)
+    assert donors["a4"]=="a4" and receipt["domains"]["art"]["coverage"]==0
+    from splart.smarc_source import apply_object_donors
+    assert torch.equal(apply_object_donors(rows,held,"mechanical",donors,train),rows[4]["mechanical"][None])
+    for bad in (0.,float("nan")):
+        try: deterministic_object_donors(rows,train,held,values,bad)
+        except ValueError: pass
+        else: raise AssertionError("invalid caliper must fail")
+    try: deterministic_object_donors(rows,train,[],values)
+    except ValueError: pass
+    else: raise AssertionError("empty recipients must fail")
+
+
+def test_raw_swap_contract_rejects_each_broken_component():
+    forward={"order":"forward","raw_state0":torch.tensor([1.,2.]),"raw_state1":torch.tensor([3.,4.]),
+             "signed_observed_displacement":.5,"base_extension":torch.tensor([.2,.4]),"physical_range":2.}
+    reverse={"order":"reverse","raw_state0":torch.tensor([3.,4.]),"raw_state1":torch.tensor([1.,2.]),
+             "signed_observed_displacement":-.5,"base_extension":torch.tensor([.4,.2]),"physical_range":2.}
+    validate_raw_swap_pair(forward,reverse)
+    for key,value in (("raw_state0",torch.tensor([9.,9.])),("signed_observed_displacement",-.4),
+                      ("base_extension",torch.tensor([.3,.2])),("physical_range",2.1)):
+        broken=dict(reverse); broken[key]=value
+        try: validate_raw_swap_pair(forward,broken)
+        except ValueError: pass
+        else: raise AssertionError(f"broken {key} must fail")

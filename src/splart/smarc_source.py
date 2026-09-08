@@ -114,6 +114,10 @@ def deterministic_object_donors(rows: list[dict], train_indices: list[int], reci
 
     train_objects = sorted({rows[i]["object_group_id"] for i in train_indices})
     recipient_objects = sorted({rows[i]["object_group_id"] for i in recipient_indices})
+    if not recipient_objects or not math.isfinite(caliper) or caliper<=0:
+        raise ValueError("matching needs recipients and a positive finite caliper")
+    if any(obj not in values or not math.isfinite(float(values[obj])) for obj in set(train_objects+recipient_objects)):
+        raise ValueError("matching scalar is missing or nonfinite")
     domains={row["object_group_id"]:row["domain"] for row in rows}
     donors={}; by_domain={}
     for domain in sorted(set(domains[obj] for obj in train_objects)):
@@ -164,7 +168,7 @@ def deterministic_object_donors(rows: list[dict], train_indices: list[int], reci
         by_domain[domain]={"train_objects":len(members),"recipient_objects":len(recipients),
                            "perturbed_objects":len(changed),"coverage":len(changed)/len(recipients),
                            "nonself_distance":stats(distances),"unmatched_object_ids":sorted(set(recipients)-set(changed)),
-                           "held_donor_load":held_load,"held_effective_donor_count":len(held_load),
+                           "held_donor_load":held_load,"held_effective_donor_count":len(held_load),"maximum_held_donor_load":max(held_load.values(),default=0),
                            "train_permutation_preserves_marginal":set(assigned.values())==set(members),
                            "robust_center":float(median),"robust_scale":float(scale)}
     if set(donors)!=set(recipient_objects): raise RuntimeError("matching did not cover recipients")
@@ -172,6 +176,19 @@ def deterministic_object_donors(rows: list[dict], train_indices: list[int], reci
     receipt={"solver":"scipy.optimize.linear_sum_assignment","scipy_version":scipy.__version__,
              "caliper":caliper,"mapping_sha256":hashlib.sha256(payload.encode()).hexdigest(),"domains":by_domain}
     return donors,receipt
+
+
+def validate_raw_swap_pair(forward: dict, reverse: dict) -> None:
+    if forward.get("order")!="forward" or reverse.get("order")!="reverse": raise ValueError("swap order mismatch")
+    if (not torch.equal(forward["raw_state0"],reverse["raw_state1"]) or
+            not torch.equal(forward["raw_state1"],reverse["raw_state0"])):
+        raise ValueError("raw state swap mismatch")
+    if forward["signed_observed_displacement"]!=-reverse["signed_observed_displacement"]:
+        raise ValueError("signed displacement swap mismatch")
+    if not torch.equal(forward["base_extension"],reverse["base_extension"].flip(0)):
+        raise ValueError("extension swap mismatch")
+    if abs(float(forward["physical_range"])-float(reverse["physical_range"]))>1e-12:
+        raise ValueError("physical range swap mismatch")
 
 
 def apply_object_donors(rows: list[dict], indices: list[int], field: str,
@@ -258,4 +275,4 @@ def swap_audit(rows: list[dict], indices: list[int], prediction: Tensor) -> dict
 
 __all__ = ["Preprocessor", "analytic_linear_baseline", "apply_object_donors",
            "deterministic_object_donors", "fit_preprocessor", "hash_ids", "object_domain_weights",
-           "object_macro_mare", "predict", "swap_audit", "train_model", "transform"]
+           "object_macro_mare", "predict", "swap_audit", "train_model", "transform", "validate_raw_swap_pair"]
