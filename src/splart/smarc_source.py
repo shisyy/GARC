@@ -17,15 +17,18 @@ def hash_ids(values: list[str]) -> str:
 
 
 def object_domain_weights(rows: list[dict], indices: list[int]) -> Tensor:
-    """Equal domain -> object -> joint weights; IDs never enter model tensors."""
+    """Equal domain -> object -> joint -> gauge weights; IDs stay sidecars."""
     domains = sorted({rows[i]["domain"] for i in indices})
     weights = torch.zeros(len(indices), dtype=torch.float64)
     for domain in domains:
         objects = sorted({rows[i]["object_group_id"] for i in indices if rows[i]["domain"] == domain})
         for obj in objects:
-            locations = [k for k, i in enumerate(indices)
-                         if rows[i]["domain"] == domain and rows[i]["object_group_id"] == obj]
-            weights[locations] = 1.0 / len(domains) / len(objects) / len(locations)
+            joints = sorted({rows[i]["joint_id"] for i in indices
+                             if rows[i]["domain"] == domain and rows[i]["object_group_id"] == obj})
+            for joint in joints:
+                locations = [k for k, i in enumerate(indices) if rows[i]["domain"] == domain
+                             and rows[i]["object_group_id"] == obj and rows[i]["joint_id"] == joint]
+                weights[locations] = 1.0 / len(domains) / len(objects) / len(joints) / len(locations)
     if not torch.allclose(weights.sum(), torch.tensor(1., dtype=weights.dtype), atol=1e-12, rtol=0):
         raise RuntimeError("object/domain weights do not sum to one")
     return weights
@@ -39,6 +42,7 @@ class Preprocessor:
     semantic_mean: Tensor
     semantic_components: Tensor
     global_prior_logit: float
+    train_object_hash: str
 
     def transform_mechanical(self, value: Tensor) -> Tensor:
         return ((value - self.mechanical_mean) / self.mechanical_scale)[..., self.mechanical_keep]
@@ -68,16 +72,19 @@ def fit_preprocessor(rows: list[dict], targets: Tensor, indices: list[int], pca_
     scale = variance.sqrt().clamp_min(1e-8)
     mean_s = (weights[:, None] * semantic).sum(0)
     centered = (semantic - mean_s) * weights.sqrt()[:, None]
-    _, _, vh = torch.linalg.svd(centered, full_matrices=False)
-    if vh.shape[0] < pca_dim:
+    _, singular, vh = torch.linalg.svd(centered, full_matrices=False)
+    if vh.shape[0] < pca_dim or float(singular[pca_dim-1]) <= 1e-10:
         raise ValueError("not enough source rank for frozen PCA dimension")
     components = _fix_svd_sign(vh[:pca_dim])
     d = torch.tensor([abs(float(rows[i]["observed_displacement"])) for i in indices], dtype=torch.float64)
     y = targets[indices].double()
+    if torch.any(d<=0) or torch.any(d>=2*math.pi) or torch.any(y<d-1e-8) or torch.any(y>2*math.pi+1e-8):
+        raise ValueError("source revolute range must satisfy 0 < d <= y <= 2pi")
     fraction = ((y - d) / (2 * math.pi - d)).clamp(1e-6, 1 - 1e-6)
     mean_fraction = float((weights * fraction).sum())
     prior = math.log(mean_fraction / (1 - mean_fraction))
-    return Preprocessor(mean_m, scale, keep, mean_s, components, prior)
+    objects=sorted({rows[i]["object_group_id"] for i in indices})
+    return Preprocessor(mean_m, scale, keep, mean_s, components, prior,hash_ids(objects))
 
 
 def transform(preprocessor: Preprocessor, rows: list[dict], indices: list[int],
@@ -95,7 +102,8 @@ def analytic_linear_baseline(displacement: Tensor, targets: Tensor, train_weight
     x = torch.stack((torch.ones_like(displacement), displacement), -1).double()
     lhs = x.T @ (train_weights[:, None] * x) + torch.eye(2, dtype=torch.float64) * 1e-8
     beta = torch.linalg.solve(lhs, x.T @ (train_weights * targets.double()))
-    return torch.stack((torch.ones_like(held_displacement), held_displacement), -1).double() @ beta
+    prediction=torch.stack((torch.ones_like(held_displacement), held_displacement), -1).double() @ beta
+    return torch.maximum(prediction,held_displacement).clamp_max(2*math.pi)
 
 
 def deterministic_object_donors(rows: list[dict], train_indices: list[int], recipient_indices: list[int],
@@ -110,15 +118,16 @@ def deterministic_object_donors(rows: list[dict], train_indices: list[int], reci
                 return index
         raise ValueError(f"shuffle value {value} outside frozen bins")
 
-    bins: dict[int, list[str]] = {}
+    domains={row["object_group_id"]:row["domain"] for row in rows}
+    bins: dict[tuple[str,int], list[str]] = {}
     for obj in train_objects:
-        bins.setdefault(bucket(values[obj]), []).append(obj)
+        bins.setdefault((domains[obj],bucket(values[obj])), []).append(obj)
     for members in bins.values():
         if len(members) < 2:
             raise ValueError("occupied training shuffle bin has fewer than two objects")
     donors = {}
     for obj in recipient_objects:
-        members = bins.get(bucket(values[obj]), [])
+        members = bins.get((domains[obj],bucket(values[obj])), [])
         if not members:
             raise ValueError("recipient shuffle bin has no training donor")
         if obj in members:
