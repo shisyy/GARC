@@ -1,0 +1,67 @@
+{
+  "schema": "splart-smarc-source-preregister/v1",
+  "created_before_any_dino_source_score": true,
+  "phase": "source-only feasibility",
+  "encoder": {
+    "name": "DINO ViT-B/16",
+    "implementation": "timm vit_base_patch16_224 num_classes=0",
+    "checkpoint_sha256": "bf34ad0f424b9029b593e8dc3ed553bf26e88bcba0d32bf3e62a6209cb64c85e",
+    "load": "strict=True, no keys removed",
+    "frozen": true,
+    "output_dim": 768,
+    "pair_representation": "concat(mean(state0,state1), abs(state0-state1))",
+    "train_only_pca_dim": 16
+  },
+  "render": {
+    "material": "neutral static gray/mobile light gray on dark neutral background",
+    "renderer": "triangle faces with z-buffer; convex-hull/point splats forbidden for formal run",
+    "kinematic_topology": "moving link includes full child subtree; static part includes all other links",
+    "views_per_state": 6,
+    "elevation_azimuth_degrees": [[0,0],[0,90],[0,180],[0,270],[35,45],[-35,225]],
+    "resolution": 224,
+    "normalization": "per-object full-articulation bounding box only; no dataset statistics",
+    "coverage_gate": "1.0: every visual mesh/primitive assigned exactly once to moving subtree or static complement"
+  },
+  "data": {
+    "articraft": {"train_objects": 97, "validation_objects": 12, "train_joints": 146, "validation_joints": 23},
+    "njc": {"train_objects": 11, "validation_objects": 4},
+    "joins": "replayed node4 key; model batch strips key/split/family/object_group_id/joint_id",
+    "mechanical": "swap-invariant mean/abs-difference surface features plus absolute observed displacement; remove train-constant columns",
+    "labels": "physical authored range only",
+    "family_policy": "Articraft three-family leave-one-family-out with every fold and aggregate reported (USB fold flagged small); NJC family audit NOT_APPLICABLE_BY_NO_TAXONOMY",
+    "domain_policy": "one joint Articraft+NJC model trained on Articraft97 plus NJC11; Articraft12 and NJC4 remain validation-only; after source gate the same single frozen joint model is the only Box candidate"
+  },
+  "model": {
+    "experts": 4,
+    "expert_form": "bias-free linear mechanical residual",
+    "semantic_path": "softmax gate only; no semantic additive prediction",
+    "global_prior": "training-only mean feasible completion fraction transformed to fixed logit",
+    "revolute_range": "abs(d)+(2pi-abs(d))*sigmoid(global_logit+gated_residual)",
+    "projection": "Euclidean nonnegative two-simplex at exact predicted range"
+  },
+  "optimization": {
+    "initialization": "analytic sin(row,col), no random seed",
+    "optimizer": "AdamW",
+    "steps": 1200,
+    "learning_rate": 0.01,
+    "weight_decay": 0.001,
+    "loss": "object-macro relative authored-range error plus 0.01 gate-load-balance",
+    "selection": "single frozen configuration; no sweep"
+  },
+  "controls": ["global_range", "displacement_only", "category_frequency_audit_only", "mechanical_only", "zero_image_structurally_equal_mechanical_only", "semantic_shuffle_within_mechanical_bins", "mechanical_shuffle_within_semantic_bins"],
+  "gate": {
+    "full_relative_gain_over_global_displacement_category_mechanical_each_domain": 0.15,
+    "each_shuffle_relative_worsening": 0.20,
+    "articraft_family_disjoint_required": true,
+    "articraft_leave_one_family_out_aggregate_relative_gain_over_global_displacement_category_mechanical": 0.15,
+    "articraft_each_family_fold_reported": true,
+    "njc_family_audit": "NOT_APPLICABLE_BY_NO_TAXONOMY",
+    "state_swap_max_error": 0.000001
+  },
+  "frozen_baselines": {
+    "articraft": {"global": 0.375036, "displacement": 0.144754, "category_frequency_audit_only": 0.253942, "required_below": 0.123041},
+    "njc": {"global": 0.240421, "displacement": 0.134170, "unseen_name_category_fallback": 0.240421, "required_below": 0.114045}
+  },
+  "box_labels_read": [],
+  "protected_splits_read": []
+}
