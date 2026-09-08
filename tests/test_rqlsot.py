@@ -13,7 +13,7 @@ from splart.conditional_residual import _distance_correlation, _spearman
 from scripts.run_smarc_source_gate import merge_features
 from scripts.run_rqlsot_feasibility import (FROZEN_CONFIG_SHA256,
                                              canonical_sha256,
-                                             verify_provenance_binding)
+                                             run_cell, verify_provenance_binding)
 
 
 def contract():
@@ -201,13 +201,26 @@ def test_independent_recomputation_rejects_coherent_numeric_and_hash_rewrites():
     bad=copy.deepcopy(candidate); bad["domains"]["art"]["held_max_donor_load"]=2; bad["domains"]["art"]["held_load_bound"]=2; mutations.append(bad)
     bad=copy.deepcopy(candidate); fold=copy.deepcopy(bad["domains"]["art"]["crossfit"]["folds"][0]); fold["fold"]=1; bad["domains"]["art"]["crossfit"]["folds"][1]=fold; mutations.append(bad)
     bad=copy.deepcopy(candidate); cf=bad["domains"]["art"]["crossfit"]; standardized=torch.zeros_like(torch.tensor(cf["audit_payload"]["standardized"],dtype=torch.float64))
+    expected_before=_canonical_sha(expected)
     cf["audit_payload"]["standardized"]=standardized.tolist(); cf["standardized_sha256"]=_sha_tensor(standardized)
     raw_z=torch.tensor(cf["audit_payload"]["raw_z"],dtype=torch.float64); rank_x=torch.tensor(cf["audit_payload"]["rank_x"],dtype=torch.float64)
     cf["residual_norm_raw_z_absolute_spearman"]=_spearman(standardized.norm(dim=-1),raw_z); cf["residual_raw_z_distance_correlation"]=_distance_correlation(raw_z,standardized)
     cf["residual_norm_rank_x_absolute_spearman_extra"]=_spearman(standardized.norm(dim=-1),rank_x); cf["residual_rank_x_distance_correlation_extra"]=_distance_correlation(rank_x,standardized); mutations.append(bad)
+    assert _canonical_sha(expected)==expected_before
     bad=copy.deepcopy(candidate); payload=bad["domains"]["art"]["audit_payload"]; beta=torch.zeros_like(torch.tensor(payload["mean_beta"],dtype=torch.float64))
     payload["mean_beta"]=beta.tolist(); bad["domains"]["art"]["mean_beta_sha256"]=_sha_tensor(beta); mutations.append(bad)
     assert all(not receipt_passes(bad,expected,contract(),context,{"art","njc"}) for bad in mutations)
+
+
+def test_run_cell_crossfit_recomputations_and_receipt_payloads_have_no_nested_aliases():
+    rows,train,held,train_field,held_field,train_z,held_z=fixture(); context="semantic_rqlsot/final-source-features"
+    result=run_cell(rows,train,held,train_field,held_field,train_z,held_z,contract(),context,"semantic")
+    candidate,expected=result[2],result[3]
+    for domain in candidate["domains"]:
+        left=candidate["domains"][domain]["crossfit"]; right=expected["domains"][domain]["crossfit"]
+        assert left is not right and left["audit_payload"] is not right["audit_payload"] and left["folds"] is not right["folds"]
+        assert all(a is not b and a["preprocessor_provenance"] is not b["preprocessor_provenance"] for a,b in zip(left["folds"],right["folds"]))
+    assert receipt_passes(candidate,expected,contract(),context,{"art","njc"})
 
 
 def test_mechanical_crossfit_constant_columns_are_zero_filled_and_fold_masks_vary():

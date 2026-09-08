@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -272,7 +273,7 @@ def rqlsot_ablation(rows: list[dict],train_indices: list[int],held_indices: list
         p99=float(torch.quantile(original.norm(dim=-1),.99).clamp_min(1e-12))
         shuffled_p99=max(float(torch.quantile(shuffled_canonical.norm(dim=-1),.99)),float(torch.quantile(held_canonical.norm(dim=-1),.99)))
         if domain not in crossfit_by_domain: raise ValueError("fold-local crossfit receipt missing domain")
-        crossfit=crossfit_by_domain[domain]
+        crossfit=copy.deepcopy(crossfit_by_domain[domain])
         field_scale=means.std(0,unbiased=False).clamp_min(1e-12); centered_z=z-z.mean()
         normalized_mean=float((model["residual"].mean(0).abs()/field_scale).max())
         raw_z_correlation=float(((centered_z[:,None]*model["residual"]).mean(0).abs()/(centered_z.std(unbiased=False)*field_scale).clamp_min(1e-12)).max())

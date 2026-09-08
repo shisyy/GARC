@@ -72,9 +72,14 @@ def _bit_equal_mapping(left,right) -> bool:
 
 
 def run_cell(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,field_kind):
-    crossfit=feature_crossfit_rqlsot(rows,train,field_kind,cfg)
-    first=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,crossfit)
-    second=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,crossfit)
+    first_crossfit=feature_crossfit_rqlsot(rows,train,field_kind,cfg)
+    second_crossfit=feature_crossfit_rqlsot(rows,train,field_kind,cfg)
+    first=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,first_crossfit)
+    second=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,second_crossfit)
+    for domain in first[2]["domains"]:
+        left=first[2]["domains"][domain]["crossfit"]; right=second[2]["domains"][domain]["crossfit"]
+        if left is right or left["audit_payload"] is right["audit_payload"] or left["folds"] is right["folds"]:
+            raise RuntimeError("independent crossfit receipts share nested identity")
     repeat=torch.equal(first[0],second[0]) and torch.equal(first[1],second[1]) and first[2]==second[2]
     reverse_train=list(reversed(train)); reverse_held=list(reversed(held))
     reverse_crossfit=feature_crossfit_rqlsot(rows,reverse_train,field_kind,cfg)
