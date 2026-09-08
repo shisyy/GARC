@@ -321,3 +321,8 @@ Conflicts: Nodes 8.9 and 8.10 assumed linear or isotropic conditional residual s
 **Result**: PRUNE_LABEL_FREE: mechanical/Art pass; semantic/Art OOF Spearman=0.104549 dCor=0.289016 but p99=1.506940>1.25; semantic/NJC=0.031891/0.635188; mechanical/NJC=0.5/0.711675; four-cell raw-z correlation 2.76e-16..4.12e-16; repeat/row-order true; labels/scores/training/Box untouched.
 
 **Branch**: 00c8cbd396546c0750a7b3987ba4d0ea4f858a61
+
+#### 8.12: Mechanism: Joint-domain Shared-Axis Energy-Conserving Transport (JSA-ECT) learns one pooled rank-one conditional axis and shared anisotropy from Articraft+NJC, while retaining domain-specific exact raw-z anchors and constant block-scale intercepts.
+Hypothesis: NJC failures arise from estimating a conditional axis and free scale curve with only 11 objects; common-principal-component pooling raises the axis effective sample size to 108, and fixed-energy anisotropy prevents the tail inflation seen on Articraft semantic.
+Observable: With the frozen five folds and unchanged gates, all four label-free cells pass, full-fit raw-z mean/correlation remain <=1e-10, Articraft semantic p99<=1.25, and NJC semantic/mechanical dCor<=0.5 without loss of recipient-u or bitwise mechanical-d preservation.
+Conflicts: Pruned node8.11 showed per-domain rank-one anisotropic transport overfits NJC; this node shares only identifiable conditional structure across domains while preserving domain nuisance anchors and scales, and is pruned without changing rank, basis, folds or thresholds if any cell fails. [PENDING]

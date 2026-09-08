@@ -254,7 +254,8 @@
         "8.8",
         "8.9",
         "8.10",
-        "8.11"
+        "8.11",
+        "8.12"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -389,6 +390,14 @@
       "insight": "Raw-z anchoring worked exactly and fixed row-order provenance, but domain-local rank-one anisotropic scales overfit NJC n=11 and inflated the Art semantic tail. Shared conditional structure with domain fixed effects is required; adding per-domain covariance freedom is the wrong direction.",
       "result": "PRUNE_LABEL_FREE: mechanical/Art pass; semantic/Art OOF Spearman=0.104549 dCor=0.289016 but p99=1.506940>1.25; semantic/NJC=0.031891/0.635188; mechanical/NJC=0.5/0.711675; four-cell raw-z correlation 2.76e-16..4.12e-16; repeat/row-order true; labels/scores/training/Box untouched.",
       "code_ref": "00c8cbd396546c0750a7b3987ba4d0ea4f858a61"
+    },
+    "8.12": {
+      "id": "8.12",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Joint-domain Shared-Axis Energy-Conserving Transport (JSA-ECT) learns one pooled rank-one conditional axis and shared anisotropy from Articraft+NJC, while retaining domain-specific exact raw-z anchors and constant block-scale intercepts.\nHypothesis: NJC failures arise from estimating a conditional axis and free scale curve with only 11 objects; common-principal-component pooling raises the axis effective sample size to 108, and fixed-energy anisotropy prevents the tail inflation seen on Articraft semantic.\nObservable: With the frozen five folds and unchanged gates, all four label-free cells pass, full-fit raw-z mean/correlation remain <=1e-10, Articraft semantic p99<=1.25, and NJC semantic/mechanical dCor<=0.5 without loss of recipient-u or bitwise mechanical-d preservation.\nConflicts: Pruned node8.11 showed per-domain rank-one anisotropic transport overfits NJC; this node shares only identifiable conditional structure across domains while preserving domain nuisance anchors and scales, and is pruned without changing rank, basis, folds or thresholds if any cell fails.",
+      "status": "pending"
     }
   }
 }
