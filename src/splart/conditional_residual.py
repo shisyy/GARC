@@ -148,7 +148,13 @@ def receipt_passes(receipt: dict,contract: dict,expected_domains: set[str] | Non
         train_mapping=value.get("train_mapping",{}); held_mapping=value.get("held_mapping",{})
         if len(train_mapping)!=value["train_objects"] or len(held_mapping)!=value["held_objects"]: return False
         train_ids=sorted(train_mapping); held_ids=sorted(held_mapping)
+        expected_train={obj:train_ids[(i+1)%len(train_ids)] for i,obj in enumerate(train_ids)}
+        expected_held={obj:train_ids[i%len(train_ids)] for i,obj in enumerate(held_ids)}
         if set(train_ids)&set(held_ids) or any(donor not in train_ids for donor in train_mapping.values()) or any(donor not in train_ids for donor in held_mapping.values()): return False
+        object_hash=lambda ids:hashlib.sha256(("\n".join(ids)+"\n").encode()).hexdigest()
+        if (train_mapping!=expected_train or held_mapping!=expected_held or
+                value.get("train_object_hash")!=object_hash(train_ids) or value.get("held_object_hash")!=object_hash(held_ids) or
+                not all(isinstance(value.get(key),str) and len(value[key])==64 for key in ("z_sha256","ols_beta_sha256"))): return False
         actual_self=sum(obj==donor for obj,donor in train_mapping.items())/len(train_ids)
         actual_load={obj:sum(donor==obj for donor in held_mapping.values()) for obj in train_ids}
         actual_effective=len({*held_mapping.values()})

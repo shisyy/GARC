@@ -90,10 +90,11 @@ def test_receipt_validation_recomputes_mapping_loads_and_rejects_empty():
     args=fixture(); receipt=conditional_residual_ablation(*args,context="receipt")[2]
     assert receipt_passes(receipt,_contract(),{"art","njc"})
     assert not receipt_passes({"context":"x","domains":{}},_contract(),{"art","njc"})
-    for mutation in ("load","mapping","domain","fold"):
+    for mutation in ("load","mapping","domain","fold","object_hash"):
         bad=copy.deepcopy(receipt)
         if mutation=="load": bad["domains"]["art"]["held_max_donor_load"]+=1
         elif mutation=="mapping": bad["domains"]["art"]["held_mapping"]["art-held-00"]="art-train-01"
         elif mutation=="domain": del bad["domains"]["njc"]
-        else: bad["domains"]["art"]["crossfit"]["fold_counts"][0]=0
+        elif mutation=="fold": bad["domains"]["art"]["crossfit"]["fold_counts"][0]=0
+        else: bad["domains"]["art"]["train_object_hash"]="0"*64
         assert not receipt_passes(bad,_contract(),{"art","njc"})
