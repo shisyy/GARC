@@ -310,3 +310,8 @@ Conflicts: Unlike 8.7/8.8 donor-distance matching and 8.9 linear OLS residualiza
 **Result**: PRUNE_LABEL_FREE: semantic Art Spearman=0.067905 dCor=0.314958 raw-z-corr=0.081338; semantic NJC=0.154898/0.584668/0.164754; mechanical Art=0.018370/0.260707/0.083177; mechanical NJC=0.127273/0.633561/0.102528; threshold dCor<=0.5, Spearman<=0.35, raw-z-corr<=1e-10; labels/scores/training/Box untouched.
 
 **Branch**: f7bdfa1a4a112c96c0067db19ead8c1fe1716a2e
+
+#### 8.11: Mechanism: Raw-z Anchored Anisotropic Conditional Whitening Transport (RZA-ACWT) uses a raw-z-anchored minimal nonlinear location basis and a single learned conditional covariance direction with separate rank-quadratic axial and orthogonal-bulk scales.
+Hypothesis: Node 8.10's low Spearman but high NJC distance correlation indicates direction-dependent heteroscedasticity rather than a remaining radial trend; exact raw-z anchoring removes the full-fit failure while rank-one whitening is the smallest identifiable covariance correction for NJC n=11.
+Observable: Before any labels are read, all four domain-by-null cells meet the unchanged gates, including full-fit raw-z correlation <=1e-10 and OOF Spearman <=0.35 / dCor <=0.5, while exact reconstruction, energy, shuffle, coverage, recipient-u/d, repeatability and row-order gates do not regress.
+Conflicts: Nodes 8.9 and 8.10 assumed linear or isotropic conditional residual structure; this node keeps every threshold and donor contract fixed and targets the observed anisotropic covariance failure with exactly one preregistered rank-one model, pruning without rank/degree/threshold changes if any label-free cell fails. [PENDING]

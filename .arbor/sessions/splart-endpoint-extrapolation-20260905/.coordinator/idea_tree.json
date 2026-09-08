@@ -253,7 +253,8 @@
         "8.7",
         "8.8",
         "8.9",
-        "8.10"
+        "8.10",
+        "8.11"
       ],
       "depth": 1,
       "hypothesis": "Mechanism: Projective Boundary Inference treats each endpoint as a gauge-invariant phase boundary in a counterfactual trajectory rather than a directly regressed range scalar.\nHypothesis: D2's 13.8x lower/upper error imbalance and the prior-dominated learned heads arise because averaging and scalar regression discard whether geometric evidence is stable across states, radii, and observation gauges.\nObservable: On a new public development protocol, beat frozen D2 object-macro worst-side NMAE while retaining exact state-swap and virtual-subinterval consistency and defeating zero-geometry/range-prior controls.\nConflicts: Pruned [2.2] produced no performance evidence and pruned [5]/[5.1] exposed range-prior shortcuts; this counters them by using within-object phase structure and intervention consistency instead of category-level scalar regression.",
@@ -377,6 +378,14 @@
       "insight": "RQ-LSOT improved Articraft OOF independence but failed unchanged raw-z orthogonality in all four cells and nonlinear NJC independence; low Spearman with high dCor identifies direction-dependent conditional covariance as the remaining nuisance, not a scalar radial trend.",
       "result": "PRUNE_LABEL_FREE: semantic Art Spearman=0.067905 dCor=0.314958 raw-z-corr=0.081338; semantic NJC=0.154898/0.584668/0.164754; mechanical Art=0.018370/0.260707/0.083177; mechanical NJC=0.127273/0.633561/0.102528; threshold dCor<=0.5, Spearman<=0.35, raw-z-corr<=1e-10; labels/scores/training/Box untouched.",
       "code_ref": "f7bdfa1a4a112c96c0067db19ead8c1fe1716a2e"
+    },
+    "8.11": {
+      "id": "8.11",
+      "parent_id": "8",
+      "children_ids": [],
+      "depth": 2,
+      "hypothesis": "Mechanism: Raw-z Anchored Anisotropic Conditional Whitening Transport (RZA-ACWT) uses a raw-z-anchored minimal nonlinear location basis and a single learned conditional covariance direction with separate rank-quadratic axial and orthogonal-bulk scales.\nHypothesis: Node 8.10's low Spearman but high NJC distance correlation indicates direction-dependent heteroscedasticity rather than a remaining radial trend; exact raw-z anchoring removes the full-fit failure while rank-one whitening is the smallest identifiable covariance correction for NJC n=11.\nObservable: Before any labels are read, all four domain-by-null cells meet the unchanged gates, including full-fit raw-z correlation <=1e-10 and OOF Spearman <=0.35 / dCor <=0.5, while exact reconstruction, energy, shuffle, coverage, recipient-u/d, repeatability and row-order gates do not regress.\nConflicts: Nodes 8.9 and 8.10 assumed linear or isotropic conditional residual structure; this node keeps every threshold and donor contract fixed and targets the observed anisotropic covariance failure with exactly one preregistered rank-one model, pruning without rank/degree/threshold changes if any label-free cell fails.",
+      "status": "pending"
     }
   }
 }
