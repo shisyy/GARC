@@ -15,7 +15,8 @@ from scripts.run_smarc_source_gate import (FROZEN_CONFIG_SHA256 as SOURCE_CONFIG
                                             _finish_atomic_directory, conditional_overrides,
                                             indices_for, merge_features, object_scalar)
 from splart.frozen_visual import sha256_file
-from splart.rqlsot import preserve_recipient_displacement, receipt_passes, rqlsot_ablation
+from splart.rqlsot import (feature_crossfit_rqlsot, preserve_recipient_displacement,
+                           receipt_passes, rqlsot_ablation)
 from splart.smarc_source import fit_feature_preprocessor, hash_ids, transform
 
 
@@ -31,11 +32,30 @@ def canonical_sha256(value) -> str:
     return hashlib.sha256((json.dumps(value,sort_keys=True,separators=(",",":"))+"\n").encode()).hexdigest()
 
 
-def contract(config: dict) -> dict:
+def verify_provenance_binding(result: dict,receipt: dict) -> bool:
+    receipt_keys={"schema","config_sha256","feasibility_sha256","decision","code_sha256","feature_provenance_sha256",
+                  "source_labels_opened","source_labels_hashed","source_scores_computed","training_started","box_labels_read","protected_splits_read"}
+    if set(receipt)!=receipt_keys or receipt.get("schema")!="splart-rqlsot-feasibility-receipt/v1" or receipt.get("config_sha256")!=FROZEN_CONFIG_SHA256: return False
+    if result.get("schema")!="splart-rqlsot-feasibility/v1" or result.get("config_sha256")!=FROZEN_CONFIG_SHA256: return False
+    if receipt.get("decision") not in {"REQUEST_SOURCE_SCORE_AUTHORIZATION","PRUNE_LABEL_FREE"} or not isinstance(receipt.get("feasibility_sha256"),str) or len(receipt["feasibility_sha256"])!=64: return False
+    if receipt.get("code_sha256")!=canonical_sha256(result.get("code_files_sha256")) or receipt.get("feature_provenance_sha256")!=canonical_sha256(result.get("feature_provenance")): return False
+    if result.get("code_sha256")!=receipt["code_sha256"] or result.get("feature_provenance_sha256")!=receipt["feature_provenance_sha256"]: return False
+    protected=("source_labels_opened","source_labels_hashed","source_scores_computed","training_started")
+    return (all(result.get(key) is False and receipt.get(key) is False for key in protected) and
+            result.get("box_labels_read")==receipt.get("box_labels_read")==[] and result.get("protected_splits_read")==receipt.get("protected_splits_read")==[])
+
+
+def contract(config: dict,source_config: dict) -> dict:
+    unchanged=source_config["conditional_residual_contract"]["gates"]
+    if unchanged.get("normalized_residual_mean_max")!=1e-10 or unchanged.get("normalized_residual_z_correlation_max")!=1e-10:
+        raise RuntimeError("node8.9 unchanged-gate thresholds changed")
     return {"rank_relative_tolerance":config["numerics"]["rank_relative_tolerance"],
             "condition_max":config["numerics"]["condition_max"],"crossfit_folds":config["crossfit"]["folds"],
             "crossfit_absolute_spearman_at_most":config["crossfit"]["absolute_spearman_at_most"],
             "crossfit_distance_correlation_at_most":config["crossfit"]["distance_correlation_at_most"],
+            "normalized_residual_mean_max":unchanged["normalized_residual_mean_max"],
+            "normalized_residual_raw_z_correlation_max":unchanged["normalized_residual_z_correlation_max"],
+            "recipient_u_max_error":1e-12,
             **{key:value for key,value in config["gates"].items() if isinstance(value,(int,float)) and not isinstance(value,bool)}}
 
 
@@ -51,16 +71,17 @@ def _bit_equal_mapping(left,right) -> bool:
     return set(left)==set(right) and all(torch.equal(left[key],right[key]) for key in left)
 
 
-def run_cell(rows,train,held,train_field,held_field,train_z,held_z,cfg,context):
-    first=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context)
-    second=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context)
+def run_cell(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,field_kind):
+    crossfit=feature_crossfit_rqlsot(rows,train,field_kind,cfg)
+    first=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,crossfit)
+    second=rqlsot_ablation(rows,train,held,train_field,held_field,train_z,held_z,cfg,context,crossfit)
     repeat=torch.equal(first[0],second[0]) and torch.equal(first[1],second[1]) and first[2]==second[2]
     reverse_train=list(reversed(train)); reverse_held=list(reversed(held))
-    reverse=rqlsot_ablation(rows,reverse_train,reverse_held,train_field.flip(0),held_field.flip(0),train_z,held_z,cfg,context)
+    reverse_crossfit=feature_crossfit_rqlsot(rows,reverse_train,field_kind,cfg)
+    reverse=rqlsot_ablation(rows,reverse_train,reverse_held,train_field.flip(0),held_field.flip(0),train_z,held_z,cfg,context,reverse_crossfit)
     invariant=(_bit_equal_mapping(_remap(rows,train,first[0]),_remap(rows,reverse_train,reverse[0])) and
                _bit_equal_mapping(_remap(rows,held,first[1]),_remap(rows,reverse_held,reverse[1])) and first[2]==reverse[2])
-    receipt=first[2]; receipt["repeat_bit_identical"]=repeat; receipt["row_order_invariant"]=invariant
-    return first[0],first[1],receipt
+    return first[0],first[1],first[2],{"repeat_bit_identical":repeat,"row_order_invariant":invariant}
 
 
 def main():
@@ -89,33 +110,41 @@ def main():
     preprocessor=fit_feature_preprocessor(rows,train,16)
     train_mech,train_sem,_=transform(preprocessor,rows,train); held_mech,held_sem,_=transform(preprocessor,rows,held)
     _,linear_history=conditional_overrides(rows,train,held,preprocessor,source_config)
-    cfg=contract(config)
-    semantic=run_cell(rows,train,held,train_sem,held_sem,object_scalar(rows,train,"displacement"),object_scalar(rows,held,"displacement"),cfg,CONTEXTS["semantic"])
-    mechanical=run_cell(rows,train,held,train_mech[:,:-1],held_mech[:,:-1],object_scalar(rows,train,"semantic_distance",train),object_scalar(rows,held,"semantic_distance",train),cfg,CONTEXTS["mechanical"])
+    cfg=contract(config,source_config)
+    semantic=run_cell(rows,train,held,train_sem,held_sem,object_scalar(rows,train,"displacement"),object_scalar(rows,held,"displacement"),cfg,CONTEXTS["semantic"],"semantic")
+    mechanical=run_cell(rows,train,held,train_mech[:,:-1],held_mech[:,:-1],object_scalar(rows,train,"semantic_distance",train),object_scalar(rows,held,"semantic_distance",train),cfg,CONTEXTS["mechanical"],"mechanical")
     mechanical_train=preserve_recipient_displacement(mechanical[0],train_mech); mechanical_held=preserve_recipient_displacement(mechanical[1],held_mech)
     d_equal=torch.equal(mechanical_train[:,-1],train_mech[:,-1]) and torch.equal(mechanical_held[:,-1],held_mech[:,-1])
-    mechanical[2]["recipient_displacement_bitwise_unchanged"]=d_equal
-    contexts=set(CONTEXTS.values()); domains={"articraft","njc"}
+    domains={"articraft","njc"}
     cell_pass={}
     for name,result in (("semantic",semantic[2]),("mechanical",mechanical[2])):
-        cell_pass[name]={}
+        receipt=result; audit=semantic[3] if name=="semantic" else mechanical[3]; cell_pass[name]={}
         for domain in sorted(domains):
-            single={"schema":result["schema"],"context":result["context"],"domains":{domain:result["domains"][domain]}}
-            cell_pass[name][domain]=(receipt_passes(single,cfg,contexts,{domain}) and result["repeat_bit_identical"] and
-                                     result["row_order_invariant"] and (name!="mechanical" or d_equal))
+            single={"schema":receipt["schema"],"context":receipt["context"],"contract_sha256":receipt["contract_sha256"],"domains":{domain:receipt["domains"][domain]}}
+            cell_pass[name][domain]=(receipt_passes(single,cfg,CONTEXTS[name],{domain}) and audit["repeat_bit_identical"] and
+                                     audit["row_order_invariant"] and (name!="mechanical" or d_equal))
     code_root=Path(__file__).resolve().parents[1]
-    code_files=(Path(__file__).resolve(),code_root/"src"/"splart"/"rqlsot.py",code_root/"src"/"splart"/"conditional_residual.py")
+    code_files=(Path(__file__).resolve(),code_root/"src"/"splart"/"rqlsot.py",code_root/"src"/"splart"/"conditional_residual.py",
+                code_root/"scripts"/"run_smarc_source_gate.py",code_root/"src"/"splart"/"smarc_source.py",code_root/"src"/"splart"/"smarc.py",
+                code_root/"src"/"splart"/"frozen_visual.py",code_root/"scripts"/"build_smarc_articraft_shard.py",code_root/"scripts"/"build_smarc_smoke.py")
+    code_hashes={path.relative_to(code_root).as_posix():sha256_file(path) for path in code_files}
+    code_sha256=canonical_sha256(code_hashes); feature_sha256=canonical_sha256(provenance)
     result={"schema":"splart-rqlsot-feasibility/v1","config_sha256":FROZEN_CONFIG_SHA256,
-            "source_config_sha256":SOURCE_CONFIG_SHA256,"feature_provenance":provenance,"feature_provenance_sha256":canonical_sha256(provenance),
-            "node89_linear_historical":linear_history,"rqlsot":{"semantic":semantic[2],"mechanical":mechanical[2]},
+            "source_config_sha256":SOURCE_CONFIG_SHA256,"feature_provenance":provenance,"feature_provenance_sha256":feature_sha256,
+            "node89_linear_historical":linear_history,"rqlsot":{"semantic":semantic[2],"mechanical":mechanical[2]},"runtime_audits":{"semantic":semantic[3],"mechanical":{**mechanical[3],"recipient_displacement_bitwise_unchanged":d_equal}},
             "cell_pass":cell_pass,"all_pass":all(value for part in cell_pass.values() for value in part.values()),"object_list_hashes":observed,
-            "code_sha256":{path.relative_to(code_root).as_posix():sha256_file(path) for path in code_files},
+            "code_files_sha256":code_hashes,"code_sha256":code_sha256,
             "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,
             "box_labels_read":[],"protected_splits_read":[]}
+    if canonical_sha256(result["feature_provenance"])!=feature_sha256 or canonical_sha256(result["code_files_sha256"])!=code_sha256: raise RuntimeError("provenance self-check failed")
     temporary=_begin_atomic_directory(args.output); _atomic_json(temporary/"feasibility.json",result)
-    _atomic_json(temporary/"receipt.json",{"schema":"splart-rqlsot-feasibility-receipt/v1","config_sha256":FROZEN_CONFIG_SHA256,
+    output_receipt={"schema":"splart-rqlsot-feasibility-receipt/v1","config_sha256":FROZEN_CONFIG_SHA256,
         "feasibility_sha256":sha256_file(temporary/"feasibility.json"),"decision":"REQUEST_SOURCE_SCORE_AUTHORIZATION" if result["all_pass"] else "PRUNE_LABEL_FREE",
-        "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,"box_labels_read":[],"protected_splits_read":[]})
+        "code_sha256":code_sha256,"feature_provenance_sha256":feature_sha256,
+        "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,"box_labels_read":[],"protected_splits_read":[]}
+    if not verify_provenance_binding(result,output_receipt):
+        raise RuntimeError("output receipt provenance binding failed")
+    _atomic_json(temporary/"receipt.json",output_receipt)
     _finish_atomic_directory(temporary,args.output)
     print(json.dumps({"output":str(args.output),"all_pass":result["all_pass"],"cell_pass":cell_pass}))
 
