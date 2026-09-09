@@ -367,6 +367,17 @@ def _balanced_folds(domain: str, objects: list[str], folds: int) -> dict[str, in
     return {obj: rank % folds for rank, obj in enumerate(order)}
 
 
+def _canonical_projection(local: torch.Tensor, components: torch.Tensor) -> torch.Tensor:
+    """Project rows with a scalar reduction independent of BLAS/kernel dispatch."""
+    rows = local.tolist()
+    columns = components.T.tolist()
+    return torch.tensor(
+        [[sum(value * weight for value, weight in zip(row, column))
+          for column in columns] for row in rows],
+        dtype=torch.float64,
+    )
+
+
 def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kind: str, contract: dict) -> dict[str, dict]:
     train_indices = _canonical_indices(rows, train_indices); domains = sorted({rows[i]["domain"] for i in train_indices})
     folds = int(contract["crossfit_folds"])
@@ -407,12 +418,23 @@ def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kin
             "semantic_mean": _sha_tensor(prep.semantic_mean), "semantic_components": _sha_tensor(prep.semantic_components),
             "semantic_components_values": prep.semantic_components.double().tolist()}
         prep_hash = _canonical_sha(prep_payload)
+        canonical_semantic_components = torch.tensor(
+            prep_payload["semantic_components_values"], dtype=torch.float64
+        )
         for domain in domains:
             held_objects, zh, xh, held_means, clipped = held_blocks[domain]
             local = forward(model, domain, zh, xh, held_means)
+            # Canonicalize the replay boundary before projection.  Serialized
+            # receipt values are contiguous, while a computed tensor may carry
+            # backend-dependent strides that alter the last ULP of GEMV.
+            local = torch.tensor(local.tolist(), dtype=torch.float64)
+            semantic_projection = (
+                _canonical_projection(local, canonical_semantic_components)
+                if field_kind == "semantic" else None
+            )
             for j, obj in enumerate(held_objects):
                 target = objects[domain].index(obj)
-                if field_kind == "semantic": output[domain][target] = local[j] @ prep.semantic_components
+                if field_kind == "semantic": output[domain][target] = semantic_projection[j]
                 else: output[domain][target].scatter_(0, torch.tensor(kept), local[j])
             held_raw = torch.stack([output[domain][objects[domain].index(obj)] for obj in held_objects])
             fit_ids = [o for d in domains for o in objects[d] if assignments[d][o] != fold]
@@ -843,7 +865,10 @@ def _global_receipt_passes_uncached(candidate: dict, expected: dict, expected_sh
                 predicted = forward(replay, domain, z, x, means)
                 if not torch.equal(predicted, local): return False
                 if cf["field_kind"] == "semantic":
-                    expected_raw = local @ components
+                    # The producer reconstructs each held-out object separately.
+                    # Match that reduction order so bitwise replay is independent
+                    # of batched-GEMM kernel choices.
+                    expected_raw = _canonical_projection(local, components)
                 else:
                     expected_raw = torch.zeros((len(local), pp["mechanical_raw_dim"] - 1), dtype=torch.float64)
                     expected_raw.scatter_(1, torch.tensor(pp["mechanical_kept_indices"][:-1])[None].expand(len(local), -1), local)

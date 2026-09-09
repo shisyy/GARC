@@ -85,7 +85,9 @@ def fake_crossfit(domains=("articraft", "njc")):
             hz=torch.tensor([all_z[domain][o] for o in fold["domain_held_object_ids"]],dtype=torch.float64)
             _,hx,clipped=pk.empirical_rank(stage["z"],hz)
             hmeans=torch.stack((.7+.2*hz+torch.sin(hz*3.1),-.1+.13*hz+torch.cos(hz*2.7)),-1)
-            local=pk.forward(fit_model,domain,hz,hx,hmeans); raw=local@components
+            local=pk.forward(fit_model,domain,hz,hx,hmeans)
+            local=torch.tensor(local.tolist(),dtype=torch.float64)
+            raw=pk._canonical_projection(local,components)
             for name,tensor in (("domain_held_z",hz),("domain_held_x",hx),("domain_held_means",hmeans),("domain_held_local",local),("domain_held_standardized",raw)):
                 fold[name]=tensor.tolist(); fold[name+"_sha256"]=pk._sha_tensor(tensor)
             fold["boundary_clipped_fraction"]=clipped
@@ -272,6 +274,10 @@ def test_config_and_runner_are_frozen_score_free_and_provenance_bound(monkeypatc
     assert not config["source_labels_opened"] and not config["source_scores_computed"] and not config["training_started"] and not config["remote_execution_started"]
     source=Path("scripts/run_pksrt_label_free.py").read_text()
     assert "labels.pt" not in source and "--score" not in source and "--seed" not in source
+    validator_source=Path("src/splart/pksrt.py").read_text()
+    assert "expected_raw = _canonical_projection(local, components)" in validator_source
+    assert "_canonical_projection(local, canonical_semantic_components)" in validator_source
+    assert "local = torch.tensor(local.tolist(), dtype=torch.float64)" in validator_source
     data=Path("configs/pksrt_v1.json").read_bytes().replace(b"\r\n",b"\n")
     assert hashlib.sha256(data).hexdigest()==FROZEN_CONFIG_SHA256
     assert config["source_config_sha256"]==SOURCE_CONFIG_SHA256 and config["predecessor_jsa_config_sha256"]==PREDECESSOR_CONFIG_SHA256
