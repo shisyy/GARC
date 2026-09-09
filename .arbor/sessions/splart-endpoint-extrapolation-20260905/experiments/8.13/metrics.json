@@ -1,0 +1,19 @@
+{
+  "node": "8.13",
+  "decision": "PRUNE_LABEL_FREE",
+  "method_commit": "431426b538abb942c4f9c650e68d231398fd974e",
+  "config_sha256": "62c69b18a3c2171bf57fa71acdcb4fa43b186377212a719ff118b09f913f8570",
+  "canonical_feasibility_sha256": "6df3b8249463a47830432bffd71b39e1d3be5af6566e8df03fcd6c030015b68b",
+  "independent_provenance_verification": true,
+  "cells": {
+    "semantic/articraft": true,
+    "semantic/njc": false,
+    "mechanical/articraft": false,
+    "mechanical/njc": false
+  },
+  "source_labels_opened": false,
+  "source_scores_computed": false,
+  "training_started": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}

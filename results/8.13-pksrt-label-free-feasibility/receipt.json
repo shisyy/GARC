@@ -1,0 +1,19 @@
+{
+  "box_labels_read": [],
+  "code_sha256": "7143a37d72bd30f1093e080ae0618035224172a73a14a33a03f26fd630974bc1",
+  "config_sha256": "62c69b18a3c2171bf57fa71acdcb4fa43b186377212a719ff118b09f913f8570",
+  "decision": "PRUNE_LABEL_FREE",
+  "execution_environment": "CASIA_98",
+  "execution_phase": "label_free_feasibility",
+  "feasibility_sha256": "6df3b8249463a47830432bffd71b39e1d3be5af6566e8df03fcd6c030015b68b",
+  "feature_provenance_sha256": "cbf5bae9888d46ef3f820daa26ebd3d6a2718842974f3365064f0a79d558fb3b",
+  "predecessor_config_sha256": "a89543b1cf954cfc2de191fb50dda265ca8182dcac9e1a7d14a8faed90f853b2",
+  "protected_splits_read": [],
+  "remote_execution_started": true,
+  "schema": "splart-pksrt-feasibility-receipt/v1",
+  "source_config_sha256": "454f4e16af01e4986b9e4534168b6be7bc96eb4617a63bcc988dfdb7841aaca8",
+  "source_labels_hashed": false,
+  "source_labels_opened": false,
+  "source_scores_computed": false,
+  "training_started": false
+}
