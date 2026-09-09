@@ -1,0 +1,38 @@
+{
+  "schema": "splart-jsa-ect-label-free-summary/v1",
+  "node": "8.12",
+  "decision": "PRUNE_LABEL_FREE",
+  "method_commit": "7a57da0a0a9a438d3305c7dd1ea081346cd528b7",
+  "config_sha256": "a89543b1cf954cfc2de191fb50dda265ca8182dcac9e1a7d14a8faed90f853b2",
+  "remote_artifacts": {
+    "feasibility_sha256": "bae89006521d3fe1b573f4d6edfc81a1987d86d1ff160706c94c1304e191d978",
+    "receipt_sha256": "06e189cdfc1297a88d884dd1e7494ce72df75558f5e8f11cb96c700a772fe9a5",
+    "v1_deployment_error_log_sha256": "4c405f09fc35c725be9687223830fbcdadbda0785a8d77c3c443400ef2f52e1a",
+    "v2_empty_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "thresholds": {
+    "crossfit_absolute_spearman_at_most": 0.35,
+    "crossfit_distance_correlation_at_most": 0.5,
+    "shuffled_norm_p99_ratio_at_most": 1.25,
+    "normalized_residual_mean_max": 1e-10,
+    "normalized_residual_raw_z_correlation_max": 1e-10
+  },
+  "cells": {
+    "semantic/articraft": {"spearman": 0.13990548831004168, "distance_correlation": 0.367138672313769, "p99_ratio": 1.183847724328375, "raw_mean_max": 3.225838761048272e-16, "raw_z_correlation_max": 2.1680524162096466e-16, "domain_pass": true, "cell_pass": true},
+    "semantic/njc": {"spearman": 0.28701668997426927, "distance_correlation": 0.6793090744423858, "p99_ratio": 1.1549670750411172, "raw_mean_max": 7.517212488757641e-17, "raw_z_correlation_max": 1.0381911864652921e-16, "domain_pass": false, "cell_pass": false, "failed_gate": "distance_correlation"},
+    "mechanical/articraft": {"spearman": 0.4368030717441616, "distance_correlation": 0.3419802296197652, "p99_ratio": 1.0355484312805507, "raw_mean_max": 3.593794372291708e-16, "raw_z_correlation_max": 3.5768031978194486e-16, "domain_pass": false, "cell_pass": false, "failed_gate": "spearman"},
+    "mechanical/njc": {"spearman": 0.00909090909090909, "distance_correlation": 0.5916731290589113, "p99_ratio": 0.9673284133988487, "raw_mean_max": 1.7467041444664597e-15, "raw_z_correlation_max": 1.1425234228401734e-15, "domain_pass": false, "cell_pass": false, "failed_gate": "distance_correlation"}
+  },
+  "global_receipt_pass": {"semantic": true, "mechanical": true},
+  "runtime_audits": {
+    "semantic": {"repeat_bit_identical": true, "row_order_invariant": true},
+    "mechanical": {"repeat_bit_identical": true, "row_order_invariant": true, "recipient_displacement_bitwise_unchanged": true}
+  },
+  "structural_tail_and_p99_gates_all_pass": true,
+  "source_labels_opened": false,
+  "source_labels_hashed": false,
+  "source_scores_computed": false,
+  "training_started": false,
+  "box_labels_read": [],
+  "protected_splits_read": []
+}
