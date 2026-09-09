@@ -42,6 +42,7 @@ def contract(config: dict) -> dict:
         "crossfit_folds": config["crossfit"]["folds"],
         "crossfit_absolute_spearman_at_most": config["crossfit"]["absolute_spearman_at_most"],
         "crossfit_distance_correlation_at_most": config["crossfit"]["distance_correlation_at_most"],
+        "source_object_list_hashes": config["source"]["object_list_hashes"],
         **{k: v for k, v in config["gates"].items() if isinstance(v, (int, float)) and not isinstance(v, bool)}}
 
 
@@ -66,6 +67,19 @@ def _remap(rows, indices, values):
     return {global_row_identity(rows[i]): values[k] for k, i in enumerate(order)}
 
 
+def receipt_prediction_sha(receipt: dict) -> str:
+    payload = {}
+    for split in ("train", "held"):
+        pairs = []
+        for domain in sorted(receipt["domains"]):
+            audit = receipt["domains"][domain]["audit"]
+            pairs.extend(zip(audit[f"{split}_row_ids"], audit[f"{split}_candidate"]))
+        identities = [key for key, _ in pairs]
+        if len(identities) != len(set(identities)): raise ValueError("receipt row identity collision")
+        payload[split] = [value for _, value in sorted(pairs)]
+    return canonical_sha256(payload)
+
+
 def run_cell(rows, train, held, train_field, held_field, train_z, held_z, cfg, context, kind):
     first_cf = feature_crossfit_pksrt(rows, train, kind, cfg)
     second_cf = feature_crossfit_pksrt(rows, train, kind, cfg)
@@ -83,22 +97,27 @@ def run_cell(rows, train, held, train_field, held_field, train_z, held_z, cfg, c
     audit = {"repeat_bit_identical": torch.equal(first[0], second[0]) and torch.equal(first[1], second[1]) and first[2] == second[2],
              "row_order_invariant": same(_remap(rows, canonical_train, first[0]), _remap(rows, canonical_train, reverse[0])) and
                                     same(_remap(rows, canonical_held, first[1]), _remap(rows, canonical_held, reverse[1])) and first[2] == reverse[2]}
-    audit["candidate_prediction_sha256"] = canonical_sha256({"train": first[0].tolist(), "held": first[1].tolist()})
-    audit["gate_recompute_prediction_sha256"] = canonical_sha256({"train": second[0].tolist(), "held": second[1].tolist()})
+    audit["candidate_prediction_sha256"] = receipt_prediction_sha(first[2])
+    audit["gate_recompute_prediction_sha256"] = receipt_prediction_sha(second[2])
+    audit["reverse_receipt"] = reverse[2]
+    audit["reverse_receipt_sha256"] = canonical_sha256(reverse[2])
+    audit["reverse_prediction_sha256"] = receipt_prediction_sha(reverse[2])
     return first[0], first[1], first[2], second[2], expected_sha, audit
 
 
-def verify_provenance_binding(result: dict, receipt: dict) -> bool:
+def verify_provenance_binding(result: dict, receipt: dict, cfg: dict, contexts: dict,
+                              domains: set[str], observed: dict) -> bool:
     receipt_keys = {"schema", "config_sha256", "source_config_sha256", "predecessor_config_sha256", "feasibility_sha256", "decision",
                     "code_sha256", "feature_provenance_sha256", "source_labels_opened", "source_labels_hashed", "source_scores_computed",
                     "training_started", "remote_execution_started", "execution_environment", "execution_phase", "box_labels_read", "protected_splits_read"}
     result_keys = {"schema", "config_sha256", "source_config_sha256", "predecessor_config_sha256", "feature_provenance",
-                   "feature_provenance_sha256", "pksrt", "independent_recomputation_sha256", "runtime_audits", "global_receipt_pass",
+                   "feature_provenance_sha256", "pksrt", "independent_recomputation", "independent_recomputation_sha256", "runtime_audits", "global_receipt_pass",
                    "domain_receipt_pass", "cell_pass", "all_pass", "object_list_hashes", "global_row_identity_sha256",
                    "code_files_sha256", "code_sha256", "source_labels_opened", "source_labels_hashed", "source_scores_computed",
                    "training_started", "remote_execution_started", "execution_environment", "execution_phase", "box_labels_read", "protected_splits_read"}
     try:
         if set(receipt) != receipt_keys or set(result) != result_keys: return False
+        if contexts != CONTEXTS or domains != {"articraft", "njc"}: return False
         if receipt["schema"] != "splart-pksrt-feasibility-receipt/v1" or result["schema"] != "splart-pksrt-feasibility/v1": return False
         if receipt["config_sha256"] != result["config_sha256"] or result["config_sha256"] != FROZEN_CONFIG_SHA256: return False
         if receipt["source_config_sha256"] != result["source_config_sha256"] or result["source_config_sha256"] != SOURCE_CONFIG_SHA256: return False
@@ -107,6 +126,41 @@ def verify_provenance_binding(result: dict, receipt: dict) -> bool:
         if receipt["feasibility_sha256"] != canonical_sha256(result): return False
         if receipt["code_sha256"] != result["code_sha256"] or result["code_sha256"] != canonical_sha256(result["code_files_sha256"]): return False
         if receipt["feature_provenance_sha256"] != result["feature_provenance_sha256"] or result["feature_provenance_sha256"] != canonical_sha256(result["feature_provenance"]): return False
+        if result["object_list_hashes"] != observed or cfg["source_object_list_hashes"] != observed: return False
+        if (set(result["pksrt"]) != {"semantic", "mechanical"} or set(result["independent_recomputation"]) != {"semantic", "mechanical"}
+                or set(result["independent_recomputation_sha256"]) != {"semantic", "mechanical"}
+                or set(result["runtime_audits"]) != {"semantic", "mechanical"}): return False
+        derived_global = {}; derived_domain = {}; derived_cells = {}
+        for name in ("semantic", "mechanical"):
+            candidate, expected = result["pksrt"][name], result["independent_recomputation"][name]
+            receipt_shape = {"schema", "context", "contract_sha256", "shared_model", "domains"}
+            if not isinstance(candidate, dict) or not isinstance(expected, dict) or set(candidate) != receipt_shape or set(expected) != receipt_shape: return False
+            if candidate["schema"] != "splart-pksrt-null/v1" or expected["schema"] != "splart-pksrt-null/v1": return False
+            if candidate["context"] != contexts[name] or expected["context"] != contexts[name]: return False
+            expected_sha = result["independent_recomputation_sha256"].get(name)
+            if expected_sha != canonical_sha256(expected): return False
+            derived_global[name] = global_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains)
+            derived_domain[name] = {d: domain_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains, d) for d in domains}
+            audit = result["runtime_audits"].get(name)
+            audit_keys = {"repeat_bit_identical", "row_order_invariant", "candidate_prediction_sha256", "gate_recompute_prediction_sha256",
+                          "reverse_receipt", "reverse_receipt_sha256", "reverse_prediction_sha256"} | ({"recipient_displacement_bitwise_unchanged"} if name == "mechanical" else set())
+            if not isinstance(audit, dict) or set(audit) != audit_keys: return False
+            candidate_prediction = receipt_prediction_sha(candidate); expected_prediction = receipt_prediction_sha(expected)
+            derived_repeat = candidate == expected and candidate_prediction == expected_prediction
+            reverse = audit["reverse_receipt"]
+            if reverse is candidate or reverse is expected: return False
+            if canonical_sha256(reverse) != audit["reverse_receipt_sha256"]: return False
+            reverse_valid = global_receipt_passes(reverse, expected, expected_sha, cfg, contexts[name], domains)
+            reverse_prediction = receipt_prediction_sha(reverse)
+            derived_row_order = reverse_valid and audit["reverse_receipt_sha256"] == expected_sha and reverse_prediction == expected_prediction
+            if audit["repeat_bit_identical"] is not derived_repeat or audit["row_order_invariant"] is not derived_row_order: return False
+            if audit["candidate_prediction_sha256"] != candidate_prediction or audit["gate_recompute_prediction_sha256"] != expected_prediction or audit["reverse_prediction_sha256"] != reverse_prediction: return False
+            if name == "mechanical" and audit["recipient_displacement_bitwise_unchanged"] is not True: return False
+            derived_cells[name] = {d: derived_global[name] and derived_domain[name][d] and derived_repeat and derived_row_order
+                                   and candidate_prediction == expected_prediction and (name != "mechanical" or audit["recipient_displacement_bitwise_unchanged"] is True) for d in domains}
+        derived_all = all(derived_global.values()) and all(v for part in derived_cells.values() for v in part.values())
+        if result["global_receipt_pass"] != derived_global or result["domain_receipt_pass"] != derived_domain or result["cell_pass"] != derived_cells or result["all_pass"] is not derived_all: return False
+        if receipt["decision"] != ("REQUEST_SOURCE_SCORE_AUTHORIZATION" if derived_all else "PRUNE_LABEL_FREE"): return False
         return (all(result[k] is False and receipt[k] is False for k in ("source_labels_opened", "source_labels_hashed", "source_scores_computed", "training_started"))
                 and result["remote_execution_started"] is receipt["remote_execution_started"] is True
                 and result["execution_environment"] == receipt["execution_environment"] == "CASIA_98"
@@ -161,7 +215,9 @@ def main() -> None:
     code = {p.relative_to(root).as_posix(): sha256_file(p) for p in code_files}; feature_sha = canonical_sha256(provenance); code_sha = canonical_sha256(code)
     result = {"schema": "splart-pksrt-feasibility/v1", "config_sha256": FROZEN_CONFIG_SHA256, "source_config_sha256": SOURCE_CONFIG_SHA256,
         "predecessor_config_sha256": PREDECESSOR_CONFIG_SHA256, "feature_provenance": provenance, "feature_provenance_sha256": feature_sha,
-        "pksrt": {"semantic": semantic[2], "mechanical": mechanical[2]}, "runtime_audits": {"semantic": semantic[5], "mechanical": {**mechanical[5], "recipient_displacement_bitwise_unchanged": d_exact}},
+        "pksrt": {"semantic": semantic[2], "mechanical": mechanical[2]},
+        "independent_recomputation": {"semantic": semantic[3], "mechanical": mechanical[3]},
+        "runtime_audits": {"semantic": semantic[5], "mechanical": {**mechanical[5], "recipient_displacement_bitwise_unchanged": d_exact}},
         "independent_recomputation_sha256": {"semantic": semantic[4], "mechanical": mechanical[4]}, "global_receipt_pass": full,
         "domain_receipt_pass": {name: {d: domain_receipt_passes(cell[2], cell[3], cell[4], cfg, CONTEXTS[name], domains, d) for d in domains} for name, cell in (("semantic", semantic), ("mechanical", mechanical))},
         "cell_pass": cells, "all_pass": all(full.values()) and all(v for part in cells.values() for v in part.values()), "object_list_hashes": observed,
@@ -175,7 +231,7 @@ def main() -> None:
         "feature_provenance_sha256": feature_sha, "source_labels_opened": False, "source_labels_hashed": False, "source_scores_computed": False,
         "training_started": False, "remote_execution_started": True, "execution_environment": "CASIA_98", "execution_phase": "label_free_feasibility",
         "box_labels_read": [], "protected_splits_read": []}
-    if not verify_provenance_binding(result, receipt): raise RuntimeError("provenance binding failed")
+    if not verify_provenance_binding(result, receipt, cfg, CONTEXTS, domains, observed): raise RuntimeError("provenance binding failed")
     _atomic_json(temporary / "receipt.json", receipt); _finish_atomic_directory(temporary, args.output)
 
 

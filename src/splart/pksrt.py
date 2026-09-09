@@ -403,7 +403,9 @@ def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kin
         prep_payload = {"train_object_hash": prep.train_object_hash, "mechanical_mean": _sha_tensor(prep.mechanical_mean),
             "mechanical_scale": _sha_tensor(prep.mechanical_scale), "mechanical_keep": _sha_tensor(prep.mechanical_keep.to(torch.float64)),
             "mechanical_raw_dim": int(prep.mechanical_keep.numel()), "mechanical_kept_indices": torch.nonzero(prep.mechanical_keep).flatten().tolist(),
-            "semantic_mean": _sha_tensor(prep.semantic_mean), "semantic_components": _sha_tensor(prep.semantic_components)}
+            "mechanical_keep_values": prep.mechanical_keep.tolist(),
+            "semantic_mean": _sha_tensor(prep.semantic_mean), "semantic_components": _sha_tensor(prep.semantic_components),
+            "semantic_components_values": prep.semantic_components.double().tolist()}
         prep_hash = _canonical_sha(prep_payload)
         for domain in domains:
             held_objects, zh, xh, held_means, clipped = held_blocks[domain]
@@ -412,6 +414,7 @@ def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kin
                 target = objects[domain].index(obj)
                 if field_kind == "semantic": output[domain][target] = local[j] @ prep.semantic_components
                 else: output[domain][target].scatter_(0, torch.tensor(kept), local[j])
+            held_raw = torch.stack([output[domain][objects[domain].index(obj)] for obj in held_objects])
             fit_ids = [o for d in domains for o in objects[d] if assignments[d][o] != fold]
             held_ids = [o for d in domains for o in objects[d] if assignments[d][o] == fold]
             receipts[domain].append({"fold": fold, "joint_model_sha256": joint_hash, "joint_model": copy.deepcopy(provenance),
@@ -424,6 +427,11 @@ def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kin
                 "domain_held_object_ids": [o for o in objects[domain] if assignments[domain][o] == fold],
                 "domain_fit_object_hash": _sha_ids([o for o in objects[domain] if assignments[domain][o] != fold]),
                 "domain_held_object_hash": _sha_ids([o for o in objects[domain] if assignments[domain][o] == fold]),
+                "domain_held_z": zh.tolist(), "domain_held_z_sha256": _sha_tensor(zh),
+                "domain_held_x": xh.tolist(), "domain_held_x_sha256": _sha_tensor(xh),
+                "domain_held_means": held_means.tolist(), "domain_held_means_sha256": _sha_tensor(held_means),
+                "domain_held_local": local.tolist(), "domain_held_local_sha256": _sha_tensor(local),
+                "domain_held_standardized": held_raw.tolist(), "domain_held_standardized_sha256": _sha_tensor(held_raw),
                 "boundary_clipped_fraction": clipped, "fit_count": len(fit_ids), "held_count": len(held_ids)})
     result = {}
     for domain in domains:
@@ -434,7 +442,9 @@ def feature_crossfit_pksrt(rows: list[dict], train_indices: list[int], field_kin
         result[domain] = {"schema": CROSSFIT_SCHEMA, "field_kind": field_kind, "folds": receipts[domain],
             "fold_assignment": assignments[domain], "fold_assignment_sha256": _canonical_sha(assignments[domain]),
             "fold_counts": [list(assignments[domain].values()).count(f) for f in range(folds)],
-            "standardized_sha256": _sha_tensor(e), "raw_z_sha256": _sha_tensor(z),
+            "object_ids": objects[domain], "object_ids_sha256": _sha_ids(objects[domain]),
+            "standardized_values": e.tolist(), "standardized_sha256": _sha_tensor(e),
+            "raw_z_values": z.tolist(), "raw_z_sha256": _sha_tensor(z),
             "residual_norm_raw_z_absolute_spearman": _spearman(e.norm(dim=-1), z),
             "residual_raw_z_distance_correlation": _distance_correlation(z, e)}
     return result
@@ -479,6 +489,19 @@ def pksrt_ablation(rows: list[dict], train_indices: list[int], held_indices: lis
         train_u = max(float(((train_out[tl[o]] - train_out[tl[o]].mean(0)) - offsets[o]).abs().max()) for o in train_objects)
         held_u = max(float(((held_out[hl[o]] - held_out[hl[o]].mean(0)) - hoffsets[o]).abs().max()) for o in held_objects)
         original = torch.cat([train_field[tl[o]] for o in train_objects]); shuffled = torch.cat([train_out[tl[o]] for o in train_objects]); hshuffled = torch.cat([held_out[hl[o]] for o in held_objects])
+        held_original = torch.cat([held_field[hl[o]] for o in held_objects])
+        train_row_positions = [k for o in train_objects for k in tl[o]]; held_row_positions = [k for o in held_objects for k in hl[o]]
+        audit = {"train_object_ids": train_objects, "held_object_ids": held_objects,
+            "train_object_hash": _sha_ids(train_objects), "held_object_hash": _sha_ids(held_objects),
+            "train_row_ids": [global_row_identity(rows[train_indices[k]]) for k in train_row_positions],
+            "held_row_ids": [global_row_identity(rows[held_indices[k]]) for k in held_row_positions],
+            "train_row_objects": [rows[train_indices[k]]["object_group_id"] for k in train_row_positions],
+            "held_row_objects": [rows[held_indices[k]]["object_group_id"] for k in held_row_positions],
+            "train_original": original.tolist(), "train_original_sha256": _sha_tensor(original),
+            "held_original": held_original.tolist(), "held_original_sha256": _sha_tensor(held_original),
+            "train_candidate": shuffled.tolist(), "train_candidate_sha256": _sha_tensor(shuffled),
+            "held_candidate": hshuffled.tolist(), "held_candidate_sha256": _sha_tensor(hshuffled),
+            "held_z": hz.tolist(), "held_z_sha256": _sha_tensor(hz), "held_x": hx.tolist(), "held_x_sha256": _sha_tensor(hx)}
         original_sd = original.std(unbiased=False).clamp_min(1e-12); original_p99 = torch.quantile(original.norm(dim=-1), .99).clamp_min(1e-12)
         receipt["domains"][domain] = {**model["diagnostics"][domain], "reconstruction_max_error": float((reconstruction - means).abs().max()),
             "inverse_max_error": model["inverse_max_error"], "recipient_u_max_error": max(train_u, held_u),
@@ -486,7 +509,8 @@ def pksrt_ablation(rows: list[dict], train_indices: list[int], held_indices: lis
             "shuffled_norm_p99_ratio": float(max(torch.quantile(shuffled.norm(dim=-1), .99), torch.quantile(hshuffled.norm(dim=-1), .99)) / original_p99),
             "train_mapping": donors, "held_mapping": hdonors, "train_coverage": 1., "held_coverage": 1., "train_self_rate": 0.,
             "train_donor_marginal_exact": sorted(donors.values()) == train_objects,
-            "held_effective_donors_per_object": len(set(hdonors.values())) / len(held_objects), "crossfit": copy.deepcopy(crossfit[domain])}
+            "held_effective_donors_per_object": len(set(hdonors.values())) / len(held_objects),
+            "audit": audit, "audit_sha256": _canonical_sha(audit), "crossfit": copy.deepcopy(crossfit[domain])}
     if not torch.isfinite(train_out).all() or not torch.isfinite(held_out).all(): raise RuntimeError("transport output uninitialized")
     return train_out, held_out, receipt
 
@@ -605,6 +629,7 @@ def _validate_shared_provenance_uncached(shared: dict, contract: dict) -> bool:
 
 
 _VALID_SHARED_PROVENANCE: set[tuple[str, str]] = set()
+_REPLAYED_MODELS: dict[tuple[str, str], dict] = {}
 
 
 def _validate_shared_provenance(shared: dict, contract: dict) -> bool:
@@ -618,7 +643,96 @@ def _validate_shared_provenance(shared: dict, contract: dict) -> bool:
     return valid
 
 
-def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str, contract: dict, context: str, domains: set[str]) -> bool:
+def _replay_model_from_provenance(shared: dict, contract: dict) -> dict:
+    key = (_canonical_sha(shared), _canonical_sha(contract))
+    if key in _REPLAYED_MODELS:
+        return _REPLAYED_MODELS[key]
+    if not _validate_shared_provenance(shared, contract):
+        raise ValueError("invalid shared provenance")
+    domains = sorted(shared["stages"])
+    data = {d: (torch.tensor(shared["stages"][d]["train_z"], dtype=torch.float64),
+                torch.tensor(shared["stages"][d]["train_means"], dtype=torch.float64)) for d in domains}
+    ids = {d: list(shared["stages"][d]["object_ids"]) for d in domains}
+    model = fit_model(data, contract, ids)
+    if model_provenance(model) != shared:
+        raise RuntimeError("shared provenance replay mismatch")
+    _REPLAYED_MODELS[key] = model
+    return model
+
+
+def _validate_domain_audit(value: dict, shared: dict, domain: str, contract: dict) -> bool:
+    try:
+        audit = value["audit"]
+        audit_keys = {"train_object_ids", "held_object_ids", "train_object_hash", "held_object_hash",
+            "train_row_ids", "held_row_ids", "train_row_objects", "held_row_objects",
+            "train_original", "train_original_sha256", "held_original", "held_original_sha256",
+            "train_candidate", "train_candidate_sha256", "held_candidate", "held_candidate_sha256",
+            "held_z", "held_z_sha256", "held_x", "held_x_sha256"}
+        if set(audit) != audit_keys or value["audit_sha256"] != _canonical_sha(audit): return False
+        train_ids, held_ids = audit["train_object_ids"], audit["held_object_ids"]
+        if train_ids != sorted(train_ids) or held_ids != sorted(held_ids) or len(train_ids) != len(set(train_ids)) or len(held_ids) != len(set(held_ids)): return False
+        if set(train_ids) & set(held_ids) or sorted(value["train_mapping"]) != train_ids or sorted(value["held_mapping"]) != held_ids: return False
+        if audit["train_object_hash"] != _sha_ids(train_ids) or audit["held_object_hash"] != _sha_ids(held_ids): return False
+        source_hashes = contract["source_object_list_hashes"]
+        if audit["train_object_hash"] != source_hashes[f"{domain}_train"] or audit["held_object_hash"] != source_hashes[f"{domain}_held"]: return False
+        if len(audit["train_row_ids"]) != len(set(audit["train_row_ids"])) or len(audit["held_row_ids"]) != len(set(audit["held_row_ids"])): return False
+        if not all(row.startswith(domain + ":") for row in audit["train_row_ids"] + audit["held_row_ids"]): return False
+        train_original = torch.tensor(audit["train_original"], dtype=torch.float64); held_original = torch.tensor(audit["held_original"], dtype=torch.float64)
+        train_candidate = torch.tensor(audit["train_candidate"], dtype=torch.float64); held_candidate = torch.tensor(audit["held_candidate"], dtype=torch.float64)
+        held_z = torch.tensor(audit["held_z"], dtype=torch.float64); held_x = torch.tensor(audit["held_x"], dtype=torch.float64)
+        tensors = ((train_original, "train_original_sha256"), (held_original, "held_original_sha256"),
+                   (train_candidate, "train_candidate_sha256"), (held_candidate, "held_candidate_sha256"),
+                   (held_z, "held_z_sha256"), (held_x, "held_x_sha256"))
+        if any(not torch.isfinite(t).all() or audit[key] != _sha_tensor(t) for t, key in tensors): return False
+        if train_original.shape != train_candidate.shape or held_original.shape != held_candidate.shape or train_original.ndim != 2: return False
+        if len(audit["train_row_objects"]) != len(train_original) or len(audit["held_row_objects"]) != len(held_original): return False
+        if set(audit["train_row_objects"]) != set(train_ids) or set(audit["held_row_objects"]) != set(held_ids): return False
+        if len(held_z) != len(held_ids) or held_x.shape != held_z.shape: return False
+        model = _replay_model_from_provenance(shared, contract); stage = model["stages"][domain]
+        if model["object_ids"][domain] != train_ids: return False
+        train_locations = {o: [i for i, obj in enumerate(audit["train_row_objects"]) if obj == o] for o in train_ids}
+        held_locations = {o: [i for i, obj in enumerate(audit["held_row_objects"]) if obj == o] for o in held_ids}
+        if any(not positions for positions in list(train_locations.values()) + list(held_locations.values())): return False
+        train_means = torch.stack([train_original[train_locations[o]].mean(0) for o in train_ids])
+        held_means = torch.stack([held_original[held_locations[o]].mean(0) for o in held_ids])
+        if not torch.equal(train_means, model["input_means"][domain]): return False
+        _, expected_x, clipped = empirical_rank(stage["z"], held_z)
+        if not torch.equal(held_x, expected_x): return False
+        expected_train = torch.empty_like(train_candidate); expected_held = torch.empty_like(held_candidate)
+        by_object = {o: model["standardized"][domain][i] for i, o in enumerate(train_ids)}
+        for i, obj in enumerate(train_ids):
+            positions = train_locations[obj]; offsets = train_original[positions] - train_means[i]
+            donor = value["train_mapping"][obj]; mean = reconstruct_means(model, domain, stage["z"][i:i+1], stage["x"][i:i+1], by_object[donor][None])[0]
+            expected_train[positions] = mean + offsets
+        for i, obj in enumerate(held_ids):
+            positions = held_locations[obj]; offsets = held_original[positions] - held_means[i]
+            donor = value["held_mapping"][obj]; mean = reconstruct_means(model, domain, held_z[i:i+1], held_x[i:i+1], by_object[donor][None])[0]
+            expected_held[positions] = mean + offsets
+        if not torch.equal(expected_train, train_candidate) or not torch.equal(expected_held, held_candidate): return False
+        e = model["standardized"][domain]; centered = stage["z"] - stage["z_mean"]
+        escale = e.std(0, unbiased=False).clamp_min(torch.finfo(torch.float64).tiny)
+        recomputed = {"normalized_residual_mean_max": float((e.mean(0).abs()/escale).max()),
+            "normalized_residual_raw_z_correlation_max": float(((centered[:,None]*e).mean(0).abs() /
+                (centered.std(unbiased=False)*escale).clamp_min(torch.finfo(torch.float64).tiny)).max()),
+            "residual_energy_ratio": stage["scale_squared"] / stage["centered_energy"],
+            "reconstruction_max_error": float((reconstruct_means(model,domain,stage["z"],stage["x"],e)-train_means).abs().max()),
+            "inverse_max_error": model["inverse_max_error"], "held_boundary_clipped_fraction": clipped}
+        train_u = max(float(((train_candidate[train_locations[o]]-train_candidate[train_locations[o]].mean(0))-
+                             (train_original[train_locations[o]]-train_means[i])).abs().max()) for i,o in enumerate(train_ids))
+        held_u = max(float(((held_candidate[held_locations[o]]-held_candidate[held_locations[o]].mean(0))-
+                            (held_original[held_locations[o]]-held_means[i])).abs().max()) for i,o in enumerate(held_ids))
+        original_sd=train_original.std(unbiased=False).clamp_min(1e-12); original_p99=torch.quantile(train_original.norm(dim=-1),.99).clamp_min(1e-12)
+        recomputed.update({"recipient_u_max_error":max(train_u,held_u),
+            "shuffle_rms_over_original_sd":float((train_candidate-train_original).square().mean().sqrt()/original_sd),
+            "shuffled_norm_p99_ratio":float(max(torch.quantile(train_candidate.norm(dim=-1),.99),torch.quantile(held_candidate.norm(dim=-1),.99))/original_p99)})
+        if any(value[key] != expected for key, expected in recomputed.items()): return False
+        return (value["train_coverage"] == 1. and value["held_coverage"] == 1. and value["train_self_rate"] == 0.
+                and value["train_donor_marginal_exact"] is True and value["held_effective_donors_per_object"] == 1.)
+    except (KeyError, TypeError, ValueError, IndexError, RuntimeError, ZeroDivisionError, OverflowError):
+        return False
+
+
+def _global_receipt_passes_uncached(candidate: dict, expected: dict, expected_sha256: str, contract: dict, context: str, domains: set[str]) -> bool:
     try:
         if candidate is expected or _shares_container_identity(candidate, expected): return False
         if not isinstance(expected_sha256, str) or len(expected_sha256) != 64: return False
@@ -639,7 +753,8 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
             for marginal in layer["domain_marginals"].values():
                 if min(marginal["slopes"]) <= 0: return False
         crossfit_keys = {"schema", "field_kind", "folds", "fold_assignment", "fold_assignment_sha256", "fold_counts",
-                         "standardized_sha256", "raw_z_sha256", "residual_norm_raw_z_absolute_spearman", "residual_raw_z_distance_correlation"}
+                         "object_ids", "object_ids_sha256", "standardized_values", "standardized_sha256",
+                         "raw_z_values", "raw_z_sha256", "residual_norm_raw_z_absolute_spearman", "residual_raw_z_distance_correlation"}
         crossfits = {d: candidate["domains"][d]["crossfit"] for d in domains}
         for domain, cf in crossfits.items():
             if set(cf) != crossfit_keys or cf["schema"] != CROSSFIT_SCHEMA: return False
@@ -648,6 +763,7 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
             if not math.isfinite(float(cf["residual_norm_raw_z_absolute_spearman"])) or not math.isfinite(float(cf["residual_raw_z_distance_correlation"])): return False
             if cf["fold_assignment_sha256"] != _canonical_sha(cf["fold_assignment"]): return False
             objects = sorted(cf["fold_assignment"])
+            if cf["object_ids"] != objects or cf["object_ids_sha256"] != _sha_ids(objects): return False
             if cf["fold_assignment"] != _balanced_folds(domain, objects, contract["crossfit_folds"]): return False
             counts = [list(cf["fold_assignment"].values()).count(i) for i in range(contract["crossfit_folds"])]
             if cf["fold_counts"] != counts or min(counts) < 2: return False
@@ -655,10 +771,14 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
         domain_keys = {"normalized_residual_mean_max", "normalized_residual_raw_z_correlation_max", "residual_energy_ratio",
                        "reconstruction_max_error", "inverse_max_error", "recipient_u_max_error", "held_boundary_clipped_fraction",
                        "shuffle_rms_over_original_sd", "shuffled_norm_p99_ratio", "train_mapping", "held_mapping", "train_coverage",
-                       "held_coverage", "train_self_rate", "train_donor_marginal_exact", "held_effective_donors_per_object", "crossfit"}
+                       "held_coverage", "train_self_rate", "train_donor_marginal_exact", "held_effective_donors_per_object",
+                       "audit", "audit_sha256", "crossfit"}
         fold_keys = {"fold", "joint_model_sha256", "joint_model", "joint_preprocessor_sha256", "joint_preprocessor",
                      "joint_fit_object_ids", "joint_held_object_ids", "joint_fit_object_hash", "joint_held_object_hash",
                      "domain_fit_object_ids", "domain_held_object_ids", "domain_fit_object_hash", "domain_held_object_hash",
+                     "domain_held_z", "domain_held_z_sha256", "domain_held_x", "domain_held_x_sha256",
+                     "domain_held_means", "domain_held_means_sha256", "domain_held_local", "domain_held_local_sha256",
+                     "domain_held_standardized", "domain_held_standardized_sha256",
                      "boundary_clipped_fraction", "fit_count", "held_count"}
         for domain, value in candidate["domains"].items():
             if set(value) != domain_keys: return False
@@ -669,9 +789,12 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
             if not all(math.isfinite(float(item)) for item in numeric): return False
             train_ids, held_ids = sorted(value["train_mapping"]), sorted(value["held_mapping"])
             if train_ids != sorted(crossfits[domain]["fold_assignment"]): return False
+            if not _validate_domain_audit(value, shared, domain, contract): return False
+            if crossfits[domain]["raw_z_values"] != shared["stages"][domain]["train_z"]: return False
             if value["train_mapping"] != {o: train_ids[(i + 1) % len(train_ids)] for i, o in enumerate(train_ids)}: return False
             if value["held_mapping"] != {o: train_ids[i % len(train_ids)] for i, o in enumerate(held_ids)}: return False
             cf = value["crossfit"]
+            oof = {}
             if sorted(f["fold"] for f in cf["folds"]) != list(range(contract["crossfit_folds"])): return False
             for fold in cf["folds"]:
                 if set(fold) != fold_keys: return False
@@ -684,10 +807,15 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
                 if not _valid_sha(fold["joint_model_sha256"]) or not _valid_sha(fold["joint_preprocessor_sha256"]): return False
                 pp = fold["joint_preprocessor"]
                 if set(pp) != {"train_object_hash", "mechanical_mean", "mechanical_scale", "mechanical_keep", "mechanical_raw_dim",
-                               "mechanical_kept_indices", "semantic_mean", "semantic_components"}: return False
+                               "mechanical_kept_indices", "mechanical_keep_values", "semantic_mean", "semantic_components",
+                               "semantic_components_values"}: return False
                 if not all(_valid_sha(pp[k]) for k in ("train_object_hash", "mechanical_mean", "mechanical_scale", "mechanical_keep", "semantic_mean", "semantic_components")): return False
                 if not isinstance(pp["mechanical_raw_dim"], int) or pp["mechanical_raw_dim"] < 1 or not pp["mechanical_kept_indices"]: return False
                 if pp["mechanical_kept_indices"][-1] != pp["mechanical_raw_dim"] - 1: return False
+                keep = torch.tensor(pp["mechanical_keep_values"], dtype=torch.bool)
+                components = torch.tensor(pp["semantic_components_values"], dtype=torch.float64)
+                if keep.numel() != pp["mechanical_raw_dim"] or pp["mechanical_keep"] != _sha_tensor(keep.double()): return False
+                if pp["mechanical_kept_indices"] != torch.nonzero(keep).flatten().tolist() or pp["semantic_components"] != _sha_tensor(components): return False
                 if set(fold["joint_fit_object_ids"]) & set(fold["joint_held_object_ids"]): return False
                 if fold["joint_fit_object_hash"] != _sha_ids(fold["joint_fit_object_ids"]) or fold["joint_held_object_hash"] != _sha_ids(fold["joint_held_object_ids"]): return False
                 if fold["domain_fit_object_hash"] != _sha_ids(fold["domain_fit_object_ids"]) or fold["domain_held_object_hash"] != _sha_ids(fold["domain_held_object_ids"]): return False
@@ -703,8 +831,52 @@ def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
                     expected_stage_ids = sorted(o for o, assigned in crossfits[joined_domain]["fold_assignment"].items() if assigned != fold["fold"])
                     if fold["joint_model"]["stages"][joined_domain]["object_ids"] != expected_stage_ids: return False
                 if not math.isfinite(float(fold["boundary_clipped_fraction"])) or not 0 <= float(fold["boundary_clipped_fraction"]) <= 1: return False
+                replay = _replay_model_from_provenance(fold["joint_model"], contract)
+                z = torch.tensor(fold["domain_held_z"], dtype=torch.float64); x = torch.tensor(fold["domain_held_x"], dtype=torch.float64)
+                means = torch.tensor(fold["domain_held_means"], dtype=torch.float64)
+                local = torch.tensor(fold["domain_held_local"], dtype=torch.float64)
+                raw = torch.tensor(fold["domain_held_standardized"], dtype=torch.float64)
+                tensors = ((z, "domain_held_z_sha256"), (x, "domain_held_x_sha256"), (means, "domain_held_means_sha256"),
+                           (local, "domain_held_local_sha256"), (raw, "domain_held_standardized_sha256"))
+                if any(not torch.isfinite(t).all() or fold[key] != _sha_tensor(t) for t, key in tensors): return False
+                if z.shape != x.shape or means.shape[0] != len(z) or len(z) != len(expected_held): return False
+                predicted = forward(replay, domain, z, x, means)
+                if not torch.equal(predicted, local): return False
+                if cf["field_kind"] == "semantic":
+                    expected_raw = local @ components
+                else:
+                    expected_raw = torch.zeros((len(local), pp["mechanical_raw_dim"] - 1), dtype=torch.float64)
+                    expected_raw.scatter_(1, torch.tensor(pp["mechanical_kept_indices"][:-1])[None].expand(len(local), -1), local)
+                if not torch.equal(expected_raw, raw): return False
+                oof.update({obj: raw[i] for i, obj in enumerate(expected_held)})
+            if set(oof) != set(cf["object_ids"]): return False
+            standardized = torch.stack([oof[o] for o in cf["object_ids"]]); raw_z = torch.tensor(cf["raw_z_values"], dtype=torch.float64)
+            if standardized.tolist() != cf["standardized_values"] or cf["standardized_sha256"] != _sha_tensor(standardized): return False
+            if raw_z.shape != (len(cf["object_ids"]),) or not torch.isfinite(raw_z).all() or cf["raw_z_sha256"] != _sha_tensor(raw_z): return False
+            if cf["residual_norm_raw_z_absolute_spearman"] != _spearman(standardized.norm(dim=-1), raw_z): return False
+            if cf["residual_raw_z_distance_correlation"] != _distance_correlation(raw_z, standardized): return False
         return True
     except (KeyError, TypeError, ValueError, IndexError, RuntimeError, ZeroDivisionError):
+        return False
+
+
+_VALID_GLOBAL_RECEIPTS: set[tuple[str, str, str, tuple[str, ...]]] = set()
+
+
+def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str, contract: dict, context: str, domains: set[str]) -> bool:
+    """Validate aliases/hashes before using a content-addressed success cache."""
+    try:
+        if candidate is expected or _shares_container_identity(candidate, expected): return False
+        candidate_sha = _canonical_sha(candidate)
+        if candidate_sha != expected_sha256 or _canonical_sha(expected) != expected_sha256: return False
+        key = (candidate_sha, _canonical_sha(contract), context, tuple(sorted(domains)))
+        if key in _VALID_GLOBAL_RECEIPTS:
+            return True
+        valid = _global_receipt_passes_uncached(candidate, expected, expected_sha256, contract, context, domains)
+        if valid:
+            _VALID_GLOBAL_RECEIPTS.add(key)
+        return valid
+    except (KeyError, TypeError, ValueError, RuntimeError, OverflowError):
         return False
 
 

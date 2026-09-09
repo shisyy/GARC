@@ -8,6 +8,7 @@ import pytest
 import torch
 
 import splart.pksrt as pk
+import scripts.run_pksrt_label_free as runner
 from scripts.run_pksrt_label_free import (FROZEN_CONFIG_SHA256,
                                            PREDECESSOR_CONFIG_SHA256,
                                            SOURCE_CONFIG_SHA256,
@@ -17,6 +18,10 @@ from splart.jsa_ect import _balanced_folds as jsa_balanced_folds
 
 
 def contract():
+    source_hashes={}
+    for domain in ("articraft","njc"):
+        source_hashes[f"{domain}_train"]=pk._sha_ids([f"{domain}-train-{i:03d}" for i in range(12)])
+        source_hashes[f"{domain}_held"]=pk._sha_ids([f"{domain}-held-{i:03d}" for i in range(4)])
     return {"rank_relative_tolerance": 1e-12, "condition_max": 1e6, "numeric_tolerance": 1e-12,
             "minimum_effective_sample_size": 2., "crossfit_folds": 5,
             "inverse_max_error": 1e-10, "reconstruction_max_error": 1e-10,
@@ -24,7 +29,7 @@ def contract():
             "held_boundary_clipped_fraction_max": 1., "residual_energy_ratio_at_least": 0.,
             "shuffle_rms_over_original_sd_at_least": 0., "shuffled_norm_p99_ratio_at_most": 1e6,
             "recipient_u_max_error": 1e-12, "crossfit_absolute_spearman_at_most": 1.,
-            "crossfit_distance_correlation_at_most": 1.}
+            "crossfit_distance_correlation_at_most": 1., "source_object_list_hashes":source_hashes}
 
 
 def blocks(counts=(11, 13), width=4):
@@ -42,19 +47,23 @@ def blocks(counts=(11, 13), width=4):
 
 def fake_crossfit(domains=("articraft", "njc")):
     result = {}; assignments={d:pk._balanced_folds(d,[f"{d}-train-{i:03d}" for i in range(12)],5) for d in domains}; common=[]
+    all_z={d:{f"{d}-train-{i:03d}":.21+.041*i+.07*di for i in range(12)} for di,d in enumerate(domains)}
     for fold in range(5):
         fit_ids={d:sorted(o for o,f in assignments[d].items() if f!=fold) for d in domains}
         held_ids={d:sorted(o for o,f in assignments[d].items() if f==fold) for d in domains}
         data={}
         for di,d in enumerate(domains):
-            n=len(fit_ids[d]); z=torch.tensor([.2+.071*i+.013*math.sin((i+1)*(di+2)) for i in range(n)],dtype=torch.float64)
+            n=len(fit_ids[d]); z=torch.tensor([all_z[d][o] for o in fit_ids[d]],dtype=torch.float64)
             y=torch.stack((.4+.3*z+torch.tensor([math.sin((i+1)*.317+di*.2) for i in range(n)]),
                            -.2+.1*z+torch.tensor([math.cos((i+1)*.271+di*.3) for i in range(n)])),-1)
             data[d]=(z,y)
-        model=pk.model_provenance(pk.fit_model(data,contract(),fit_ids)); prep = {
+        fitted=pk.fit_model(data,contract(),fit_ids); model=pk.model_provenance(fitted)
+        components=torch.tensor([[1.,0.,.2],[0.,1.,-.1]],dtype=torch.float64)
+        keep=torch.tensor([True,True,True]); prep = {
             "train_object_hash":hashlib.sha256(f"train{fold}".encode()).hexdigest(),
-            "mechanical_mean":"1"*64,"mechanical_scale":"2"*64,"mechanical_keep":"3"*64,
-            "mechanical_raw_dim":3,"mechanical_kept_indices":[0,2],"semantic_mean":"4"*64,"semantic_components":"5"*64}
+            "mechanical_mean":"1"*64,"mechanical_scale":"2"*64,"mechanical_keep":pk._sha_tensor(keep.double()),
+            "mechanical_raw_dim":3,"mechanical_kept_indices":[0,1,2],"mechanical_keep_values":keep.tolist(),
+            "semantic_mean":"4"*64,"semantic_components":pk._sha_tensor(components),"semantic_components_values":components.tolist()}
         joint_fit=[f"{d}:{o}" for d in sorted(domains) for o in fit_ids[d]]; joint_held=[f"{d}:{o}" for d in sorted(domains) for o in held_ids[d]]
         common.append({"fold": fold, "joint_model": model, "joint_model_sha256": canonical_sha256(model),
             "joint_preprocessor": prep, "joint_preprocessor_sha256": canonical_sha256(prep),
@@ -62,6 +71,9 @@ def fake_crossfit(domains=("articraft", "njc")):
             "domain_fit_object_ids": [], "domain_held_object_ids": [],
             "joint_fit_object_hash": pk._sha_ids(joint_fit), "joint_held_object_hash": pk._sha_ids(joint_held),
             "domain_fit_object_hash": "", "domain_held_object_hash": "",
+            "domain_held_z":[],"domain_held_z_sha256":"","domain_held_x":[],"domain_held_x_sha256":"",
+            "domain_held_means":[],"domain_held_means_sha256":"","domain_held_local":[],"domain_held_local_sha256":"",
+            "domain_held_standardized":[],"domain_held_standardized_sha256":"",
             "boundary_clipped_fraction": 0., "fit_count": len(joint_fit), "held_count": len(joint_held)})
     for domain in domains:
         folds=copy.deepcopy(common)
@@ -69,12 +81,25 @@ def fake_crossfit(domains=("articraft", "njc")):
             fold["domain_fit_object_ids"]=sorted(o for o,f in assignments[domain].items() if f!=fold["fold"])
             fold["domain_held_object_ids"]=sorted(o for o,f in assignments[domain].items() if f==fold["fold"])
             fold["domain_fit_object_hash"]=pk._sha_ids(fold["domain_fit_object_ids"]); fold["domain_held_object_hash"]=pk._sha_ids(fold["domain_held_object_ids"])
+            fit_model=pk._replay_model_from_provenance(fold["joint_model"],contract()); stage=fit_model["stages"][domain]
+            hz=torch.tensor([all_z[domain][o] for o in fold["domain_held_object_ids"]],dtype=torch.float64)
+            _,hx,clipped=pk.empirical_rank(stage["z"],hz)
+            hmeans=torch.stack((.7+.2*hz+torch.sin(hz*3.1),-.1+.13*hz+torch.cos(hz*2.7)),-1)
+            local=pk.forward(fit_model,domain,hz,hx,hmeans); raw=local@components
+            for name,tensor in (("domain_held_z",hz),("domain_held_x",hx),("domain_held_means",hmeans),("domain_held_local",local),("domain_held_standardized",raw)):
+                fold[name]=tensor.tolist(); fold[name+"_sha256"]=pk._sha_tensor(tensor)
+            fold["boundary_clipped_fraction"]=clipped
         assignment=assignments[domain]
+        oof={o:torch.tensor(fold["domain_held_standardized"][i],dtype=torch.float64) for fold in folds for i,o in enumerate(fold["domain_held_object_ids"])}
+        standardized=torch.stack([oof[o] for o in sorted(assignment)]); raw_z=torch.tensor([all_z[domain][o] for o in sorted(assignment)],dtype=torch.float64)
         result[domain] = {"schema": pk.CROSSFIT_SCHEMA, "field_kind": "semantic", "folds": folds,
             "fold_assignment": assignment, "fold_assignment_sha256": canonical_sha256(assignment),
             "fold_counts": [list(assignment.values()).count(f) for f in range(5)],
-            "standardized_sha256": "3"*64, "raw_z_sha256": "4"*64,
-            "residual_norm_raw_z_absolute_spearman": 0., "residual_raw_z_distance_correlation": 0.}
+            "object_ids":sorted(assignment),"object_ids_sha256":pk._sha_ids(sorted(assignment)),
+            "standardized_values":standardized.tolist(),"standardized_sha256":pk._sha_tensor(standardized),
+            "raw_z_values":raw_z.tolist(),"raw_z_sha256":pk._sha_tensor(raw_z),
+            "residual_norm_raw_z_absolute_spearman": pk._spearman(standardized.norm(dim=-1),raw_z),
+            "residual_raw_z_distance_correlation": pk._distance_correlation(raw_z,standardized)}
     return result
 
 
@@ -207,7 +232,13 @@ def test_ablation_repeat_reverse_order_receipt_aliases_and_displacement():
         cf["fold_assignment"][key]=(cf["fold_assignment"][key]+1)%5
         cf["fold_assignment_sha256"]=canonical_sha256(cf["fold_assignment"])
     rejected(forged_assignment)
-    rejected(lambda r:r["domains"]["articraft"]["crossfit"].__setitem__("standardized_sha256","bad"))
+    rejected(lambda r:r["domains"]["articraft"]["crossfit"].__setitem__("standardized_sha256","0"*64))
+    rejected(lambda r:r["domains"]["articraft"]["crossfit"].__setitem__("raw_z_sha256","0"*64))
+    rejected(lambda r:r["domains"]["articraft"].__setitem__("residual_energy_ratio",123.))
+    rejected(lambda r:r["domains"]["articraft"].__setitem__("normalized_residual_mean_max",0.))
+    def renamed_held(r):
+        mapping=r["domains"]["articraft"]["held_mapping"]; key=sorted(mapping)[0]; mapping["evil-held"]=mapping.pop(key)
+    rejected(renamed_held)
     rejected(lambda r:r["domains"]["articraft"]["crossfit"]["folds"][0]["joint_fit_object_ids"].append("articraft:forged"))
     mechanical=torch.randn(8,5,dtype=torch.float64); geometry=torch.randn(8,4,dtype=torch.float64)
     assert torch.equal(pk.preserve_recipient_displacement(geometry,mechanical)[:,-1],mechanical[:,-1])
@@ -233,7 +264,7 @@ def test_crossfit_reuses_jsa_folds_and_excludes_every_held_object(monkeypatch):
             assert result[domain]["folds"][fold]["joint_model_sha256"]==result["articraft"]["folds"][fold]["joint_model_sha256"]
 
 
-def test_config_and_runner_are_frozen_score_free_and_provenance_bound():
+def test_config_and_runner_are_frozen_score_free_and_provenance_bound(monkeypatch):
     config=json.loads(Path("configs/pksrt_v1.json").read_text())
     assert config["model"]["candidate_search"] is False and config["model"]["jitter"] is False
     assert config["predecessor_commit"]=="7a57da0a0a9a438d3305c7dd1ea081346cd528b7"
@@ -244,17 +275,41 @@ def test_config_and_runner_are_frozen_score_free_and_provenance_bound():
     data=Path("configs/pksrt_v1.json").read_bytes().replace(b"\r\n",b"\n")
     assert hashlib.sha256(data).hexdigest()==FROZEN_CONFIG_SHA256
     assert config["source_config_sha256"]==SOURCE_CONFIG_SHA256 and config["predecessor_jsa_config_sha256"]==PREDECESSOR_CONFIG_SHA256
+    domains={"articraft","njc"}; contexts={"semantic":"semantic_pksrt/final-source-features","mechanical":"mechanical_pksrt/final-source-features"}
+    observed=contract()["source_object_list_hashes"]; cfg={**contract(),"source_object_list_hashes":observed}
+    candidates={}; expected={}; audits={}
+    for name in ("semantic","mechanical"):
+        base={"schema":"splart-pksrt-null/v1","context":contexts[name],"contract_sha256":canonical_sha256(cfg),"shared_model":{},"domains":{},"prediction":name}
+        # prediction is removed from the strict receipt shape; the stub derives by context.
+        del base["prediction"]; candidates[name]=copy.deepcopy(base); expected[name]=copy.deepcopy(base)
+        sha=canonical_sha256(base)
+        audits[name]={"repeat_bit_identical":True,"row_order_invariant":True,"candidate_prediction_sha256":name,"gate_recompute_prediction_sha256":name,
+                      "reverse_receipt":copy.deepcopy(base),"reverse_receipt_sha256":sha,"reverse_prediction_sha256":name}
+        if name=="mechanical": audits[name]["recipient_displacement_bitwise_unchanged"]=True
+    monkeypatch.setattr(runner,"global_receipt_passes",lambda *args:True)
+    monkeypatch.setattr(runner,"domain_receipt_passes",lambda *args:True)
+    monkeypatch.setattr(runner,"receipt_prediction_sha",lambda receipt:"semantic" if receipt["context"].startswith("semantic") else "mechanical")
+    hashes={name:canonical_sha256(expected[name]) for name in expected}
+    all_domains={name:{d:True for d in domains} for name in candidates}
     result={"schema":"splart-pksrt-feasibility/v1","config_sha256":FROZEN_CONFIG_SHA256,"source_config_sha256":SOURCE_CONFIG_SHA256,"predecessor_config_sha256":PREDECESSOR_CONFIG_SHA256,
-        "feature_provenance":{"opaque":1},"pksrt":{},"independent_recomputation_sha256":{},"runtime_audits":{},"global_receipt_pass":{},"domain_receipt_pass":{},"cell_pass":{},"all_pass":False,
-        "object_list_hashes":{},"global_row_identity_sha256":"0"*64,"code_files_sha256":{"runner":"a"},"source_labels_opened":False,"source_labels_hashed":False,
+        "feature_provenance":{"opaque":1},"pksrt":candidates,"independent_recomputation":expected,"independent_recomputation_sha256":hashes,"runtime_audits":audits,
+        "global_receipt_pass":{"semantic":True,"mechanical":True},"domain_receipt_pass":all_domains,"cell_pass":copy.deepcopy(all_domains),"all_pass":True,
+        "object_list_hashes":observed,"global_row_identity_sha256":"0"*64,"code_files_sha256":{"runner":"a"},"source_labels_opened":False,"source_labels_hashed":False,
         "source_scores_computed":False,"training_started":False,"remote_execution_started":True,"execution_environment":"CASIA_98","execution_phase":"label_free_feasibility","box_labels_read":[],"protected_splits_read":[]}
     result["feature_provenance_sha256"]=canonical_sha256(result["feature_provenance"]); result["code_sha256"]=canonical_sha256(result["code_files_sha256"])
     receipt={"schema":"splart-pksrt-feasibility-receipt/v1","config_sha256":FROZEN_CONFIG_SHA256,"source_config_sha256":SOURCE_CONFIG_SHA256,"predecessor_config_sha256":PREDECESSOR_CONFIG_SHA256,
-        "feasibility_sha256":canonical_sha256(result),"decision":"PRUNE_LABEL_FREE","code_sha256":result["code_sha256"],"feature_provenance_sha256":result["feature_provenance_sha256"],
+        "feasibility_sha256":canonical_sha256(result),"decision":"REQUEST_SOURCE_SCORE_AUTHORIZATION","code_sha256":result["code_sha256"],"feature_provenance_sha256":result["feature_provenance_sha256"],
         "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,"remote_execution_started":True,
         "execution_environment":"CASIA_98","execution_phase":"label_free_feasibility","box_labels_read":[],"protected_splits_read":[]}
-    assert verify_provenance_binding(result,receipt)
-    bad=copy.deepcopy(receipt); bad["feasibility_sha256"]="0"*64; assert not verify_provenance_binding(result,bad)
+    assert verify_provenance_binding(result,receipt,cfg,contexts,domains,observed)
+    bad=copy.deepcopy(receipt); bad["feasibility_sha256"]="0"*64; assert not verify_provenance_binding(result,bad,cfg,contexts,domains,observed)
     for key,value in (("remote_execution_started",False),("execution_environment","CASIA_102"),("execution_phase","score")):
-        bad=copy.deepcopy(receipt); bad[key]=value; assert not verify_provenance_binding(result,bad)
-    bad=copy.deepcopy(receipt); bad["extra"]=1; assert not verify_provenance_binding(result,bad)
+        bad=copy.deepcopy(receipt); bad[key]=value; assert not verify_provenance_binding(result,bad,cfg,contexts,domains,observed)
+    bad=copy.deepcopy(receipt); bad["extra"]=1; assert not verify_provenance_binding(result,bad,cfg,contexts,domains,observed)
+    forged=copy.deepcopy(result); forged["all_pass"]=False; forged["cell_pass"]={name:{d:False for d in domains} for name in candidates}
+    forged_receipt=copy.deepcopy(receipt); forged_receipt["decision"]="PRUNE_LABEL_FREE"; forged_receipt["feasibility_sha256"]=canonical_sha256(forged)
+    assert not verify_provenance_binding(forged,forged_receipt,cfg,contexts,domains,observed)
+    evil=copy.deepcopy(result); evil["pksrt"]={"semantic":{"evil":True},"mechanical":{"evil":True}}; evil["independent_recomputation"]=copy.deepcopy(evil["pksrt"])
+    evil["independent_recomputation_sha256"]={k:canonical_sha256(v) for k,v in evil["independent_recomputation"].items()}
+    evil_receipt=copy.deepcopy(receipt); evil_receipt["feasibility_sha256"]=canonical_sha256(evil)
+    assert not verify_provenance_binding(evil,evil_receipt,cfg,contexts,domains,observed)
