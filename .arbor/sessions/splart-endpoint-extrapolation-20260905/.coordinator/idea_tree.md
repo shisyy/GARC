@@ -332,3 +332,8 @@ Conflicts: Pruned node8.11 showed per-domain rank-one anisotropic transport over
 **Result**: PRUNE_LABEL_FREE: semantic/Art pass 0.139905/0.367139 p99=1.183848; semantic/NJC dCor=0.679309; mechanical/Art Spearman=0.436803 dCor=0.341980; mechanical/NJC Spearman=0.009091 dCor=0.591673. All p99/raw-z/reconstruction/global receipt/runtime gates pass; labels/scores/training/Box untouched.
 
 **Branch**: 7a57da0a0a9a438d3305c7dd1ea081346cd528b7
+
+#### 8.13: Mechanism: Pooled Kernel Sliced Rosenblatt Transport (PKSRT) uses domain marginal quantile bijections, an Articraft-stabilized shared kernel conditional CDF, a fixed identity-plus-DCT slice sequence, and a final per-domain raw-z QR anchor to form an invertible conditional distribution transport.
+Hypothesis: Node8.12's remaining errors come from finite-moment models failing on nonlinear marginals and copula dependence; a shared nonparametric conditional probability-integral transform can use 97 Articraft objects to stabilize NJC while domain marginals and anchors prevent cross-domain shift.
+Observable: Under the unchanged five folds and gates, all four cells pass: mechanical/Articraft Spearman<=0.35, mechanical/NJC and semantic/NJC dCor<=0.5, actual E mean/raw-z<=1e-10, inverse error<=1e-10 and p99<=1.25 with exact recipient-u/mechanical-d preservation.
+Conflicts: Nodes8.9-8.12 show linear, quadratic, per-domain rank-one and shared rank-one moment transports leave different dependence forms; this node changes to a complete conditional-distribution transport and is pruned without adding bases, directions, bandwidth choices or thresholds if it fails. [PENDING]
