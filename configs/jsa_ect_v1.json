@@ -4,6 +4,9 @@
   "hypothesis": "pooled domain-fixed-effect means and one shared rank-one energy-conserving conditional axis stabilize small-domain label-free transport",
   "created_before_any_remote_result": true,
   "predecessor_commit": "00c8cbd396546c0750a7b3987ba4d0ea4f858a61",
+  "predecessor_rza_config_sha256": "779874c52dc3c64b3e6606ad11c4b0a2e3d07fe5b814054b7d2ce8a0ff852be5",
+  "source_config_sha256": "454f4e16af01e4986b9e4534168b6be7bc96eb4617a63bcc988dfdb7841aaca8",
+  "module_invocation": "python -m scripts.run_jsa_ect_label_free",
   "allowed_inputs": "frozen feature caches, opaque source sidecars, renderer logs, and DINO checkpoint hash only",
   "forbidden": ["source label open", "source label hash", "source score", "training", "Box", "sealed18/9/9", "B_test", "Full22", "remote execution during implementation"],
   "model": {
@@ -13,7 +16,11 @@
     "shared_axis": "H=sum q(rrT-C_domain)/sum q^2; G=sym(H@H); unique top eigenvector with largest-absolute-coordinate-positive sign",
     "axis_rank": 1,
     "theta": "sum(q*c)/sqrt(sum(q^2)*sum(c^2)); fail outside [-1,1] beyond numeric tolerance; never clamp",
-    "scales": "domain energy intercepts with exp(theta*q) modulation and analytic normalizer conserving total block energy per row",
+    "energy_contrast": "c_i=(a_i^2/sigma_parallel_domain^2)-(||b_i||^2/((D-1)*sigma_perpendicular_domain^2)), where a_i=v^T r_i and b_i=r_i-a_i*v",
+    "scales": "sp_i^2=sigma_parallel_domain^2*exp(theta*q_i)/N_i and so_i^2=sigma_perpendicular_domain^2/N_i, N_i=(sigma_parallel_domain^2*exp(theta*q_i)+(D-1)*sigma_perpendicular_domain^2)/(sigma_parallel_domain^2+(D-1)*sigma_perpendicular_domain^2)",
+    "identifiability": "each domain requires sigma_parallel^2 and sigma_perpendicular^2 each strictly greater than rank_relative_tolerance times max(total first-pass residual energy sigma_parallel^2+(D-1)*sigma_perpendicular^2, total centered-field energy); no clamp; exact affine, rank-one, zero-perpendicular, and width-one fields fail closed",
+    "post_scale_fwl": "after freezing v,sp,so, refit unweighted pooled fixed-effect design X separately to y_parallel/sp and y_perp/so; project perpendicular coefficients off v; E=(y_parallel/sp-X*beta_parallel)*v+(y_perp/so-X*beta_perp)",
+    "exact_reconstruction": "y=sp*(X*beta_parallel+E_parallel)*v+so*(X*beta_perp+E_perp)",
     "transport": "domain sorted opaque-ID shift-one train and balanced round-robin held; preserve recipient within-object offsets",
     "mechanical_displacement": "recipient final coordinate is appended bit-for-bit and never transported",
     "candidate_search": false
@@ -66,7 +73,17 @@
       "articraft_held": "891d7ba880613712eb9ac5e1322633621a36e5d66d2edf94384e433ddc858c83",
       "njc_train": "d82a5d0de16fe18e8ec5a2f1325d04ae8d9092d34004c52cebfcff53faa59154",
       "njc_held": "c44b40aa400c033077abc6c4aee9a73de3b9c965060df473fe447e682ccd26be"
-    }
+    },
+    "articraft_inputs_sha256": "27fab569c7cce6be1aaecee9e2292af7ef213abc7871aef6bb013a74df4da5e9",
+    "articraft_manifest_sha256": "abcb3188479cf7f48e9707897dff3fb0811f4101278bc6c6aefaaf5832494949",
+    "njc_inputs_sha256": "dcfb65e548ea08b0d71af9f52ebc68b615b1b3dea459605bbefd554393005c9e",
+    "njc_manifest_sha256": "c750569d08a54474f821c45f484ea110c846e5f2262d4ec2aacf39c9b78ce91c",
+    "render_feature_payload_sha256": [
+      {"inputs": "d6d84a5ef8950a8edbdfd5698be1f89ba1a2d0cce602da1be13f610e6db28875", "manifest": "9c95da2e933bd3502548692f10fe7351aeb981e25ff774c87f770ed83b774da8", "render_bank": "39d9ccbd92fd02c64158ead228e9f3038f2e32ce36b1212af7fdbc3e4df9c90b"},
+      {"inputs": "177f76e16c4b2c31e8976c61729f7d3649a50d1ef24e72210af7d0dc6959b9dd", "manifest": "67f7543c039d29c53a2d5d7aaf7480901393f91465ba887c67000c740b5a7cb4", "render_bank": "469d5ec6219fb489672ad965a736a9c7cfab45e5fed7d43bfad0dc1d46df4949"},
+      {"inputs": "01aad99cacf9cc3ac2e4f809cc236d83b4ab9101cf865d262b78f170728583e1", "manifest": "07c0569947f69ada2d7ef54e066ebc5da38a14a4c5561a9e46a2756d76a0641f", "render_bank": "9a32c729b25ba57b7f58cad084b45da0786afc8c59b6159aa4c40557751eba05"},
+      {"inputs": "31b6b5e4c6038ec65ebe5ecc1e9e225f545db81e025bc1e1d398931cdbdc7894", "manifest": "e3abd737feac4a4bff0ece57f417004399c6d3f9555dcf236e484f52b51daae5", "render_bank": "0160e0e317f4dd128c899a64080b2b397927034c0846b672669ef829228307cf"}
+    ]
   },
   "source_labels_opened": false,
   "source_labels_hashed": false,

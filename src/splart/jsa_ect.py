@@ -32,6 +32,15 @@ def _sha_ids(values: list[str]) -> str:
     return hashlib.sha256(("\n".join(values) + "\n").encode()).hexdigest()
 
 
+def _shares_container_identity(left, right) -> bool:
+    if isinstance(left,(dict,list)) and left is right: return True
+    if isinstance(left,dict) and isinstance(right,dict):
+        return any(k in right and _shares_container_identity(v,right[k]) for k,v in left.items())
+    if isinstance(left,list) and isinstance(right,list):
+        return any(_shares_container_identity(a,b) for a,b in zip(left,right))
+    return False
+
+
 def _canonical_indices(rows: list[dict], indices: list[int]) -> list[int]:
     result = sorted(indices, key=lambda i: global_row_identity(rows[i]))
     identities = [global_row_identity(rows[i]) for i in result]
@@ -129,13 +138,17 @@ def fit_shared_model(by_domain: dict[str, tuple[Tensor, Tensor, Tensor]], contra
         raise ValueError("shared-axis eigengap gate failed")
     axis = eigenvectors[:, -1]; pivot = int(axis.abs().argmax())
     if axis[pivot] < 0: axis = -axis
-    sigmas = {}; c_parts = []; energy_error = 0.
+    sigmas = {}; energy_floors={}; c_parts = []; energy_error = 0.
     for domain in domains:
         r = residual[domain_slices[domain]]; axial = r @ axis; bulk = r - axial[:, None] * axis
         parallel = axial.square().mean(); perpendicular = bulk.square().sum(-1).mean() / (r.shape[1] - 1)
-        if not torch.isfinite(parallel + perpendicular) or float(parallel) <= 0 or float(perpendicular) <= 0:
-            raise ValueError("nonpositive domain energy intercept")
+        total=parallel+(r.shape[1]-1)*perpendicular
+        centered_reference=(by_domain[domain][2].double()-by_domain[domain][2].double().mean(0)).square().sum(-1).mean()
+        reference=max(float(total),float(centered_reference)); floor=float(contract["rank_relative_tolerance"])*reference
+        if not torch.isfinite(parallel + perpendicular) or float(parallel) <= floor or float(perpendicular) <= floor:
+            raise ValueError("unidentifiable domain energy intercept")
         sigmas[domain] = (parallel, perpendicular)
+        energy_floors[domain]=(floor,reference)
         c_parts.append(axial.square() / parallel - bulk.square().sum(-1) / ((r.shape[1] - 1) * perpendicular))
     c_all = torch.cat(c_parts); denominator = torch.sqrt(q_all.square().sum() * c_all.square().sum())
     if not torch.isfinite(denominator) or float(denominator) <= 0:
@@ -144,7 +157,7 @@ def fit_shared_model(by_domain: dict[str, tuple[Tensor, Tensor, Tensor]], contra
     tolerance = float(contract["numeric_tolerance"])
     if not torch.isfinite(theta) or abs(float(theta)) > 1 + tolerance:
         raise ValueError("theta bound failed")
-    standardized = {}; scales = {}
+    first_standardized = {}; scales = {}
     for domain in domains:
         sl = domain_slices[domain]; r = residual[sl]; qd = anchors[domain]["q"]
         axial = r @ axis; bulk = r - axial[:, None] * axis; sp0, so0 = sigmas[domain]
@@ -156,16 +169,38 @@ def fit_shared_model(by_domain: dict[str, tuple[Tensor, Tensor, Tensor]], contra
         energy_error = max(energy_error, float((energy - baseline).abs().max()))
         bulk_standardized = bulk / so[:, None]
         bulk_standardized = bulk_standardized - (bulk_standardized @ axis)[:, None] * axis
-        standardized[domain] = (axial / sp)[:, None] * axis + bulk_standardized
+        first_standardized[domain] = (axial / sp)[:, None] * axis + bulk_standardized
         scales[domain] = (sp, so)
+    # One-shot post-scale FWL.  The first pass above is used only to freeze
+    # axis/scales; the actually transported E is orthogonal after scaling.
+    parallel_target=[]; perpendicular_target=[]
+    for domain in domains:
+        y=by_domain[domain][2].double(); sp,so=scales[domain]; y_parallel=y@axis; y_perp=y-y_parallel[:,None]*axis
+        parallel_target.append((y_parallel/sp)[:,None]); perpendicular_target.append(y_perp/so[:,None])
+    parallel_beta, parallel_qr=_solve(design,torch.cat(parallel_target),contract)
+    perpendicular_beta, perpendicular_qr=_solve(design,torch.cat(perpendicular_target),contract)
+    perpendicular_beta=perpendicular_beta-(perpendicular_beta@axis)[:,None]*axis
+    parallel_location=(design@parallel_beta)[:,0]; perpendicular_location=design@perpendicular_beta
+    standardized={}; reconstruction_error=0.
+    for domain in domains:
+        sl=domain_slices[domain]; y=by_domain[domain][2].double(); sp,so=scales[domain]
+        y_parallel=y@axis; y_perp=y-y_parallel[:,None]*axis
+        e_parallel=y_parallel/sp-parallel_location[sl]; e_perp=y_perp/so[:,None]-perpendicular_location[sl]
+        e_perp=e_perp-(e_perp@axis)[:,None]*axis
+        standardized[domain]=e_parallel[:,None]*axis+e_perp
+        rebuilt=(sp*(parallel_location[sl]+e_parallel))[:,None]*axis+so[:,None]*(perpendicular_location[sl]+e_perp)
+        reconstruction_error=max(reconstruction_error,float((rebuilt-y).abs().max()))
     field_scale = {d: by_domain[d][2].double().std(0, unbiased=False).clamp_min(1e-12) for d in domains}
     diagnostics = {}
     for domain in domains:
-        r = residual[domain_slices[domain]]; z = by_domain[domain][0].double(); centered = z - z.mean()
+        r = residual[domain_slices[domain]]; e=standardized[domain]; z = by_domain[domain][0].double(); centered = z - z.mean()
         centered_means = by_domain[domain][2].double() - by_domain[domain][2].double().mean(0)
-        diagnostics[domain] = {"normalized_residual_mean_max": float((r.mean(0).abs() / field_scale[domain]).max()),
-            "normalized_residual_raw_z_correlation_max": float(((centered[:, None] * r).mean(0).abs() /
+        e_scale=e.std(0,unbiased=False).clamp_min(1e-12)
+        diagnostics[domain] = {"first_pass_normalized_residual_mean_max": float((r.mean(0).abs() / field_scale[domain]).max()),
+            "first_pass_normalized_residual_raw_z_correlation_max": float(((centered[:, None] * r).mean(0).abs() /
                 (centered.std(unbiased=False) * field_scale[domain]).clamp_min(1e-12)).max()),
+            "normalized_residual_mean_max":float((e.mean(0).abs()/e_scale).max()),
+            "normalized_residual_raw_z_correlation_max":float(((centered[:,None]*e).mean(0).abs()/(centered.std(unbiased=False)*e_scale).clamp_min(1e-12)).max()),
             "residual_energy_ratio": float(r.square().mean() / centered_means.square().mean().clamp_min(1e-12))}
     if energy_error > float(contract["energy_conservation_max_error"]):
         raise ValueError("energy conservation gate failed")
@@ -173,32 +208,37 @@ def fit_shared_model(by_domain: dict[str, tuple[Tensor, Tensor, Tensor]], contra
             "residual": residual, "location": location, "domain_slices": domain_slices,
             "h": h, "g": g, "axis": axis, "axis_pivot": pivot, "eigenvalues": eigenvalues,
             "eigengap": gap, "eigengap_threshold": threshold, "theta": theta, "covariances": covariances,
-            "sigmas": sigmas, "standardized": standardized, "scales": scales,
+            "sigmas": sigmas,"energy_floors":energy_floors, "standardized": standardized, "first_standardized":first_standardized,"scales": scales,
+            "parallel_beta":parallel_beta,"perpendicular_beta":perpendicular_beta,"parallel_qr":parallel_qr,"perpendicular_qr":perpendicular_qr,
+            "parallel_location":parallel_location,"perpendicular_location":perpendicular_location,"postscale_reconstruction_max_error":reconstruction_error,
             "energy_conservation_max_error": energy_error, "pooled_design_orthogonality_max": pooled_orthogonality, "diagnostics": diagnostics}
 
 
-def predict_shared(model: dict, domain: str, z: Tensor, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+def predict_shared(model: dict, domain: str, z: Tensor, x: Tensor) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if domain not in model["domains"]: raise ValueError("unknown held domain")
     q = _anchor_predict(model["anchors"][domain], z, x); index = model["domains"].index(domain)
     design = torch.zeros((len(z), 2 * len(model["domains"]) + 1), dtype=torch.float64)
     design[:, 2 * index] = 1; design[:, 2 * index + 1] = z.double() - model["anchors"][domain]["z_mean"]; design[:, -1] = q
-    location = design @ model["beta"]; sp0, so0 = model["sigmas"][domain]
+    parallel_location=(design@model["parallel_beta"])[:,0]; perpendicular_location=design@model["perpendicular_beta"]; sp0, so0 = model["sigmas"][domain]
     modulation = torch.exp(model["theta"] * q); width = model["axis"].numel()
     normalizer = (sp0 * modulation + (width - 1) * so0) / (sp0 + (width - 1) * so0)
-    return location, torch.sqrt(sp0 * modulation / normalizer), torch.sqrt(so0 / normalizer)
+    return parallel_location,perpendicular_location,torch.sqrt(sp0 * modulation / normalizer), torch.sqrt(so0 / normalizer)
 
 
-def reconstruct(location: Tensor, parallel: Tensor, perpendicular: Tensor, standardized: Tensor, axis: Tensor) -> Tensor:
+def reconstruct(parallel_location:Tensor,perpendicular_location:Tensor,parallel: Tensor, perpendicular: Tensor, standardized: Tensor, axis: Tensor) -> Tensor:
     axial = standardized @ axis; bulk = standardized - axial[:, None] * axis
-    return location + (parallel * axial)[:, None] * axis + perpendicular[:, None] * bulk
+    return (parallel*(parallel_location+axial))[:,None]*axis+perpendicular[:,None]*(perpendicular_location+bulk)
 
 
 def model_provenance(model: dict) -> dict:
     anchors = {d: {"z_mean": float(model["anchors"][d]["z_mean"]), "q_projection_sha256": _sha_tensor(model["anchors"][d]["q_projection"]),
         "q_infinity": float(model["anchors"][d]["q_infinity"]), "q_mean_absolute": model["anchors"][d]["q_mean"],
         "q_raw_z_covariance_absolute": model["anchors"][d]["q_raw_z_covariance"], "q_projection_qr": model["anchors"][d]["qr"]} for d in model["domains"]}
-    energies = {d: {"sigma_parallel_squared": float(model["sigmas"][d][0]), "sigma_perpendicular_squared": float(model["sigmas"][d][1])} for d in model["domains"]}
-    return {"beta_sha256": _sha_tensor(model["beta"]), "h_sha256": _sha_tensor(model["h"]),
+    energies = {d: {"sigma_parallel_squared": float(model["sigmas"][d][0]), "sigma_perpendicular_squared": float(model["sigmas"][d][1]),
+        "total_residual_energy":float(model["sigmas"][d][0]+(model["axis"].numel()-1)*model["sigmas"][d][1]),
+        "relative_identifiability_reference_energy":model["energy_floors"][d][1],
+        "relative_identifiability_floor":model["energy_floors"][d][0]} for d in model["domains"]}
+    return {"beta_sha256": _sha_tensor(model["beta"]),"parallel_beta_sha256":_sha_tensor(model["parallel_beta"]),"perpendicular_beta_sha256":_sha_tensor(model["perpendicular_beta"]), "h_sha256": _sha_tensor(model["h"]),
         "g_sha256": _sha_tensor(model["g"]), "axis_sha256": _sha_tensor(model["axis"]),
         "axis_pivot": model["axis_pivot"], "theta": float(model["theta"]),
         "eigengap": model["eigengap"], "eigengap_threshold": model["eigengap_threshold"],
@@ -206,7 +246,7 @@ def model_provenance(model: dict) -> dict:
         "h_symmetry_max_error": float((model["h"] - model["h"].T).abs().max()),
         "g_symmetry_max_error": float((model["g"] - model["g"].T).abs().max()),
         "pooled_design_orthogonality_max": model["pooled_design_orthogonality_max"],
-        "mean_qr": model["mean_qr"], "domain_anchor": anchors, "domain_anchor_sha256": {d: _canonical_sha(anchors[d]) for d in model["domains"]},
+        "mean_qr": model["mean_qr"],"parallel_qr":model["parallel_qr"],"perpendicular_qr":model["perpendicular_qr"],"postscale_reconstruction_max_error":model["postscale_reconstruction_max_error"], "domain_anchor": anchors, "domain_anchor_sha256": {d: _canonical_sha(anchors[d]) for d in model["domains"]},
         "domain_energy_intercepts": energies, "domain_energy_sha256": {d: _canonical_sha(energies[d]) for d in model["domains"]}}
 
 
@@ -228,7 +268,15 @@ def feature_crossfit_jsa_ect(rows: list[dict], train_indices: list[int], field_k
         held = _canonical_indices(rows, [i for i in train_indices if assignments[rows[i]["domain"]][rows[i]["object_group_id"]] == fold])
         prep = fit_feature_preprocessor(rows, fit, 16); fm, fs, _ = transform(prep, rows, fit); hm, hs, _ = transform(prep, rows, held)
         fit_field, held_field = (fs, hs) if field_kind == "semantic" else (fm[:, :-1], hm[:, :-1])
-        kept = None if field_kind == "semantic" else torch.nonzero(prep.mechanical_keep).flatten().tolist()[:-1]
+        if field_kind == "mechanical":
+            if prep.mechanical_keep.ndim != 1 or not bool(prep.mechanical_keep[-1]):
+                raise ValueError("displacement must be the final kept mechanical coordinate")
+            kept_all = torch.nonzero(prep.mechanical_keep).flatten().tolist()
+            if kept_all[-1] != prep.mechanical_keep.numel() - 1:
+                raise ValueError("displacement index is not last")
+            kept = kept_all[:-1]
+        else:
+            kept = None
         blocks = {}; held_blocks = {}
         for domain in domains:
             fit_objects = [o for o in objects[domain] if assignments[domain][o] != fold]; held_objects = [o for o in objects[domain] if assignments[domain][o] == fold]
@@ -240,16 +288,17 @@ def feature_crossfit_jsa_ect(rows: list[dict], train_indices: list[int], field_k
             z = torch.tensor([fz[o] for o in fit_objects], dtype=torch.float64); zh = torch.tensor([hz[o] for o in held_objects], dtype=torch.float64)
             x, xh, clipped = empirical_rank(z, zh); blocks[domain] = (z, x, fit_means); held_blocks[domain] = (held_objects, zh, xh, held_means, clipped)
         model = fit_shared_model(blocks, contract); provenance = model_provenance(model)
-        prep_hash = _canonical_sha({"train_object_hash": prep.train_object_hash, "mechanical_mean": _sha_tensor(prep.mechanical_mean), "mechanical_scale": _sha_tensor(prep.mechanical_scale), "semantic_mean": _sha_tensor(prep.semantic_mean), "semantic_components": _sha_tensor(prep.semantic_components)})
+        prep_payload={"train_object_hash": prep.train_object_hash, "mechanical_mean": _sha_tensor(prep.mechanical_mean), "mechanical_scale": _sha_tensor(prep.mechanical_scale), "mechanical_keep":_sha_tensor(prep.mechanical_keep.to(torch.float64)),"mechanical_raw_dim":int(prep.mechanical_keep.numel()),"mechanical_kept_indices":torch.nonzero(prep.mechanical_keep).flatten().tolist(), "semantic_mean": _sha_tensor(prep.semantic_mean), "semantic_components": _sha_tensor(prep.semantic_components)}
+        prep_hash = _canonical_sha(prep_payload)
         for domain in domains:
-            held_objects, zh, xh, held_means, clipped = held_blocks[domain]; location, sp, so = predict_shared(model, domain, zh, xh)
-            residual = held_means - location; axis = model["axis"]; axial = residual @ axis; bulk = residual - axial[:, None] * axis
-            bulk = bulk / so[:, None]; bulk = bulk - (bulk @ axis)[:, None] * axis
-            local = (axial / sp)[:, None] * axis + bulk
+            held_objects, zh, xh, held_means, clipped = held_blocks[domain]; ploc, oloc, sp, so = predict_shared(model, domain, zh, xh)
+            axis = model["axis"]; yparallel=held_means@axis; yperp=held_means-yparallel[:,None]*axis
+            eparallel=yparallel/sp-ploc; eperp=yperp/so[:,None]-oloc; eperp=eperp-(eperp@axis)[:,None]*axis
+            local=eparallel[:,None]*axis+eperp
             for j, obj in enumerate(held_objects):
                 target = objects[domain].index(obj); output[domain][target] = local[j] @ prep.semantic_components if field_kind == "semantic" else output[domain][target].scatter(0, torch.tensor(kept), local[j])
             fold_receipts[domain].append({"fold": fold, "joint_model_sha256": _canonical_sha(provenance), "joint_model": provenance,
-                "joint_preprocessor_sha256": prep_hash, "boundary_clipped_fraction": clipped,
+                "joint_preprocessor_sha256": prep_hash,"joint_preprocessor":prep_payload, "boundary_clipped_fraction": clipped,
                 "domain_fit_object_hash": _sha_ids([o for o in objects[domain] if assignments[domain][o] != fold]),
                 "domain_held_object_hash": _sha_ids(held_objects)})
     result = {}
@@ -290,13 +339,13 @@ def jsa_ect_ablation(rows: list[dict], train_indices: list[int], held_indices: l
     receipt = {"schema": SCHEMA, "context": context, "contract_sha256": _canonical_sha(contract), "shared_model": model_provenance(model), "domains": {}}
     for domain in domains:
         train_objects, held_objects, tl, hl = locations[domain]; z, x, means = blocks[domain]; hz, hx, hmeans, clipped = held_blocks[domain]
-        location, sp, so = predict_shared(model, domain, z, x); hlocation, hsp, hso = predict_shared(model, domain, hz, hx)
+        ploc, oloc, sp, so = predict_shared(model, domain, z, x); hploc, holoc, hsp, hso = predict_shared(model, domain, hz, hx)
         standardized = model["standardized"][domain]; offsets = {o: train_field[tl[o]] - means[j] for j, o in enumerate(train_objects)}; hoffsets = {o: held_field[hl[o]] - hmeans[j] for j, o in enumerate(held_objects)}
         donors = {o: train_objects[(j + 1) % len(train_objects)] for j, o in enumerate(train_objects)}; hdonors = {o: train_objects[j % len(train_objects)] for j, o in enumerate(held_objects)}
         by_obj = {o: standardized[j] for j, o in enumerate(train_objects)}
-        reconstruction = reconstruct(location, sp, so, standardized, model["axis"])
-        for j, o in enumerate(train_objects): train_out[tl[o]] = reconstruct(location[j:j+1], sp[j:j+1], so[j:j+1], by_obj[donors[o]][None], model["axis"])[0] + offsets[o]
-        for j, o in enumerate(held_objects): held_out[hl[o]] = reconstruct(hlocation[j:j+1], hsp[j:j+1], hso[j:j+1], by_obj[hdonors[o]][None], model["axis"])[0] + hoffsets[o]
+        reconstruction = reconstruct(ploc,oloc,sp,so,standardized,model["axis"])
+        for j, o in enumerate(train_objects): train_out[tl[o]] = reconstruct(ploc[j:j+1],oloc[j:j+1],sp[j:j+1],so[j:j+1],by_obj[donors[o]][None],model["axis"])[0] + offsets[o]
+        for j, o in enumerate(held_objects): held_out[hl[o]] = reconstruct(hploc[j:j+1],holoc[j:j+1],hsp[j:j+1],hso[j:j+1],by_obj[hdonors[o]][None],model["axis"])[0] + hoffsets[o]
         train_u = max(float(((train_out[tl[o]] - train_out[tl[o]].mean(0)) - offsets[o]).abs().max()) for o in train_objects)
         held_u = max(float(((held_out[hl[o]] - held_out[hl[o]].mean(0)) - hoffsets[o]).abs().max()) for o in held_objects)
         original = torch.cat([train_field[tl[o]] for o in train_objects]); shuffled = torch.cat([train_out[tl[o]] for o in train_objects]); hshuffled = torch.cat([held_out[hl[o]] for o in held_objects])
@@ -319,28 +368,40 @@ def preserve_recipient_displacement(geometry: Tensor, mechanical: Tensor) -> Ten
     return result
 
 
-def receipt_passes(candidate: dict, expected: dict, contract: dict, context: str, domains: set[str]) -> bool:
+def global_receipt_passes(candidate: dict, expected: dict, expected_sha256: str,
+                           contract: dict, context: str, domains: set[str]) -> bool:
     try:
-        if candidate is expected or _canonical_sha(candidate) != _canonical_sha(expected): return False
+        if candidate is expected or _shares_container_identity(candidate,expected) or not isinstance(expected_sha256, str) or len(expected_sha256) != 64: return False
+        if _canonical_sha(expected) != expected_sha256 or _canonical_sha(candidate) != expected_sha256: return False
         if set(candidate) != {"schema", "context", "contract_sha256", "shared_model", "domains"}: return False
         if candidate["schema"] != SCHEMA or candidate["context"] != context or candidate["contract_sha256"] != _canonical_sha(contract) or set(candidate["domains"]) != domains: return False
         shared = candidate["shared_model"]
-        shared_keys = {"beta_sha256","h_sha256","g_sha256","axis_sha256","axis_pivot","theta","eigengap","eigengap_threshold",
+        shared_keys = {"beta_sha256","parallel_beta_sha256","perpendicular_beta_sha256","h_sha256","g_sha256","axis_sha256","axis_pivot","theta","eigengap","eigengap_threshold",
                        "energy_conservation_max_error","h_symmetry_max_error","g_symmetry_max_error","pooled_design_orthogonality_max","mean_qr",
-                       "domain_anchor","domain_anchor_sha256","domain_energy_intercepts","domain_energy_sha256"}
+                       "parallel_qr","perpendicular_qr","postscale_reconstruction_max_error","domain_anchor","domain_anchor_sha256","domain_energy_intercepts","domain_energy_sha256"}
         if set(shared) != shared_keys or set(shared["domain_anchor_sha256"]) != domains or set(shared["domain_energy_sha256"]) != domains: return False
+        scalar_fields=("theta","eigengap","eigengap_threshold","energy_conservation_max_error","h_symmetry_max_error","g_symmetry_max_error","pooled_design_orthogonality_max","postscale_reconstruction_max_error")
+        if not all(math.isfinite(float(shared[k])) for k in scalar_fields): return False
+        for qr_name in ("mean_qr","parallel_qr","perpendicular_qr"):
+            qr=shared[qr_name]
+            if set(qr)!={"rank","condition","rank_threshold","positive_diagonal"} or qr["positive_diagonal"] is not True or qr["rank"]<=0 or not math.isfinite(float(qr["condition"])): return False
         for domain in domains:
             if shared["domain_anchor_sha256"][domain] != _canonical_sha(shared["domain_anchor"][domain]) or shared["domain_energy_sha256"][domain] != _canonical_sha(shared["domain_energy_intercepts"][domain]): return False
             anchor=shared["domain_anchor"][domain]; energy=shared["domain_energy_intercepts"][domain]
+            if not all(math.isfinite(float(anchor[k])) for k in ("z_mean","q_infinity","q_mean_absolute","q_raw_z_covariance_absolute")): return False
             if anchor["q_infinity"] <= 0 or anchor["q_mean_absolute"] > contract["orthogonality_max"] or anchor["q_raw_z_covariance_absolute"] > contract["orthogonality_max"]: return False
-            if energy["sigma_parallel_squared"] <= 0 or energy["sigma_perpendicular_squared"] <= 0: return False
+            if not all(math.isfinite(float(energy[k])) for k in ("sigma_parallel_squared","sigma_perpendicular_squared","total_residual_energy","relative_identifiability_reference_energy","relative_identifiability_floor")): return False
+            if energy["sigma_parallel_squared"] <= energy["relative_identifiability_floor"] or energy["sigma_perpendicular_squared"] <= energy["relative_identifiability_floor"]: return False
         if abs(shared["theta"]) > 1 + contract["numeric_tolerance"] or shared["energy_conservation_max_error"] > contract["energy_conservation_max_error"]: return False
         if shared["h_symmetry_max_error"] > contract["symmetry_max_error"] or shared["g_symmetry_max_error"] > contract["symmetry_max_error"]: return False
         if shared["pooled_design_orthogonality_max"] > contract["orthogonality_max"]: return False
-        domain_keys = {"normalized_residual_mean_max","normalized_residual_raw_z_correlation_max","residual_energy_ratio","reconstruction_max_error",
+        if shared["postscale_reconstruction_max_error"]>contract["reconstruction_max_error"]:return False
+        domain_keys = {"first_pass_normalized_residual_mean_max","first_pass_normalized_residual_raw_z_correlation_max",
+                       "normalized_residual_mean_max","normalized_residual_raw_z_correlation_max","residual_energy_ratio","reconstruction_max_error",
                        "recipient_u_max_error","held_boundary_clipped_fraction","shuffle_rms_over_original_sd","shuffled_norm_p99_ratio",
                        "train_mapping","held_mapping","train_coverage","held_coverage","train_self_rate","train_donor_marginal_exact",
                        "held_effective_donors_per_object","crossfit","shared_axis_sha256"}
+        reference = candidate["domains"][sorted(domains)[0]]["crossfit"]["folds"]
         for domain, value in candidate["domains"].items():
             if set(value) != domain_keys or value["shared_axis_sha256"] != shared["axis_sha256"]: return False
             train_ids=sorted(value["train_mapping"]); held_ids=sorted(value["held_mapping"])
@@ -348,22 +409,51 @@ def receipt_passes(candidate: dict, expected: dict, contract: dict, context: str
             if value["held_mapping"] != {o: train_ids[i%len(train_ids)] for i,o in enumerate(held_ids)}: return False
             cf = value["crossfit"]
             if sorted(f["fold"] for f in cf["folds"]) != list(range(contract["crossfit_folds"])): return False
-            if any(f["joint_model_sha256"] != candidate["domains"][sorted(domains)[0]]["crossfit"]["folds"][f["fold"]]["joint_model_sha256"] for f in cf["folds"]): return False
+            if any(f["joint_model_sha256"] != reference[f["fold"]]["joint_model_sha256"] or
+                   f["joint_preprocessor_sha256"] != reference[f["fold"]]["joint_preprocessor_sha256"] for f in cf["folds"]): return False
             for fold in cf["folds"]:
                 joint=fold["joint_model"]
-                if fold["joint_model_sha256"] != _canonical_sha(joint) or abs(joint["theta"]) > 1+contract["numeric_tolerance"]: return False
+                if fold["joint_model_sha256"] != _canonical_sha(joint) or fold["joint_preprocessor_sha256"]!=_canonical_sha(fold["joint_preprocessor"]) or abs(joint["theta"]) > 1+contract["numeric_tolerance"]: return False
+                pp=fold["joint_preprocessor"]
+                if pp["mechanical_kept_indices"][-1]!=pp["mechanical_raw_dim"]-1: return False
                 if joint["energy_conservation_max_error"] > contract["energy_conservation_max_error"] or joint["h_symmetry_max_error"] > contract["symmetry_max_error"] or joint["g_symmetry_max_error"] > contract["symmetry_max_error"]: return False
-            if value["normalized_residual_mean_max"] > contract["normalized_residual_mean_max"] or value["normalized_residual_raw_z_correlation_max"] > contract["normalized_residual_raw_z_correlation_max"]: return False
-            if value["reconstruction_max_error"] > contract["reconstruction_max_error"] or value["recipient_u_max_error"] > contract["recipient_u_max_error"]: return False
-            if value["held_boundary_clipped_fraction"] > contract["held_boundary_clipped_fraction_max"] or value["residual_energy_ratio"] < contract["residual_energy_ratio_at_least"]: return False
-            if value["shuffle_rms_over_original_sd"] < contract["shuffle_rms_over_original_sd_at_least"] or value["shuffled_norm_p99_ratio"] > contract["shuffled_norm_p99_ratio_at_most"]: return False
-            if value["train_coverage"] != 1 or value["held_coverage"] != 1 or value["train_self_rate"] != 0 or value["train_donor_marginal_exact"] is not True or value["held_effective_donors_per_object"] != 1: return False
-            if cf["residual_norm_raw_z_absolute_spearman"] > contract["crossfit_absolute_spearman_at_most"] or cf["residual_raw_z_distance_correlation"] > contract["crossfit_distance_correlation_at_most"]: return False
+                if joint["postscale_reconstruction_max_error"]>contract["reconstruction_max_error"]: return False
+                for energy in joint["domain_energy_intercepts"].values():
+                    if energy["sigma_parallel_squared"]<=energy["relative_identifiability_floor"] or energy["sigma_perpendicular_squared"]<=energy["relative_identifiability_floor"]: return False
         return True
-    except (KeyError, TypeError, ValueError, IndexError):
+    except (KeyError, TypeError, ValueError, IndexError, RuntimeError, ZeroDivisionError):
         return False
+
+
+def domain_receipt_passes(candidate: dict, expected: dict, expected_sha256: str, contract: dict,
+                          context: str, domains: set[str], domain: str) -> bool:
+    if not global_receipt_passes(candidate, expected, expected_sha256, contract, context, domains) or domain not in domains:
+        return False
+    try:
+        value = candidate["domains"][domain]; cf = value["crossfit"]
+        numeric = [value[k] for k in ("first_pass_normalized_residual_mean_max", "first_pass_normalized_residual_raw_z_correlation_max",
+                   "normalized_residual_mean_max", "normalized_residual_raw_z_correlation_max", "residual_energy_ratio",
+                   "reconstruction_max_error", "recipient_u_max_error", "held_boundary_clipped_fraction",
+                   "shuffle_rms_over_original_sd", "shuffled_norm_p99_ratio")]
+        if not all(math.isfinite(float(x)) for x in numeric): return False
+        if value["first_pass_normalized_residual_mean_max"] > contract["normalized_residual_mean_max"] or value["first_pass_normalized_residual_raw_z_correlation_max"] > contract["normalized_residual_raw_z_correlation_max"]: return False
+        if value["normalized_residual_mean_max"] > contract["normalized_residual_mean_max"] or value["normalized_residual_raw_z_correlation_max"] > contract["normalized_residual_raw_z_correlation_max"]: return False
+        if value["reconstruction_max_error"] > contract["reconstruction_max_error"] or value["recipient_u_max_error"] > contract["recipient_u_max_error"]: return False
+        if value["held_boundary_clipped_fraction"] > contract["held_boundary_clipped_fraction_max"] or value["residual_energy_ratio"] < contract["residual_energy_ratio_at_least"]: return False
+        if value["shuffle_rms_over_original_sd"] < contract["shuffle_rms_over_original_sd_at_least"] or value["shuffled_norm_p99_ratio"] > contract["shuffled_norm_p99_ratio_at_most"]: return False
+        if value["train_coverage"] != 1 or value["held_coverage"] != 1 or value["train_self_rate"] != 0 or value["train_donor_marginal_exact"] is not True or value["held_effective_donors_per_object"] != 1: return False
+        if cf["residual_norm_raw_z_absolute_spearman"] > contract["crossfit_absolute_spearman_at_most"] or cf["residual_raw_z_distance_correlation"] > contract["crossfit_distance_correlation_at_most"]: return False
+        return True
+    except (KeyError, TypeError, ValueError, IndexError, RuntimeError, ZeroDivisionError):
+        return False
+
+
+def receipt_passes(candidate: dict, expected: dict, expected_sha256: str, contract: dict,
+                   context: str, domains: set[str]) -> bool:
+    return global_receipt_passes(candidate, expected, expected_sha256, contract, context, domains) and all(
+        domain_receipt_passes(candidate, expected, expected_sha256, contract, context, domains, domain) for domain in domains)
 
 
 __all__ = ["SCHEMA", "canonical_object_scalar", "feature_crossfit_jsa_ect", "fit_shared_model", "jsa_ect_ablation",
            "global_row_identity", "model_provenance", "predict_shared", "preserve_recipient_displacement",
-           "receipt_passes", "reconstruct"]
+           "domain_receipt_passes", "global_receipt_passes", "receipt_passes", "reconstruct"]
