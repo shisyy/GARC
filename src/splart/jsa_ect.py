@@ -32,13 +32,17 @@ def _sha_ids(values: list[str]) -> str:
     return hashlib.sha256(("\n".join(values) + "\n").encode()).hexdigest()
 
 
+def _container_ids(value) -> set[int]:
+    """Collect every mutable/container identity, independent of tree path."""
+    if isinstance(value,dict):
+        return {id(value)}.union(*(_container_ids(v) for v in value.values()),set())
+    if isinstance(value,(list,set)):
+        return {id(value)}.union(*(_container_ids(v) for v in value),set())
+    return set()
+
+
 def _shares_container_identity(left, right) -> bool:
-    if isinstance(left,(dict,list)) and left is right: return True
-    if isinstance(left,dict) and isinstance(right,dict):
-        return any(k in right and _shares_container_identity(v,right[k]) for k,v in left.items())
-    if isinstance(left,list) and isinstance(right,list):
-        return any(_shares_container_identity(a,b) for a,b in zip(left,right))
-    return False
+    return bool(_container_ids(left) & _container_ids(right))
 
 
 def _canonical_indices(rows: list[dict], indices: list[int]) -> list[int]:

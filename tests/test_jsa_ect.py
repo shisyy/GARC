@@ -136,6 +136,18 @@ def test_transport_double_receipt_row_order_u_and_displacement():
     assert not receipt_passes(expected[2],expected[2],expected_sha,contract(),context,{"articraft","njc"})
     aliased=copy.deepcopy(first[2]); aliased_expected=copy.deepcopy(expected[2]); aliased["domains"]["articraft"]["crossfit"]=aliased_expected["domains"]["articraft"]["crossfit"]
     alias_sha=canonical_sha256(aliased_expected); assert not receipt_passes(aliased,aliased_expected,alias_sha,contract(),context,{"articraft","njc"})
+    cross_key=copy.deepcopy(first[2]); cross_key_expected=copy.deepcopy(expected[2]); frozen_sha=canonical_sha256(cross_key_expected)
+    assert cross_key["shared_model"]["mean_qr"]==cross_key_expected["shared_model"]["parallel_qr"]
+    cross_key["shared_model"]["mean_qr"]=cross_key_expected["shared_model"]["parallel_qr"]
+    assert canonical_sha256(cross_key)==frozen_sha
+    assert not global_receipt_passes(cross_key,cross_key_expected,frozen_sha,contract(),context,{"articraft","njc"})
+    domain_alias=copy.deepcopy(first[2]); domain_expected=copy.deepcopy(expected[2]); frozen_sha=canonical_sha256(domain_expected)
+    left=domain_alias["domains"]["articraft"]["crossfit"]["folds"][0]
+    right=domain_expected["domains"]["njc"]["crossfit"]["folds"][0]
+    assert left["joint_model"]==right["joint_model"]
+    left["joint_model"]=right["joint_model"]
+    assert canonical_sha256(domain_alias)==frozen_sha
+    assert not global_receipt_passes(domain_alias,domain_expected,frozen_sha,contract(),context,{"articraft","njc"})
     gate_bad=copy.deepcopy(first[2]); gate_bad["domains"]["articraft"]["normalized_residual_mean_max"]=1.
     gate_expected=copy.deepcopy(gate_bad); gate_sha=canonical_sha256(gate_expected)
     assert global_receipt_passes(gate_bad,gate_expected,gate_sha,contract(),context,{"articraft","njc"})
