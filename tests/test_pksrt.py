@@ -279,7 +279,8 @@ def test_config_and_runner_are_frozen_score_free_and_provenance_bound(monkeypatc
     observed=contract()["source_object_list_hashes"]; cfg={**contract(),"source_object_list_hashes":observed}
     candidates={}; expected={}; audits={}
     for name in ("semantic","mechanical"):
-        base={"schema":"splart-pksrt-null/v1","context":contexts[name],"contract_sha256":canonical_sha256(cfg),"shared_model":{},"domains":{},"prediction":name}
+        base={"schema":"splart-pksrt-null/v1","context":contexts[name],"contract_sha256":canonical_sha256(cfg),
+              "shared_model":{"layers":[{"query_receipts":[]}]},"domains":{},"prediction":name}
         # prediction is removed from the strict receipt shape; the stub derives by context.
         del base["prediction"]; candidates[name]=copy.deepcopy(base); expected[name]=copy.deepcopy(base)
         sha=canonical_sha256(base)
@@ -302,6 +303,15 @@ def test_config_and_runner_are_frozen_score_free_and_provenance_bound(monkeypatc
         "source_labels_opened":False,"source_labels_hashed":False,"source_scores_computed":False,"training_started":False,"remote_execution_started":True,
         "execution_environment":"CASIA_98","execution_phase":"label_free_feasibility","box_labels_read":[],"protected_splits_read":[]}
     assert verify_provenance_binding(result,receipt,cfg,contexts,domains,observed)
+    # The valid call above represents an already-warm validation cache.  A
+    # content-identical reverse graph must still be rejected when any nested
+    # container aliases either independently recomputed graph.
+    for source_key in ("pksrt","independent_recomputation"):
+        aliased=copy.deepcopy(result); reverse=aliased["runtime_audits"]["semantic"]["reverse_receipt"]
+        source_receipt=aliased[source_key]["semantic"]
+        reverse["shared_model"]["layers"][0]["query_receipts"]=source_receipt["shared_model"]["layers"][0]["query_receipts"]
+        aliased_receipt=copy.deepcopy(receipt); aliased_receipt["feasibility_sha256"]=canonical_sha256(aliased)
+        assert not verify_provenance_binding(aliased,aliased_receipt,cfg,contexts,domains,observed)
     bad=copy.deepcopy(receipt); bad["feasibility_sha256"]="0"*64; assert not verify_provenance_binding(result,bad,cfg,contexts,domains,observed)
     for key,value in (("remote_execution_started",False),("execution_environment","CASIA_102"),("execution_phase","score")):
         bad=copy.deepcopy(receipt); bad[key]=value; assert not verify_provenance_binding(result,bad,cfg,contexts,domains,observed)

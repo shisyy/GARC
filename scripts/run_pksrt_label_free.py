@@ -15,7 +15,7 @@ from scripts.run_smarc_source_gate import (FROZEN_CONFIG_SHA256 as SOURCE_CONFIG
                                             _finish_atomic_directory, indices_for,
                                             merge_features)
 from splart.frozen_visual import sha256_file
-from splart.pksrt import (canonical_object_scalar, domain_receipt_passes,
+from splart.pksrt import (_shares_container_identity, canonical_object_scalar, domain_receipt_passes,
                           feature_crossfit_pksrt, global_receipt_passes,
                           global_row_identity, pksrt_ablation,
                           preserve_recipient_displacement)
@@ -87,11 +87,13 @@ def run_cell(rows, train, held, train_field, held_field, train_z, held_z, cfg, c
     second = pksrt_ablation(rows, train, held, train_field, held_field, train_z, held_z, cfg, context, second_cf)
     expected_sha = canonical_sha256(second[2])
     if first[2] is second[2] or first_cf is second_cf: raise RuntimeError("receipt alias")
-    from splart.pksrt import _shares_container_identity
     if _shares_container_identity(first[2], second[2]): raise RuntimeError("nested receipt alias")
     reverse_train, reverse_held = list(reversed(train)), list(reversed(held))
     reverse = pksrt_ablation(rows, reverse_train, reverse_held, train_field.flip(0), held_field.flip(0), train_z, held_z,
                              cfg, context, feature_crossfit_pksrt(rows, reverse_train, kind, cfg))
+    receipts = (first[2], second[2], reverse[2])
+    if any(_shares_container_identity(receipts[i], receipts[j]) for i, j in ((0, 1), (0, 2), (1, 2))):
+        raise RuntimeError("candidate/expected/reverse receipt graph alias")
     canonical_train = sorted(train, key=lambda i: global_row_identity(rows[i])); canonical_held = sorted(held, key=lambda i: global_row_identity(rows[i]))
     same = lambda a, b: set(a) == set(b) and all(torch.equal(a[k], b[k]) for k in a)
     audit = {"repeat_bit_identical": torch.equal(first[0], second[0]) and torch.equal(first[1], second[1]) and first[2] == second[2],
@@ -139,16 +141,20 @@ def verify_provenance_binding(result: dict, receipt: dict, cfg: dict, contexts: 
             if candidate["context"] != contexts[name] or expected["context"] != contexts[name]: return False
             expected_sha = result["independent_recomputation_sha256"].get(name)
             if expected_sha != canonical_sha256(expected): return False
-            derived_global[name] = global_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains)
-            derived_domain[name] = {d: domain_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains, d) for d in domains}
             audit = result["runtime_audits"].get(name)
             audit_keys = {"repeat_bit_identical", "row_order_invariant", "candidate_prediction_sha256", "gate_recompute_prediction_sha256",
                           "reverse_receipt", "reverse_receipt_sha256", "reverse_prediction_sha256"} | ({"recipient_displacement_bitwise_unchanged"} if name == "mechanical" else set())
             if not isinstance(audit, dict) or set(audit) != audit_keys: return False
+            reverse = audit["reverse_receipt"]
+            receipts = (candidate, expected, reverse)
+            if any(receipts[i] is receipts[j] or _shares_container_identity(receipts[i], receipts[j])
+                   for i, j in ((0, 1), (0, 2), (1, 2))): return False
+            # Only after the full three-way alias gate may any content-cached
+            # global/domain validation be queried.
+            derived_global[name] = global_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains)
+            derived_domain[name] = {d: domain_receipt_passes(candidate, expected, expected_sha, cfg, contexts[name], domains, d) for d in domains}
             candidate_prediction = receipt_prediction_sha(candidate); expected_prediction = receipt_prediction_sha(expected)
             derived_repeat = candidate == expected and candidate_prediction == expected_prediction
-            reverse = audit["reverse_receipt"]
-            if reverse is candidate or reverse is expected: return False
             if canonical_sha256(reverse) != audit["reverse_receipt_sha256"]: return False
             reverse_valid = global_receipt_passes(reverse, expected, expected_sha, cfg, contexts[name], domains)
             reverse_prediction = receipt_prediction_sha(reverse)
