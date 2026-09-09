@@ -409,7 +409,7 @@
       "children_ids": [],
       "depth": 2,
       "hypothesis": "Mechanism: Pooled Kernel Sliced Rosenblatt Transport (PKSRT) uses domain marginal quantile bijections, an Articraft-stabilized shared kernel conditional CDF, a fixed identity-plus-DCT slice sequence, and a final per-domain raw-z QR anchor to form an invertible conditional distribution transport.\nHypothesis: Node8.12's remaining errors come from finite-moment models failing on nonlinear marginals and copula dependence; a shared nonparametric conditional probability-integral transform can use 97 Articraft objects to stabilize NJC while domain marginals and anchors prevent cross-domain shift.\nObservable: Under the unchanged five folds and gates, all four cells pass: mechanical/Articraft Spearman<=0.35, mechanical/NJC and semantic/NJC dCor<=0.5, actual E mean/raw-z<=1e-10, inverse error<=1e-10 and p99<=1.25 with exact recipient-u/mechanical-d preservation.\nConflicts: Nodes8.9-8.12 show linear, quadratic, per-domain rank-one and shared rank-one moment transports leave different dependence forms; this node changes to a complete conditional-distribution transport and is pruned without adding bases, directions, bandwidth choices or thresholds if it fails.",
-      "status": "pending"
+      "status": "running"
     }
   }
 }
