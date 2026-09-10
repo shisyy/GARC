@@ -4,6 +4,27 @@ Articulation Estimation and Part-level Reconstruction with 3D Gaussian Splatting
 
 [![arXiv](https://img.shields.io/badge/arXiv-2506.03594-b31b1b.svg)](https://arxiv.org/abs/2506.03594)
 
+## Endpoint Extrapolation Research Extension
+
+This fork adds a new task that turns the original two-state interpolation
+setting into **physical endpoint extrapolation**. The model receives two
+strictly intermediate articulation states, relabelled locally as states `0`
+and `1`, and must predict both physical motion limits, identify the fully
+closed endpoint, and reconstruct held-out endpoint views. Absolute input
+fractions and ground-truth URDF limits are hidden from the model.
+
+- Task definition and leakage boundary: [EXTRAPOLATION_PROTOCOL.md](EXTRAPOLATION_PROTOCOL.md)
+- Reproducible research contract: [ARBOR_CONTRACT.md](ARBOR_CONTRACT.md)
+- Current CVPR-oriented progress: [.arbor/sessions/splart-endpoint-extrapolation-20260905/CVPR_PROGRESS.md](.arbor/sessions/splart-endpoint-extrapolation-20260905/CVPR_PROGRESS.md)
+- Latest audited experiment: [results/8.13-pksrt-label-free-feasibility/report.md](results/8.13-pksrt-label-free-feasibility/report.md)
+
+The default branch contains the task protocol, from-scratch baseline tooling,
+evaluation safeguards, and accepted research records. Individual experimental
+implementations remain on their `arbor/*` branches; in particular,
+`arbor/node-8-13-pksrt` contains the latest PKSRT implementation. Datasets,
+model checkpoints, sealed labels, and large remote experiment artifacts are
+intentionally excluded from Git.
+
 [![Video Abstract](assets/splart-teaser.jpg)](https://drive.google.com/file/d/1bandCsF11xfTkXEzsQZ0dmfUMZBOCH9k/view?usp=sharing)
 
 ## Installation
