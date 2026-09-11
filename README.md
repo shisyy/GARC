@@ -25,8 +25,6 @@ implementations remain on their `arbor/*` branches; in particular,
 model checkpoints, sealed labels, and large remote experiment artifacts are
 intentionally excluded from Git.
 
-[![Video Abstract](assets/splart-teaser.jpg)](https://drive.google.com/file/d/1bandCsF11xfTkXEzsQZ0dmfUMZBOCH9k/view?usp=sharing)
-
 ## Installation
 
 ```bash
