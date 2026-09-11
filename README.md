@@ -146,14 +146,3 @@ It will save the rendering to `outputs/renders/$dataset/$obj/$timestamp`.
 
 ## Citation
 
-If you find this work useful, please consider citing our paper:
-
-    @misc{lin2025splart,
-        title={SplArt: Articulation Estimation and Part-Level Reconstruction with 3D Gaussian Splatting}, 
-        author={Shengjie Lin and Jiading Fang and Muhammad Zubair Irshad and Vitor Campagnolo Guizilini and Rares Andrei Ambrus and Greg Shakhnarovich and Matthew R. Walter},
-        year={2025},
-        eprint={2506.03594},
-        archivePrefix={arXiv},
-        primaryClass={cs.GR},
-        url={https://arxiv.org/abs/2506.03594}, 
-    }
