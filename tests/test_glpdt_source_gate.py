@@ -59,7 +59,11 @@ def make_index(tmp_path: Path) -> Path:
 
 
 def test_source_loader_accepts_relative_and_absolute_verified_artifacts(tmp_path):
-    data = load_source(make_index(tmp_path))
+    index_path = make_index(tmp_path)
+    payload = json.loads(index_path.read_text())
+    payload["box_labels_read"] = []
+    index_path.write_text(json.dumps(payload))
+    data = load_source(index_path)
     assert data["source_train"][0].shape == (13, 2, 3, PROFILE_SAMPLES, 9)
     assert data["source_validation"][0].shape == (6, 2, 3, PROFILE_SAMPLES, 9)
     assert data["source_train"][4] == tuple(f"source-{index:02d}" for index in range(13))

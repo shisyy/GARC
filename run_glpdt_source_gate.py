@@ -67,7 +67,7 @@ def validate_index(index_path: Path) -> list[tuple[dict[str, Any], Path]]:
     payload = json.loads(index_path.read_text(encoding="utf-8"))
     if payload.get("schema") != INDEX_SCHEMA:
         raise ValueError("unexpected source index schema")
-    if payload.get("protected_splits_read") != [] or payload.get("box_labels_read") not in (False, 0):
+    if payload.get("protected_splits_read") != [] or payload.get("box_labels_read") not in (False, 0, []):
         raise ValueError("source index records protected access")
     rows = payload.get("rows")
     if not isinstance(rows, list) or len(rows) != sum(SPLITS.values()):
