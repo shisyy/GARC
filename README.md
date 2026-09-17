@@ -1,6 +1,6 @@
-# ALEx
+# GAR
 
-Articulation Limit Extrapolation from Two Intermediate States.
+Geometry-Guided Articulated Reconstruction Beyond Observed States
 
 [![arXiv](https://img.shields.io/badge/arXiv-2506.03594-b31b1b.svg)](https://arxiv.org/abs/2506.03594)
 
