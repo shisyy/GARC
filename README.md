@@ -33,7 +33,7 @@ export TORCH_CUDA_ARCH_LIST='7.0 7.5 8.6 8.9'
 ```
 
 ```bash
-CONDA_ENV=ALEx
+CONDA_ENV=GAR
 conda deactivate && conda env remove -n $CONDA_ENV -y
 conda create -n $CONDA_ENV -y python=3.11 && conda activate $CONDA_ENV  # sapien supports up to Python 3.11
 conda install -y colmap ffmpeg nvidia/label/cuda-12.4.1::cuda-toolkit
