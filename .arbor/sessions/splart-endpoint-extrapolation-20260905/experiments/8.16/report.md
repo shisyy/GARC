@@ -1,0 +1,12 @@
+# Experiment 8.16
+
+**Hypothesis**: Mechanism: Counterfactual Re-query Fixed-Point Loop (CR-FPL) turns each ALD-PDL log-distance estimate back into a differentiable query of the ordered D2 profile, injects the sampled local geometry and query residual as the next loop's primal-dual feedback token, and applies a shared convex fixed-point update with the same four tied pre-norm loops.
+Hypothesis: Node 8.15's static recalled input makes later loops accumulate stale corrections, so one loop beats four; state-dependent re-query makes every later loop observe a new counterfactual constraint while convex fixed-point interpolation prevents the last-loop rebound.
+Observable: On the unchanged 13/6 source B_dev, the four-loop prediction beats both node 8.15 and its own parameter-matched one-loop output in mean-side and worst-side NMAE, exact swap error is <=1e-6, target-relative p99 does not regress, and prediction/state residuals decrease through loop four.
+Conflicts: Pruned [8.1]/[8.2] showed no explicit signed-gap crossing, so CR-FPL does not threshold or search for a crossing; it uses the continuously sampled local profile only as iterative feedback, directly countering validated [8.15]'s static-input overshoot without changing seed, width, loop count, or split.
+
+**Score**: 0.198233380913734
+
+**Insight**: CR-FPL generalizes across two source domains. Articraft 13/6: four-loop mean-side NMAE 0.198233 versus one-loop 0.206502 and D2 0.695073; NJC fixed 11/4 object-macro: four-loop 0.245383 versus one-loop 0.246261 and D2 0.656000. Exact swap is 0 and fixed-point/prediction/state residuals decrease in both domains, establishing a real but domain-dependent LOOP gain. The unresolved issue is tail allocation: target-relative p99 is 1.508 on Articraft and 1.930 on NJC, worse than respective one-loop tails, motivating explicit equivariant minimax coupling rather than more local re-query depth.
+
+**Result**: CROSS_DOMAIN_PASS_MEAN: CR-FPL improves D2 by 71.48% on Articraft and 62.59% on NJC, and four loops beat the same parameters at one loop in both domains. Articraft report_sha256=647f846262e9a46d0882c21f91a259bb94e5afec98370cd224f90355c5092fc7; NJC report_sha256=2e07f767c6deba1da83c766c5d7aeb6ae09f69fb4fc91779188a15239f7f9c55; NJC checkpoint_sha256=22d38b52aa77766d775d36c773c664f7690c5807945d2aa3c4ecf2326bd0b4c5; protected_splits_read=[].

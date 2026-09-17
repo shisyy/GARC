@@ -1,0 +1,46 @@
+## Codebase
+
+Working directory: D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\worktrees\node814_glpdt
+
+## Git Isolation
+
+Work in the assigned experiment branch/worktree. Do not switch back to the main repository for implementation or evaluation.
+
+## Research Idea
+
+**ID**: 8.14
+**Hypothesis**:
+Mechanism: Gauge-Equivariant Looped Primal-Dual Transformer (GLPDT) tokenizes each side's ordered multi-radius D2 profile and recurrently applies one pre-norm input-recalled Transformer block for four shared-weight loops to refine a positive endpoint-distance state and a terminal-violation state, with one shared side function and deep supervision at every loop.
+Hypothesis: One-pass heads and distribution transports fail because they compress or warp profiles that contain no clean boundary crossing; recurrent bounded residual refinement can accumulate weak geometric evidence without PKSRT-style tail inflation, while shared side weights and input recall prevent observation-order and fixed-point collapse.
+Observable: On object-disjoint source B_dev before any Box or protected evaluation, GLPDT lowers absolute endpoint NMAE versus frozen D2 and a parameter-matched one-pass Transformer, zero-geometry, coordinate-only and profile-shuffle controls; exact swap error is <=1e-6, loop residual decreases, and prediction p99 inflation is <=1.25.
+Conflicts: Pruned [8.1]/[8.2] found no usable profile crossing and [8.13] inflated three tails; this node assumes no explicit crossing and instead performs contractive residual inference around the frozen D2 anchor, with fail-closed null and tail gates.
+
+## Evaluation Info
+
+- **Evaluation command (B_dev)**: `cd D:\workspace\projects\2026\09\05_splart_endpoint_extrapolation\worktrees\node814_glpdt && python evaluate_public_endpoint_profiles.py --split public_box_af --run-name 8.14`
+- **Evaluation command (B_test, do not use for routine experiments)**: `UNAVAILABLE_PROTECTED_B_TEST`
+- **Dataset info**: Public Box a-f development episodes plus target-free first36 profiles; old sealed 18/9/9, B_test, and Full22 prohibited
+- **Baseline score**: 0.154877
+- **Current trunk score**: 0.154877
+
+Use B_dev for final experiment scoring. Do NOT use B_test.
+
+## Insights From Prior Experiments
+
+- ROOT: Children findings: [1, done, score=0.3109] Original scratch SplArt accurately recovers axis and pivot but treats interior observations as endpoints: endpoint NMAE 0.310881, closed coverage 0, terminal validity 0. | [2, done, score=0.08573] D2-CEA reduced endpoint NMAE 72.42%, raised PSNR 3.72 dB and mobile IoU 46.74% with the base model hash unchanged. However all RMS/PCFG/OEC posthoc contact certificates abstained: closed coverage and terminal validity remain zero, showing the bottleneck is contact-surface representation rather than scalar search. | [3, done, score=0.08573] Children findings: [3.1, done, score=0.08573] View-balanced voxel fusion removed order/view-density bias, but observable surface contact and closure topology vote opposite sides; posthoc frozen-geometry terminal certification remains unidentifiable on Box. | [4, done, score=0.09515] Children findings: [4.1, done, score=0.1027] Deterministic visibility-censored Gaussianization slightly improved endpoint transfer but did not beat the NJC statistical prior; mesh-to-Gaussian appearance shift is not the sole bottleneck, and semantic/domain range priors remain dominant. | [5, pruned, score=0.1576] FECF only establ...
+- 8: Children findings: [8.1, pruned, score=0.6882] Cross-state multi-radius consensus fails on representative Box-a: all 12 curves lack signed-gap zero crossings, consensus loses to D2 and a shuffled-geometry null, and uncertainty gating can only fall back to D2. [Pruned: Representative Box-a disproved cross-state/radius consensus on frozen penetrated profiles; the geometry shuffle null was better and gating yielded no gain.] | [8.2, pruned, score=0.343] The monotone hazard is ordered and semantics-sensitive on 36 target-free profiles, but Box-a has 12/12 signed-gap curves entirely nonpositive; hazard loses to frozen D2 and a channel-shuffle null, falsifying the free-to-terminal premise. [Pruned: Representative public Box-a falsified the mechanism: all 12 curves lack a free/contact crossing and the channel-shuffle null beats the proposed hazard.] | [8.3, pruned, score=0.4118] Projective consistency reduces exact36 target-domain cross-gauge variance by 37.34%, but fails domain transfer: on Box-a its worst-side NMAE and variance are worse than no-consistency, frozen D2, and coordinate controls. [Pruned: Target-free gauge stability improved in-domain but reversed under Box transfer and...
+
+## Additional Context
+
+Implement a first executable GLPDT prototype immediately, not a literature-only plan. Base is commit 5ea11a3 with node22 profile runtime. Use exactly four tied loops, pre-norm, fixed residual scaling, original-input recall each loop, one shared side function, positive endpoint-distance output, and a bounded correction around the frozen D2 anchor. Add per-loop prediction/residual diagnostics and exact state-swap tests. Compare against the existing one-pass Node22Head plus parameter-matched untied/fixed-depth, coordinate-only, zero-geometry, and deterministic full-profile permutation controls; do not tune loop count, width, seeds, thresholds, or data splits. First run focused local synthetic/tests. Then inspect server98 for existing authorized Articraft/NJC or public development profile caches and launch the earliest valid source-only/object-disjoint GPU experiment in a durable tmux session. Do not read node72 sealed 18/9/9 truth, B_test, Full22, Box e/f, or any protected endpoint payload. If no authorized labelled source cache is usable, run a profile reconstruction/pretext gate and report the precise data blocker rather than touching protected labels. Preserve logs, command, commit and artifact hashes.
+
+## Instructions
+
+1. Understand the code before editing.
+2. Implement the idea faithfully.
+3. Run quick checks to ensure the new logic is active.
+4. Iterate on implementation bugs.
+5. Run the B_dev evaluation when credible.
+6. Report Changes, Baseline vs Result, Score, and Insight. The score must be the absolute primary metric, not a delta.
+
+Save results to `results/8.14-<brief-description>/`.
