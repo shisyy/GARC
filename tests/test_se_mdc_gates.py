@@ -1,9 +1,32 @@
+from dataclasses import replace
+
+import pytest
 import torch
 
 import run_se_mdc_njc_gate as njc_gate
 import run_se_mdc_source_gate as source_gate
 from run_glpdt_source_gate import CONFIG
 from splart.se_mdc import SEMDCHead
+
+
+class Float32BatchShapeDriftHead(SEMDCHead):
+    """Mimic batch-shape-only float32 kernel drift, not structural coupling."""
+
+    def forward(self, features, coordinates, anchor_distance):
+        output = super().forward(features, coordinates, anchor_distance)
+        if features.dtype == torch.float32:
+            drift = features.new_tensor(features.shape[0] * 2.0e-5)
+            output = replace(output, distance=output.distance + drift)
+        return output
+
+
+class TrueCrossBatchCouplingHead(SEMDCHead):
+    """Deliberately leak the current batch mean into every prediction."""
+
+    def forward(self, features, coordinates, anchor_distance):
+        output = super().forward(features, coordinates, anchor_distance)
+        leaked = 0.1 * features.mean()
+        return replace(output, distance=output.distance + leaked)
 
 
 def fixture(batch: int = 8):
@@ -87,3 +110,33 @@ def test_frozen_node816_report_and_njc_checkpoint_hashes_are_bound():
     assert njc_gate.NJC_CR_FPL_CHECKPOINT_SHA256 == (
         "22d38b52aa77766d775d36c773c664f7690c5807945d2aa3c4ecf2326bd0b4c5"
     )
+
+
+def test_float32_batch_shape_drift_does_not_false_fail_double_structural_audit():
+    model = Float32BatchShapeDriftHead().eval()
+    features, coordinates, anchor, _, _ = fixture(4)
+    with torch.no_grad():
+        batched = model(features, coordinates, anchor).distance
+        singles = torch.cat(
+            [
+                model(
+                    features[index : index + 1],
+                    coordinates[index : index + 1],
+                    anchor[index : index + 1],
+                ).distance
+                for index in range(4)
+            ],
+            dim=0,
+        )
+        assert float((batched - singles).abs().max()) > 1e-6
+        diagnostics = source_gate.invariance_diagnostics(
+            model, features, coordinates, anchor
+        )
+    assert max(diagnostics.values()) <= 1e-6
+
+
+def test_true_cross_batch_coupling_still_fails_double_structural_audit():
+    model = TrueCrossBatchCouplingHead().eval()
+    features, coordinates, anchor, _, _ = fixture(4)
+    with pytest.raises(ValueError, match="strict invariance check failed"):
+        source_gate.invariance_diagnostics(model, features, coordinates, anchor)

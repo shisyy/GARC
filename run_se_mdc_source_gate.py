@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -302,7 +303,20 @@ def invariance_diagnostics(
     coordinates: Tensor,
     anchor: Tensor,
 ) -> dict[str, float]:
-    """Check side, batch order, chunking, and single/batched invariance."""
+    """Check structural invariance on an isolated deterministic double copy.
+
+    Training and reported predictions remain on the requested CUDA dtype.  The
+    audit itself uses a CPU float64 clone so changing only the GEMM batch shape
+    cannot create a float32 rounding delta large enough to masquerade as
+    cross-example coupling.  A real dependency on another batch member is
+    preserved by the clone and still fails the unchanged ``1e-6`` threshold.
+    """
+
+    audit_model = copy.deepcopy(model).to(device="cpu", dtype=torch.float64).eval()
+    features = features.detach().to(device="cpu", dtype=torch.float64)
+    coordinates = coordinates.detach().to(device="cpu", dtype=torch.float64)
+    anchor = anchor.detach().to(device="cpu", dtype=torch.float64)
+    model = audit_model
 
     reference = model(features, coordinates, anchor)
     fields = tuple(type(reference).__dataclass_fields__)
