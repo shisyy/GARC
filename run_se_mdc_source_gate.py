@@ -477,9 +477,9 @@ def run(
         value.to(device) if isinstance(value, Tensor) else value
         for value in data["source_train"]
     )
-    loss_term_sums: dict[str, float] = {}
-    gradient_norm_sum = 0.0
-    gradient_clip_count = 0
+    loss_term_sums: dict[str, Tensor] = {}
+    gradient_norm_sum = torch.zeros((), device=device)
+    gradient_clip_count = torch.zeros((), device=device)
     for _ in range(CONFIG.steps):
         optimizer.zero_grad(set_to_none=True)
         output = model(train[0], train[1], train[2])
@@ -496,15 +496,17 @@ def run(
         )
         loss = torch.stack(tuple(loss_terms.values())).sum()
         loss.backward()
-        gradient_norm = float(
-            torch.nn.utils.clip_grad_norm_(
-                model.parameters(), CONFIG.gradient_clip_norm
-            )
+        gradient_norm = torch.nn.utils.clip_grad_norm_(
+            model.parameters(), CONFIG.gradient_clip_norm
         )
         gradient_norm_sum += gradient_norm
-        gradient_clip_count += int(gradient_norm > CONFIG.gradient_clip_norm)
+        gradient_clip_count += (gradient_norm > CONFIG.gradient_clip_norm).to(
+            gradient_clip_count.dtype
+        )
         for name, value in loss_terms.items():
-            loss_term_sums[name] = loss_term_sums.get(name, 0.0) + float(value.detach())
+            loss_term_sums[name] = loss_term_sums.get(
+                name, torch.zeros((), device=device)
+            ) + value.detach()
         optimizer.step()
 
     validation = tuple(
@@ -590,10 +592,13 @@ def run(
             "metrics": metrics,
             "training_diagnostics": {
                 "unweighted_loss_term_means": {
-                    name: value / CONFIG.steps for name, value in loss_term_sums.items()
+                    name: float(value / CONFIG.steps)
+                    for name, value in loss_term_sums.items()
                 },
-                "gradient_norm_mean_before_clip": gradient_norm_sum / CONFIG.steps,
-                "gradient_clip_rate": gradient_clip_count / CONFIG.steps,
+                "gradient_norm_mean_before_clip": float(
+                    gradient_norm_sum / CONFIG.steps
+                ),
+                "gradient_clip_rate": float(gradient_clip_count / CONFIG.steps),
                 "gradient_clip_norm": CONFIG.gradient_clip_norm,
             },
             "protected_splits_read": [],
