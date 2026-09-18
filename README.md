@@ -1,6 +1,6 @@
-# GAR
+# GARC
 
-Geometry-Guided Articulated Reconstruction Beyond Observed States
+Geometry-Guided Articulation Range Completion for Articulated Object Reconstruction
 
 [![arXiv](https://img.shields.io/badge/arXiv-2506.03594-b31b1b.svg)](https://arxiv.org/abs/2506.03594)
 
@@ -33,7 +33,7 @@ export TORCH_CUDA_ARCH_LIST='7.0 7.5 8.6 8.9'
 ```
 
 ```bash
-CONDA_ENV=GAR
+CONDA_ENV=GARC
 conda deactivate && conda env remove -n $CONDA_ENV -y
 conda create -n $CONDA_ENV -y python=3.11 && conda activate $CONDA_ENV  # sapien supports up to Python 3.11
 conda install -y colmap ffmpeg nvidia/label/cuda-12.4.1::cuda-toolkit
