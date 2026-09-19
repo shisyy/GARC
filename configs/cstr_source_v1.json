@@ -1,0 +1,47 @@
+{
+  "schema": "splart-cstr-preregister/v1",
+  "mechanism": "object-internal counterfactual semantic tangent residual queried at every tied CR-FPL loop",
+  "input_cache": {
+    "schema": "splart-c-clip-ld-cache-index/v1",
+    "reuse_existing_scalar_clip_evidence": true,
+    "renderer_rerun_required": false
+  },
+  "representation": {
+    "selection": "single preregistered representation; no source-validation transform selection",
+    "tangent_fit": "independent least-squares affine fit for each object trajectory side",
+    "tangent_samples": 17,
+    "tangent_distance_max": 0.25,
+    "channels": [
+      "absolute affine-tangent residual",
+      "absolute residual slope (deviation from tangent slope)",
+      "centered residual RMS energy"
+    ],
+    "residual_energy_samples": 9,
+    "prompt_sign_invariant": true,
+    "affine_annihilating": true,
+    "object_or_category_embedding": false
+  },
+  "model": {
+    "base": "CR-FPL",
+    "loops": 4,
+    "width": 64,
+    "semantic_injection": "query all three CSTR channels at the current predicted distance in every tied loop",
+    "zero_semantic": "exactly recovers geometry-only CR-FPL under shared weights"
+  },
+  "optimization": {
+    "seed": 2202,
+    "steps": 4000,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 1.0
+  },
+  "controls": ["cstr", "zero", "object_trajectory_shuffle", "coordinate_only", "sign_flip"],
+  "gates": {
+    "domains": ["Articraft fixed 13/6", "NJC fixed 11/4"],
+    "must_improve": ["mean-side NMAE", "worst-side NMAE", "max-side target-relative p99"],
+    "exact_side_swap_max_error": 0.000001,
+    "four_loops_better_than_same_parameters_one_loop": true
+  },
+  "protected_splits_read": [],
+  "box_labels_read": false
+}

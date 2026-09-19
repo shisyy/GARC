@@ -1,0 +1,71 @@
+{
+  "schema": "splart-c-clip-ld-preregister/v1",
+  "mechanism": "position-conditioned counterfactual CLIP stop discriminator inside every CR-FPL LOOP iteration",
+  "encoder": {
+    "implementation": "open_clip:ViT-B-32",
+    "pretrained": "explicit local checkpoint only",
+    "checkpoint_sha256": "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
+    "checkpoint_bytes": 353976522,
+    "package_version": "3.3.0",
+    "timm_version": "1.0.29",
+    "staged_wheel_sha256": "required_at_materialization",
+    "frozen": true,
+    "network_download": false
+  },
+  "counterfactual_render_contract": {
+    "coordinates": "linspace(0.0,2.0,129), identical for both sides and fixed before labels",
+    "canonical_q": "side0=-d, side1=1+d; always within the existing source trajectory support [-2,3]",
+    "coordinate_units": "normalized outward distance from observed state boundary",
+    "sides": 2,
+    "views_per_candidate_minimum": 2,
+    "preferred_views": 6,
+    "image_shape": [3, 224, 224],
+    "identity": "Articraft object_id or NJC opaque episode_id; exact geometry-index join required",
+    "observed_state_only_bank": "forbidden because it is not a candidate trajectory",
+    "pose_formula": "angle0+q*(angle1-angle0), where anglei=lower+statei_fraction*(upper-lower); never clamp continuation to URDF limits",
+    "target_endpoint_used_for_grid_or_render": false,
+    "storage": "stream renderer candidate mini-batches directly through frozen CLIP; never persist full RGB trajectories",
+    "persisted_artifact": "signed evidence [2,129,1] plus asset/render/model/config hashes and six fixed thumbnail hashes",
+    "articraft_mapping": "hash-bound selection-pilc-v1.json; object_id=Path.stem(archive); node8.4 SHA256(object_id) f0/f1; first bounded revolute in URDF document order",
+    "njc_mapping": "hash-bound public prereg; reconstruct splart-pilc-v1 opaque episode IDs with explicit f0/f1, orientation and state order; assets/${object_id}/{object.urdf,base_final.obj,lid_final.obj,qc.json}; exact joint lid_hinge"
+  },
+  "prompt_ensembles": {
+    "stop": [
+      "a movable object exactly at its mechanical stop",
+      "an articulated part fully closed against its hard limit",
+      "an articulated joint at the end of its allowed motion",
+      "a moving part in contact with its physical motion boundary"
+    ],
+    "free": [
+      "a movable object with room to continue moving",
+      "an articulated part away from its mechanical stop",
+      "an articulated joint in the interior of its allowed motion",
+      "a moving part free from its physical motion boundary"
+    ],
+    "score": "mean_views(cosine(image,mean_stop)-cosine(image,mean_free))"
+  },
+  "model": {
+    "base": "CR-FPL",
+    "loops": 4,
+    "width": 64,
+    "semantic_injection": "query current predicted distance, then bias-free gated residual into feedback token",
+    "zero_semantic": "exactly recovers the geometry-only same-weight structural control"
+  },
+  "optimization": {
+    "seed": 2202,
+    "steps": 4000,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "gradient_clip_norm": 1.0
+  },
+  "controls": ["CR-FPL", "zero_semantic", "object_image_shuffle", "prompt_swap"],
+  "gates": {
+    "domains": ["Articraft fixed 13/6", "NJC fixed 11/4"],
+    "must_improve": ["mean-side NMAE", "worst-side NMAE", "max-side target-relative p99"],
+    "exact_side_swap_max_error": 0.000001,
+    "four_loops_better_than_same_parameters_one_loop": true,
+    "semantic_metric": "endpoint AUROC"
+  },
+  "protected_splits_read": [],
+  "box_labels_read": false
+}

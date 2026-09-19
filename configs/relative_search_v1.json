@@ -1,0 +1,8 @@
+{
+  "version": "relative-search/v1",
+  "semantic_slope_weight": 1.0,
+  "joint_semantic_weight": 1.0,
+  "near_optimal_tolerance": 0.1,
+  "disagreement_fraction": 0.2,
+  "minimum_direction_strength": 0.005
+}

@@ -1,6 +1,23 @@
-# GARC
+# GARC — Geometry + Semantics Research Snapshot
 
-Geometry-Guided Articulation Range Completion for Articulated Object Reconstruction
+Articulation Limit Extrapolation from Two Intermediate States.
+
+## Geometry + semantics code release · 2026-09-19
+
+Start with **[GEOMETRY_SEMANTICS_RELEASE.md](GEOMETRY_SEMANTICS_RELEASE.md)**:
+method map, Conda dependencies, runnable commands, tests and the frozen result table.
+This branch packages the explored CLIP, part-interaction, geometry-first and
+contact-bounded semantic methods, including failed ablations and controls.
+
+**Evidence boundary:** the completed node9 experiments use ideal full-mesh
+diagnostic inputs and stylized renders, not scene reconstructions obtained from
+only two RGB observation states. The latest contact geometry improves its own
+development baseline; adding the tested CLIP selector makes it worse. No claim
+of a validated semantic gain or cross-object generalization is made. The new
+19-object, observation-only, from-scratch rerun is separate and still in progress.
+
+Earlier research records below are historical, not a unified leaderboard.
+The arXiv link below is the upstream SplArt paper, not a paper for this extension.
 
 [![arXiv](https://img.shields.io/badge/arXiv-2506.03594-b31b1b.svg)](https://arxiv.org/abs/2506.03594)
 
@@ -16,12 +33,11 @@ fractions and ground-truth URDF limits are hidden from the model.
 - Task definition and leakage boundary: [EXTRAPOLATION_PROTOCOL.md](EXTRAPOLATION_PROTOCOL.md)
 - Reproducible research contract: [ARBOR_CONTRACT.md](ARBOR_CONTRACT.md)
 - Current CVPR-oriented progress: [.arbor/sessions/splart-endpoint-extrapolation-20260905/CVPR_PROGRESS.md](.arbor/sessions/splart-endpoint-extrapolation-20260905/CVPR_PROGRESS.md)
-- Latest audited experiment: [results/8.13-pksrt-label-free-feasibility/report.md](results/8.13-pksrt-label-free-feasibility/report.md)
+- Latest geometry/semantic audit: [GEOMETRY_SEMANTICS_RELEASE.md](GEOMETRY_SEMANTICS_RELEASE.md#verified-results)
 
-The default branch contains the task protocol, from-scratch baseline tooling,
-evaluation safeguards, and accepted research records. Individual experimental
-implementations remain on their `arbor/*` branches; in particular,
-`arbor/node-8-13-pksrt` contains the latest PKSRT implementation. Datasets,
+This release branch contains the integrated geometry/semantic implementations,
+evaluation safeguards and research records. Older experimental implementations
+also remain on their `arbor/*` branches. Datasets,
 model checkpoints, sealed labels, and large remote experiment artifacts are
 intentionally excluded from Git.
 
@@ -33,7 +49,7 @@ export TORCH_CUDA_ARCH_LIST='7.0 7.5 8.6 8.9'
 ```
 
 ```bash
-CONDA_ENV=GARC
+CONDA_ENV=ALEx
 conda deactivate && conda env remove -n $CONDA_ENV -y
 conda create -n $CONDA_ENV -y python=3.11 && conda activate $CONDA_ENV  # sapien supports up to Python 3.11
 conda install -y colmap ffmpeg nvidia/label/cuda-12.4.1::cuda-toolkit
